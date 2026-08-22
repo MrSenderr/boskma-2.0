@@ -5,6 +5,7 @@ import { Schil } from './components/Schil'
 import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
+import { Persoon } from './pages/Persoon'
 import { Binnenkort } from './pages/Binnenkort'
 import { Laden } from './components/ui'
 
@@ -22,6 +23,7 @@ function Poort() {
       <Route element={<Schil />}>
         <Route index element={<Vandaag />} />
         <Route path="personeel" element={<Personeel />} />
+        <Route path="personeel/:id" element={<Persoon />} />
         <Route
           path="haccp"
           element={
