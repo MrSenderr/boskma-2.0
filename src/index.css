@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import "@fontsource/archivo/400.css";
+@import "@fontsource/archivo/500.css";
+@import "@fontsource/archivo/600.css";
+@import "@fontsource/archivo/700.css";
+@import "@fontsource/archivo-black/400.css";
+
+/* De kleuren komen uit het logo van Snackerie 't Zonnetje.
+   #003A41 en #F0EBD5 liggen vast; de rest is daaruit afgeleid.
+   Zie docs/stijlboek.html in de oude repo. */
+
+:root {
+  --bg: #fbf9f2;
+  --surface: #ffffff;
+  --surface-2: #f4f0e1;
+  --text: #0e2226;
+  --muted: #5c7073;
+  --line: #e4dec9;
+  --line-strong: #cfc7ac;
+  --brand: #003a41;
+  --on-brand: #f0ebd5;
+  --accent: #b87a22;
+  --accent-soft: #f7ead1;
+  --good: #2f6b54;
+  --good-soft: #e4f0e9;
+  --warn: #b87a22;
+  --warn-soft: #f7ead1;
+  --bad: #a33b2b;
+  --bad-soft: #f7e3df;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #00272c;
+    --surface: #003a41;
+    --surface-2: #00474f;
+    --text: #f0ebd5;
+    --muted: #9cb4b2;
+    --line: #0a525a;
+    --line-strong: #0e6670;
+    --brand: #f0ebd5;
+    --on-brand: #003a41;
+    --accent: #e8b25a;
+    --accent-soft: #0a525a;
+    --good: #6fbb94;
+    --good-soft: rgba(111, 187, 148, 0.16);
+    --warn: #e8b25a;
+    --warn-soft: rgba(232, 178, 90, 0.16);
+    --bad: #e2806c;
+    --bad-soft: rgba(226, 128, 108, 0.16);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #00272c;
+  --surface: #003a41;
+  --surface-2: #00474f;
+  --text: #f0ebd5;
+  --muted: #9cb4b2;
+  --line: #0a525a;
+  --line-strong: #0e6670;
+  --brand: #f0ebd5;
+  --on-brand: #003a41;
+  --accent: #e8b25a;
+  --accent-soft: #0a525a;
+  --good: #6fbb94;
+  --good-soft: rgba(111, 187, 148, 0.16);
+  --warn: #e8b25a;
+  --warn-soft: rgba(232, 178, 90, 0.16);
+  --bad: #e2806c;
+  --bad-soft: rgba(226, 128, 108, 0.16);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+
+  --font-sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Archivo Black", "Archivo", Arial, sans-serif;
+
+  --radius-card: 6px;
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Aanraakvlakken: op de telefoon in de keuken moet alles met een vinger
+     te bedienen zijn. 44px is de ondergrens. */
+  button,
+  [role="button"],
+  a[data-touch],
+  input,
+  select {
+    min-height: 44px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
