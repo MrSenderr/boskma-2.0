@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
+import { UitDienst } from '../components/UitDienst'
 import {
   aannemen,
   afwijzen,
@@ -228,6 +229,8 @@ export function Persoon() {
       )}
 
       <Tijdlijn p={p} />
+
+      {p.fase === 'medewerker' && <UitDienst persoon={p} />}
     </div>
   )
 }
