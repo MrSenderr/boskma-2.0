@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
+import { Loonbureau } from '../components/Loonbureau'
 import {
   aannemen,
   afwijzen,
@@ -160,7 +161,7 @@ export function Persoon() {
               {toestand.sleutel === 'aangenomen'
                 ? 'Deze medewerker heeft de invullink nog niet gehad — hieronder maak je hem aan.'
                 : toestand.sleutel === 'compleet'
-                  ? 'De gegevens zijn binnen. Aanvullen en versturen naar het loonbureau komt in de volgende stap.'
+                  ? 'De gegevens zijn binnen. Vul hieronder de contractgegevens aan en verstuur naar het loonbureau.'
                   : 'Er wacht op dit moment niets op jou.'}
             </p>
           </Kaart>
@@ -177,6 +178,8 @@ export function Persoon() {
       )}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Invullink persoon={p} />}
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <Loonbureau persoon={p} />}
 
       {/* ---------------------------------------------------- sollicitatie --- */}
       <section className="flex flex-col gap-3">

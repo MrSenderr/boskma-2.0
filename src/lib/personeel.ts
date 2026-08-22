@@ -8,7 +8,10 @@ const LIJST_VELDEN =
   'onboarding_verstuurd_op,onboarding_ingevuld_op,' +
   'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op'
 
-const KAART_VELDEN = LIJST_VELDEN + ',geboortedatum,telefoonnummer,email,motivatie,onboarding_data'
+const KAART_VELDEN =
+  LIJST_VELDEN +
+  ',geboortedatum,telefoonnummer,email,motivatie,onboarding_data,' +
+  'contracttype,contractduur,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
 
 export type Fase = 'sollicitant' | 'medewerker'
 
@@ -31,6 +34,35 @@ export type Persoon = {
   email?: string | null
   motivatie?: string | null
   onboarding_data?: Record<string, unknown> | null
+  // vult Sander zelf in, voor het mutatieformulier
+  contracttype?: string | null
+  contractduur?: 'bepaalde' | 'onbepaalde' | null
+  functie?: string | null
+  ingangsdatum?: string | null
+  einddatum?: string | null
+  uurloon?: number | null
+  proefperiode?: boolean | null
+  contract_door_loonbureau?: boolean | null
+}
+
+export const CONTRACTTYPES = ['Nuluren-overeenkomst (oproep)', 'Vaste uren'] as const
+
+export const FUNCTIES = [
+  { naam: 'Medewerker fastservice I', groep: 2 },
+  { naam: 'Medewerker fastservice II', groep: 3 },
+] as const
+
+/** Welke contractvelden moeten ingevuld zijn voordat het naar het loonbureau kan. */
+export function ontbrekendeContractvelden(p: Persoon): string[] {
+  const mist: string[] = []
+  if (!p.contracttype) mist.push('contracttype')
+  if (!p.contractduur) mist.push('contractduur')
+  if (!p.functie) mist.push('functie')
+  if (!p.ingangsdatum) mist.push('ingangsdatum')
+  if (p.contractduur === 'bepaalde' && !p.einddatum) mist.push('einddatum')
+  if (p.uurloon === null || p.uurloon === undefined) mist.push('uurloon')
+  if (p.proefperiode === null || p.proefperiode === undefined) mist.push('proefperiode')
+  return mist
 }
 
 export function naamVan(p: Persoon) {
