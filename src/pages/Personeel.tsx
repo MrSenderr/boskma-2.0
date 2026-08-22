@@ -111,8 +111,8 @@ export function Personeel() {
 
       <p className="flex items-center gap-2 text-sm text-muted">
         <UserPlus className="size-4 shrink-0" aria-hidden />
-        Iemand rechtstreeks als medewerker toevoegen kan straks — dat komt in de
-        stap waarin de invullink erbij komt.
+        Iemand rechtstreeks als medewerker toevoegen kan nog niet — dat komt in
+        de volgende stap. De invullink zit inmiddels wel op elke medewerkerskaart.
       </p>
     </div>
   )
