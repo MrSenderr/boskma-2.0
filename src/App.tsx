@@ -7,6 +7,7 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Persoon } from './pages/Persoon'
 import { Binnenkort } from './pages/Binnenkort'
+import { Instellingen } from './pages/Instellingen'
 import { Laden } from './components/ui'
 
 const queryClient = new QueryClient({
@@ -33,10 +34,7 @@ function Poort() {
             />
           }
         />
-        <Route
-          path="instellingen"
-          element={<Binnenkort module="Instellingen" uitleg="Locaties, apparaten, taken en wie er toegang heeft." />}
-        />
+        <Route path="instellingen" element={<Instellingen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

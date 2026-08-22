@@ -4,6 +4,7 @@ import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Mo
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
+import { useTestmodus } from '../lib/instellingen'
 
 const MENU = [
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true },
@@ -32,6 +33,19 @@ function ThemaKnop() {
     >
       <Icoon className="size-5" aria-hidden />
     </button>
+  )
+}
+
+function TestBalk() {
+  const { data } = useTestmodus()
+  if (!data?.aan) return null
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 bg-warn px-4 py-2 text-sm font-semibold text-[#00272C]">
+      <span>Testmodus staat aan.</span>
+      <span className="font-normal">
+        Uitgaande mail gaat naar {data.adres} — niet naar medewerkers of het loonbureau.
+      </span>
+    </div>
   )
 }
 
@@ -108,6 +122,8 @@ export function Schil() {
           <h1 className="flex-1 font-display text-lg">{titel}</h1>
           <ThemaKnop />
         </header>
+
+        <TestBalk />
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
           <Outlet />

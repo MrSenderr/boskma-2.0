@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
+import { Invullink } from '../components/Invullink'
 import {
   aannemen,
   afwijzen,
@@ -157,7 +158,7 @@ export function Persoon() {
           <Kaart className="p-4">
             <p className="text-sm">
               {toestand.sleutel === 'aangenomen'
-                ? 'Deze medewerker moet de invullink nog krijgen. Die knop komt in de volgende stap.'
+                ? 'Deze medewerker heeft de invullink nog niet gehad — hieronder maak je hem aan.'
                 : toestand.sleutel === 'compleet'
                   ? 'De gegevens zijn binnen. Aanvullen en versturen naar het loonbureau komt in de volgende stap.'
                   : 'Er wacht op dit moment niets op jou.'}
@@ -174,6 +175,8 @@ export function Persoon() {
           ) : null}
         </section>
       )}
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <Invullink persoon={p} />}
 
       {/* ---------------------------------------------------- sollicitatie --- */}
       <section className="flex flex-col gap-3">
