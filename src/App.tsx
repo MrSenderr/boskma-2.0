@@ -6,11 +6,11 @@ import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Persoon } from './pages/Persoon'
-import { Binnenkort } from './pages/Binnenkort'
 import { Instellingen } from './pages/Instellingen'
 import { Haccp } from './pages/Haccp'
 import { Apparaten } from './pages/Apparaten'
 import { Taken } from './pages/Taken'
+import { Logboek } from './pages/Logboek'
 import { Ronde } from './pages/Ronde'
 import { huidigeModus } from './lib/modus'
 import { Laden } from './components/ui'
@@ -36,15 +36,7 @@ function Poort() {
           <Route index element={<Navigate to="apparaten" replace />} />
           <Route path="apparaten" element={<Apparaten />} />
           <Route path="taken" element={<Taken />} />
-          <Route
-            path="logboek"
-            element={
-              <Binnenkort
-                module="Logboek"
-                uitleg="Alle registraties terugkijken en uitdraaien voor een controle. Komt later."
-              />
-            }
-          />
+          <Route path="logboek" element={<Logboek />} />
         </Route>
         <Route path="instellingen" element={<Instellingen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
