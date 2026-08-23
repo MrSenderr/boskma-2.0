@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Logo } from '../components/Logo'
 import { Knop, Veld } from '../components/ui'
 import { useAuth } from '../lib/auth'
-import { vraagInloglink } from '../lib/wie'
+import { inlogMetCode, vraagInloglink } from '../lib/wie'
 
 type Manier = 'medewerker' | 'beheer'
 
@@ -14,6 +14,7 @@ export function Inloggen() {
   const [fout, setFout] = useState<string | null>(null)
   const [bezig, setBezig] = useState(false)
   const [verstuurd, setVerstuurd] = useState<{ testmodus?: boolean; naar?: string } | null>(null)
+  const [code, setCode] = useState('')
 
   async function metWachtwoord(e: FormEvent) {
     e.preventDefault()
@@ -25,6 +26,15 @@ export function Inloggen() {
       setFout(melding)
       setWachtwoord('')
     }
+  }
+
+  async function metCode(e: FormEvent) {
+    e.preventDefault()
+    setFout(null)
+    setBezig(true)
+    const melding = await inlogMetCode(email, code)
+    setBezig(false)
+    if (melding) setFout(melding)
   }
 
   async function metLink(e: FormEvent) {
@@ -58,12 +68,31 @@ export function Inloggen() {
         </div>
 
         {verstuurd ? (
-          <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
+          <form onSubmit={metCode} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
             <p className="font-display text-lg">Kijk in je mail</p>
             <p className="text-sm text-muted">
-              Als dit adres bij ons bekend is, staat er nu een mail met een knop om in
-              te loggen. Die link is een uur geldig.
+              Als dit adres bij ons bekend is, staat er nu een mail met zes cijfers.
+              Vul ze hieronder in. De code is een uur geldig.
             </p>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="code" className="text-sm font-semibold text-muted">
+                Code uit de mail
+              </label>
+              <input
+                id="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-3 text-center text-2xl font-bold tracking-[0.3em] tabular-nums outline-none focus:border-accent"
+              />
+              {fout && <span className="text-sm text-bad">{fout}</span>}
+            </div>
+            <Knop type="submit" breed bezig={bezig} disabled={code.replace(/\D/g, '').length < 6}>
+              Inloggen
+            </Knop>
             {verstuurd.testmodus && verstuurd.naar && (
               <p className="rounded-[4px] border border-warn bg-warn-soft px-3 py-2 text-sm text-warn">
                 Testmodus: de mail ging naar {verstuurd.naar}, niet naar de medewerker.
@@ -73,12 +102,13 @@ export function Inloggen() {
               soort="rustig"
               onClick={() => {
                 setVerstuurd(null)
-                setEmail('')
+                setCode('')
+                setFout(null)
               }}
             >
-              Ander adres proberen
+              Opnieuw beginnen
             </Knop>
-          </div>
+          </form>
         ) : (
           <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
             <div className="flex gap-1 rounded-[4px] bg-bg p-1">
@@ -112,11 +142,11 @@ export function Inloggen() {
                   fout={fout ?? undefined}
                 />
                 <Knop type="submit" breed bezig={bezig}>
-                  Stuur mij een inloglink
+                  Stuur mij een code
                 </Knop>
                 <p className="text-sm text-muted">
-                  Geen wachtwoord nodig. Je krijgt een mail met een knop; daarna blijf
-                  je ingelogd op dit toestel.
+                  Geen wachtwoord nodig. Je krijgt zes cijfers per mail; daarna blijf je
+                  ingelogd op dit toestel.
                 </p>
               </form>
             ) : (

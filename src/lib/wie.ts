@@ -38,3 +38,20 @@ export async function vraagInloglink(email: string) {
   if (error) return { ok: false as const, error: error.message }
   return data as { ok: boolean; verstuurd?: boolean; testmodus?: boolean; verstuurd_naar?: string; error?: string }
 }
+
+/** Wisselt de zes cijfers uit de mail in voor een sessie. Supabase noemt dit
+ *  soort code afhankelijk van hoe hij is aangemaakt anders, dus we proberen
+ *  beide varianten voordat we het opgeven. */
+export async function inlogMetCode(email: string, code: string) {
+  const schoon = code.replace(/\D/g, '')
+  for (const type of ['email', 'magiclink'] as const) {
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: schoon,
+      type,
+    })
+    if (!error) return null
+    if (!/token|otp|invalid|expired/i.test(error.message)) return error.message
+  }
+  return 'Die code klopt niet, of hij is verlopen. Vraag een nieuwe aan.'
+}
