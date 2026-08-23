@@ -8,6 +8,8 @@ import { Personeel } from './pages/Personeel'
 import { Persoon } from './pages/Persoon'
 import { Binnenkort } from './pages/Binnenkort'
 import { Instellingen } from './pages/Instellingen'
+import { Haccp } from './pages/Haccp'
+import { Apparaten } from './pages/Apparaten'
 import { Laden } from './components/ui'
 
 const queryClient = new QueryClient({
@@ -25,15 +27,28 @@ function Poort() {
         <Route index element={<Vandaag />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
-        <Route
-          path="haccp"
-          element={
-            <Binnenkort
-              module="HACCP en schoonmaak"
-              uitleg="Temperaturen, schoonmaaktaken, leveringen en frituurvet — gebouwd voor de telefoon, zodat je meet terwijl je bij de koeling staat. De opzet staat in docs/modules/haccp/haccpmodule.md."
-            />
-          }
-        />
+        <Route path="haccp" element={<Haccp />}>
+          <Route index element={<Navigate to="apparaten" replace />} />
+          <Route path="apparaten" element={<Apparaten />} />
+          <Route
+            path="taken"
+            element={
+              <Binnenkort
+                module="Taken"
+                uitleg="De drie werklijsten — openen, voorbereiden, sluiten — met hun hoeken. Komt hierna."
+              />
+            }
+          />
+          <Route
+            path="logboek"
+            element={
+              <Binnenkort
+                module="Logboek"
+                uitleg="Alle registraties terugkijken en uitdraaien voor een controle. Komt later."
+              />
+            }
+          />
+        </Route>
         <Route path="instellingen" element={<Instellingen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
