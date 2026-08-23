@@ -83,16 +83,11 @@ export function VandaagMedewerker() {
         )
       })()}
 
-      <section className="flex flex-col gap-3">
-        <Kopje>Wat er vandaag moet</Kopje>
-
-        {teMeten.length === 0 ? (
-          <Kaart className="p-5">
-            <p className="text-sm text-muted">
-              Er staat vandaag niets voor je klaar.
-            </p>
-          </Kaart>
-        ) : (
+      {/* Weg zodra alles gemeten is. Wat af is hoeft niet te blijven staan;
+          terugkijken doe je in het logboek. */}
+      {teMeten.length > 0 && !klaar && (
+        <section className="flex flex-col gap-3">
+          <Kopje>Wat er vandaag moet</Kopje>
           <Link
             to="/temperaturen"
             data-touch
@@ -102,7 +97,7 @@ export function VandaagMedewerker() {
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-2 font-display text-lg">
                 Temperaturen
-                {klaar ? <Pil soort="goed">Klaar</Pil> : <Pil soort="fout">Nog doen</Pil>}
+                <Pil soort="fout">Nog doen</Pil>
               </p>
               <p className="text-sm text-muted">
                 {gedaan} van {teMeten.length} gemeten
@@ -110,8 +105,8 @@ export function VandaagMedewerker() {
             </div>
             <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
           </Link>
-        )}
-      </section>
+        </section>
+      )}
 
       <Werklijsten />
 
