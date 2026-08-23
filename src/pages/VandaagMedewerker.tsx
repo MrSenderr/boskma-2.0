@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Cake, Check, ChevronRight, ListChecks, Thermometer } from 'lucide-react'
+import { Cake, Check, ChevronRight, ListChecks, MessageSquare, Thermometer } from 'lucide-react'
 import { korteDatum } from '../lib/personeel'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
@@ -8,6 +8,7 @@ import { useWieBenIk } from '../lib/wie'
 import { jarigen, urgentie, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
 import { useLijstStanden } from '../lib/werklijst'
 import { LIJSTEN } from '../lib/taken'
+import { useVerslagen } from '../lib/dossier'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
@@ -28,6 +29,7 @@ export function VandaagMedewerker() {
   const { data: mijnTaken } = useMijnTaken(wie?.medewerker_id)
   const afvinken = useTaakAfvinken()
   const { data: standen } = useLijstStanden()
+  const { data: verslagen } = useVerslagen(wie?.medewerker_id)
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -54,6 +56,37 @@ export function VandaagMedewerker() {
           })}
         </p>
       </div>
+
+      {(() => {
+        // Alleen gedeelde verslagen komen hier binnen; de database laat de rest
+        // niet los. Zonder reactie wacht het nog op hem.
+        const wacht = (verslagen ?? []).filter((v) => !v.reactie)
+        if (wacht.length === 0) return null
+        return (
+          <section className="flex flex-col gap-3">
+            <Kopje>Er wacht iets op je</Kopje>
+            <Link
+              to="/mijn-dossier"
+              data-touch
+              className="flex items-center gap-4 rounded-card border border-warn bg-surface p-5 hover:bg-surface-2"
+            >
+              <MessageSquare className="size-6 shrink-0 text-muted" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-2 font-display text-lg">
+                  {wacht.length === 1 ? 'Een gespreksverslag' : `${wacht.length} gespreksverslagen`}
+                  <Pil soort="letop">Nog reageren</Pil>
+                </span>
+                <span className="block text-sm text-muted">
+                  {wacht.length === 1
+                    ? `"${wacht[0].titel}" — lees het en geef aan of het klopt.`
+                    : 'Lees ze en geef aan of ze kloppen.'}
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+            </Link>
+          </section>
+        )
+      })()}
 
       <section className="flex flex-col gap-3">
         <Kopje>Wat er vandaag moet</Kopje>
