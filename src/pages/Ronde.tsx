@@ -186,7 +186,7 @@ export function Ronde() {
   const { data: metingen } = useMetingenVandaag(MEETMOMENT)
   const { email } = useAuth()
 
-  if (isPending) return <Laden tekst="Ronde laden…" />
+  if (isPending) return <Laden tekst="Temperaturen laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
   const teMeten = apparaten.filter(
@@ -217,7 +217,7 @@ export function Ronde() {
             {gedaan} van {teMeten.length} gemeten
           </p>
         </div>
-        {klaar && <Pil soort="goed">Ronde compleet</Pil>}
+        {klaar && <Pil soort="goed">Alles gemeten</Pil>}
       </div>
 
       {afwijkingen > 0 && (

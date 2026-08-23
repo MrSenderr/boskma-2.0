@@ -1,13 +1,11 @@
 import { Link } from 'react-router-dom'
-import { Cake, Check, ChevronRight, ListChecks, MessageSquare, Thermometer } from 'lucide-react'
-import { korteDatum } from '../lib/personeel'
+import { Cake, ChevronRight, MessageSquare, Thermometer } from 'lucide-react'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { useWieBenIk } from '../lib/wie'
-import { jarigen, urgentie, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
-import { useLijstStanden } from '../lib/werklijst'
-import { LIJSTEN } from '../lib/taken'
+import { jarigen, useVerjaardagen } from '../lib/vandaag'
+import { PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
 import { useVerslagen } from '../lib/dossier'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
@@ -26,9 +24,6 @@ export function VandaagMedewerker() {
   const { data: apparaten, isPending, error, refetch } = useApparaten()
   const { data: metingen } = useMetingenVandaag('opening')
   const { data: verjaardagen } = useVerjaardagen()
-  const { data: mijnTaken } = useMijnTaken(wie?.medewerker_id)
-  const afvinken = useTaakAfvinken()
-  const { data: standen } = useLijstStanden()
   const { data: verslagen } = useVerslagen(wie?.medewerker_id)
 
   if (isPending) return <Laden />
@@ -99,7 +94,7 @@ export function VandaagMedewerker() {
           </Kaart>
         ) : (
           <Link
-            to="/ronde"
+            to="/temperaturen"
             data-touch
             className="flex items-center gap-4 rounded-card border border-line bg-surface p-5 hover:bg-surface-2"
           >
@@ -118,76 +113,9 @@ export function VandaagMedewerker() {
         )}
       </section>
 
-      {standen && LIJSTEN.some((l) => standen[l.waarde]) && (
-        <section className="flex flex-col gap-3">
-          <Kopje>Werklijsten</Kopje>
-          <div className="flex flex-col gap-2">
-            {LIJSTEN.map((l) => {
-              const s = standen[l.waarde]
-              if (!s) return null
-              const af = s.gedaan === s.totaal
-              return (
-                <Link
-                  key={l.waarde}
-                  to={`/lijst/${l.waarde}`}
-                  data-touch
-                  className={`flex items-center gap-4 rounded-card border bg-surface p-4 hover:bg-surface-2 ${
-                    af ? 'border-good' : 'border-line'
-                  }`}
-                >
-                  <ListChecks className="size-6 shrink-0 text-muted" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2 font-display text-lg">
-                      {l.label}
-                      {af && <Pil soort="goed">Klaar</Pil>}
-                    </span>
-                    <span className="block text-sm text-muted">
-                      {s.gedaan} van {s.totaal} gedaan
-                    </span>
-                  </span>
-                  <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-      )}
+      <Werklijsten />
 
-      {(mijnTaken ?? []).length > 0 && (
-        <section className="flex flex-col gap-3">
-          <Kopje>Voor jou</Kopje>
-          <Kaart>
-            {(mijnTaken ?? []).map((t) => {
-              const gedaan = Boolean(t.gedaan_op)
-              const staat = urgentie(t)
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => afvinken.mutate({ id: t.id, gedaan: !gedaan })}
-                  className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
-                >
-                  <span
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${
-                      gedaan ? 'border-good bg-good text-white' : 'border-line-strong'
-                    }`}
-                    aria-hidden
-                  >
-                    {gedaan && <Check className="size-4" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className={`block ${gedaan ? 'text-muted line-through' : ''}`}>{t.tekst}</span>
-                    {t.toelichting && <span className="block text-sm text-muted">{t.toelichting}</span>}
-                  </span>
-                  {staat === 'telaat' && <Pil soort="fout">Was voor {korteDatum(t.datum)}</Pil>}
-                  {staat === 'vandaag' && <Pil soort="letop">Vandaag</Pil>}
-                  {staat === 'later' && <Pil soort="neutraal">Voor {korteDatum(t.datum)}</Pil>}
-                </button>
-              )
-            })}
-          </Kaart>
-        </section>
-      )}
+      <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
 
       {verjaardagen && (() => {
         const { vandaag, komend } = jarigen(verjaardagen)

@@ -15,6 +15,7 @@ import { Ronde } from './pages/Ronde'
 import { Werklijst } from './pages/Werklijst'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
+import { MijnTaken } from './pages/MijnTaken'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -44,7 +45,10 @@ function Poort() {
     <Routes>
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
-        <Route path="ronde" element={<Ronde />} />
+        <Route path="temperaturen" element={<Ronde />} />
+        {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
+        <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
+        <Route path="taken" element={<MijnTaken />} />
         <Route path="lijst/:lijst" element={<Werklijst />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />

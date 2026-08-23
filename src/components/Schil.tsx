@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -15,7 +15,8 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
-  { pad: '/ronde', label: 'Ronde', icoon: Thermometer, exact: false, voor: 'medewerker' },
+  { pad: '/temperaturen', label: 'Temperaturen', icoon: Thermometer, exact: false, voor: 'medewerker' },
+  { pad: '/taken', label: 'Taken', icoon: ListChecks, exact: false, voor: 'medewerker' },
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
 ]
