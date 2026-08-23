@@ -5,14 +5,15 @@ import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
+import { useModus, type Modus } from '../lib/modus'
 
-const MENU = [
-  { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true },
-  // Wat een medewerker ziet. Straks is dit voor hen het enige menu-item.
-  { pad: '/ronde', label: 'Ronde', icoon: Thermometer, exact: false },
-  { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false },
-  { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false },
-  { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false },
+const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus }[] = [
+  { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beheer' },
+  { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
+  { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
+  { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
+  // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
+  { pad: '/ronde', label: 'Ronde', icoon: Thermometer, exact: false, voor: 'medewerker' },
 ]
 
 function ThemaKnop() {
@@ -38,6 +39,33 @@ function ThemaKnop() {
   )
 }
 
+function ModusSchakelaar({ modus, zet }: { modus: Modus; zet: (m: Modus) => void }) {
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-white/10 p-3">
+      <span className="px-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#F0EBD5]/45">
+        Je werkt als
+      </span>
+      <div className="flex gap-1 rounded-[4px] bg-black/25 p-1">
+        {(['beheer', 'medewerker'] as Modus[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => zet(m)}
+            aria-pressed={modus === m}
+            className={`min-h-11 flex-1 rounded-[3px] px-2 text-sm font-semibold transition-colors ${
+              modus === m
+                ? 'bg-[#F0EBD5] text-[#003A41]'
+                : 'text-[#F0EBD5]/65 hover:bg-white/5'
+            }`}
+          >
+            {m === 'beheer' ? 'Beheer' : 'Medewerker'}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TestBalk() {
   const { data } = useTestmodus()
   if (!data?.aan) return null
@@ -54,8 +82,12 @@ function TestBalk() {
 export function Schil() {
   const [open, setOpen] = useState(false)
   const { email, uitloggen } = useAuth()
+  const [modus, zetModusState] = useModus()
   const locatie = useLocation()
-  const titel = MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ?? 'Boskma'
+  const zichtbaar = MENU.filter((m) => m.voor === modus)
+  const titel =
+    MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
+    'Boskma'
 
   return (
     <div className="flex min-h-dvh">
@@ -80,7 +112,7 @@ export function Schil() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {MENU.map(({ pad, label, icoon: Icoon, exact }) => (
+          {zichtbaar.map(({ pad, label, icoon: Icoon, exact }) => (
             <NavLink
               key={pad}
               to={pad}
@@ -97,6 +129,8 @@ export function Schil() {
             </NavLink>
           ))}
         </nav>
+
+        <ModusSchakelaar modus={modus} zet={zetModusState} />
 
         <div className="border-t border-white/10 p-3">
           <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">{email}</p>
