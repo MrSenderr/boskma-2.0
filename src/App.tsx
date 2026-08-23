@@ -13,6 +13,7 @@ import { Taken } from './pages/Taken'
 import { Logboek } from './pages/Logboek'
 import { Ronde } from './pages/Ronde'
 import { Werklijst } from './pages/Werklijst'
+import { MijnGegevens } from './pages/MijnGegevens'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -44,6 +45,7 @@ function Poort() {
         <Route index element={<Startscherm />} />
         <Route path="ronde" element={<Ronde />} />
         <Route path="lijst/:lijst" element={<Werklijst />} />
+        <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="haccp" element={<Haccp />}>

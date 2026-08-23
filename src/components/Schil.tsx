@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -16,6 +16,7 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
   { pad: '/ronde', label: 'Ronde', icoon: Thermometer, exact: false, voor: 'medewerker' },
+  { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
 ]
 
 function ThemaKnop() {
