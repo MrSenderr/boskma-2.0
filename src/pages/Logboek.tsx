@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Thermometer } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
+import { LogboekTaken } from './LogboekTaken'
 
 /* Terugkijken wat er geregistreerd is. Zie docs/modules/haccp/haccpmodule.md.
    Alleen lezen: een logboek waar dingen uit kunnen verdwijnen is geen logboek. */
@@ -59,6 +60,7 @@ function useLogboek(dagen: number) {
 }
 
 export function Logboek() {
+  const [soort, setSoort] = useState<'temperaturen' | 'taken'>('temperaturen')
   const [dagen, setDagen] = useState(30)
   const [alleenAfwijkingen, setAlleenAfwijkingen] = useState(false)
   const { data, isPending, error, refetch } = useLogboek(dagen)
@@ -78,6 +80,26 @@ export function Logboek() {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex gap-1 rounded-[4px] bg-surface-2 p-1">
+        {(['temperaturen', 'taken'] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSoort(s)}
+            aria-pressed={soort === s}
+            className={`min-h-11 flex-1 rounded-[3px] px-3 text-sm font-semibold transition-colors ${
+              soort === s ? 'bg-brand text-on-brand' : 'text-muted hover:bg-surface'
+            }`}
+          >
+            {s === 'temperaturen' ? 'Temperaturen' : 'Taken'}
+          </button>
+        ))}
+      </div>
+
+      {soort === 'taken' ? (
+        <LogboekTaken />
+      ) : (
+        <>
       <div className="flex flex-wrap items-center gap-2">
         {PERIODES.map((p) => (
           <button
@@ -179,6 +201,8 @@ export function Logboek() {
         tabletapp. Er kan niets uit verdwijnen — een fout wordt gecorrigeerd met de
         correctie erbij, niet weggehaald.
       </p>
+        </>
+      )}
     </div>
   )
 }
