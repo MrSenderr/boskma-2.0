@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
+import { Reacties } from '../components/Reacties'
 
 export function Vandaag() {
   const { data, isPending, error, refetch } = usePersonen()
@@ -19,6 +20,8 @@ export function Vandaag() {
   return (
     <div className="flex flex-col gap-6">
       <Wijzigingen />
+
+      <Reacties />
 
       <section className="flex flex-col gap-3">
         <Kopje>Wat er op jou wacht</Kopje>

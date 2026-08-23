@@ -6,6 +6,7 @@ import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
 import { TaakGeven } from '../components/TaakGeven'
+import { Dossier } from '../components/Dossier'
 import {
   aannemen,
   afwijzen,
@@ -228,6 +229,13 @@ export function Persoon() {
               )
             })}
           </Kaart>
+        </section>
+      )}
+
+      {p.fase === 'medewerker' && (
+        <section className="flex flex-col gap-4">
+          <h3 className="font-display text-xl">Dossier</h3>
+          <Dossier persoon={p} />
         </section>
       )}
 
