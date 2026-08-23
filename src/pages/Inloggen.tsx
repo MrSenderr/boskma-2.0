@@ -71,8 +71,8 @@ export function Inloggen() {
           <form onSubmit={metCode} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
             <p className="font-display text-lg">Kijk in je mail</p>
             <p className="text-sm text-muted">
-              Als dit adres bij ons bekend is, staat er nu een mail met zes cijfers.
-              Vul ze hieronder in. De code is een uur geldig.
+              Als dit adres bij ons bekend is, staat er nu een mail met een code.
+              Vul hem hieronder in — hij is een uur geldig.
             </p>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="code" className="text-sm font-semibold text-muted">
@@ -82,15 +82,15 @@ export function Inloggen() {
                 id="code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={6}
-                placeholder="123456"
+                maxLength={10}
+                placeholder="code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-3 text-center text-2xl font-bold tracking-[0.3em] tabular-nums outline-none focus:border-accent"
+                className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-3 text-center text-2xl font-bold tracking-[0.2em] tabular-nums outline-none focus:border-accent"
               />
               {fout && <span className="text-sm text-bad">{fout}</span>}
             </div>
-            <Knop type="submit" breed bezig={bezig} disabled={code.replace(/\D/g, '').length < 6}>
+            <Knop type="submit" breed bezig={bezig} disabled={code.replace(/\D/g, '').length < 4}>
               Inloggen
             </Knop>
             {verstuurd.testmodus && verstuurd.naar && (
@@ -145,7 +145,7 @@ export function Inloggen() {
                   Stuur mij een code
                 </Knop>
                 <p className="text-sm text-muted">
-                  Geen wachtwoord nodig. Je krijgt zes cijfers per mail; daarna blijf je
+                  Geen wachtwoord nodig. Je krijgt een code per mail; daarna blijf je
                   ingelogd op dit toestel.
                 </p>
               </form>
