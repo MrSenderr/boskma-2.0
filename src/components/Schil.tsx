@@ -8,8 +8,9 @@ import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
 
-const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus }[] = [
-  { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beheer' },
+const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus | 'beide' }[] = [
+  // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
+  { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
@@ -91,7 +92,7 @@ export function Schil() {
   // De echte grens ligt in de database; dit is alleen het scherm.
   const isBeheerder = wie?.rol === 'beheerder'
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
-  const zichtbaar = MENU.filter((m) => m.voor === gezicht)
+  const zichtbaar = MENU.filter((m) => m.voor === gezicht || m.voor === 'beide')
 
   useEffect(() => {
     if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')

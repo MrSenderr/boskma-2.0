@@ -12,12 +12,25 @@ import { Apparaten } from './pages/Apparaten'
 import { Taken } from './pages/Taken'
 import { Logboek } from './pages/Logboek'
 import { Ronde } from './pages/Ronde'
-import { huidigeModus } from './lib/modus'
+import { useWieBenIk } from './lib/wie'
+import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
+import { useModus } from './lib/modus'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 })
+
+/* Wat je op het startscherm ziet hangt af van wie je bent, niet van een
+   schakelaar in de browser: een medewerker hoort het beheeroverzicht niet te
+   zien, ook niet heel even. */
+function Startscherm() {
+  const { data: wie, isPending } = useWieBenIk()
+  const [modus] = useModus()
+  if (isPending) return <Laden />
+  if (wie?.rol !== 'beheerder') return <VandaagMedewerker />
+  return modus === 'medewerker' ? <VandaagMedewerker /> : <Vandaag />
+}
 
 function Poort() {
   const { session, bezig } = useAuth()
@@ -27,8 +40,7 @@ function Poort() {
   return (
     <Routes>
       <Route element={<Schil />}>
-        {/* In medewerkersmodus is de ronde het startscherm, niet het beheeroverzicht. */}
-        <Route index element={huidigeModus() === 'medewerker' ? <Navigate to="/ronde" replace /> : <Vandaag />} />
+        <Route index element={<Startscherm />} />
         <Route path="ronde" element={<Ronde />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
