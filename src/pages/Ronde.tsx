@@ -30,6 +30,12 @@ function Regel({
 }) {
   const bewaar = useMetingBewaren()
   const [waarde, setWaarde] = useState('')
+  // Op een telefoon geeft het cijfertoetsenbord geen minteken. Daarom een eigen
+  // knop — en bij een vriezer staat die meteen goed, want daar is min de regel.
+  const [negatief, setNegatief] = useState(
+    (apparaat.max_temp !== null && apparaat.max_temp < 0) ||
+      (apparaat.min_temp !== null && apparaat.min_temp < 0),
+  )
   const [actie, setActie] = useState<string | null>(null)
   const [opmerking, setOpmerking] = useState('')
   const [fout, setFout] = useState<string | null>(null)
@@ -50,7 +56,8 @@ function Regel({
     )
   }
 
-  const getal = waarde === '' ? null : Number(waarde.replace(',', '.'))
+  const ruw = waarde === '' ? null : Number(waarde.replace(',', '.').replace('-', ''))
+  const getal = ruw === null || Number.isNaN(ruw) ? null : negatief ? -Math.abs(ruw) : Math.abs(ruw)
   const geldig = getal !== null && !Number.isNaN(getal)
   const afwijkt = geldig && isAfwijking(apparaat, getal)
   const signaal = geldig && isSignaal(apparaat, getal)
@@ -90,17 +97,32 @@ function Regel({
           </p>
         </div>
 
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label={`Temperatuur ${apparaat.naam}`}
-          placeholder="°C"
-          value={waarde}
-          onChange={(e) => setWaarde(e.target.value)}
-          className={`w-24 rounded-[4px] border-[1.5px] bg-bg px-3 py-2.5 text-center text-base font-bold tabular-nums outline-none ${
-            afwijkt ? 'border-bad' : signaal ? 'border-warn' : 'border-line-strong focus:border-accent'
-          }`}
-        />
+        <div className="flex items-stretch gap-1">
+          <button
+            type="button"
+            onClick={() => setNegatief((v) => !v)}
+            aria-label={negatief ? 'Nu min, klik voor plus' : 'Nu plus, klik voor min'}
+            aria-pressed={negatief}
+            className={`flex size-12 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] text-xl font-bold ${
+              negatief
+                ? 'border-brand bg-brand text-on-brand'
+                : 'border-line-strong text-muted hover:bg-surface-2'
+            }`}
+          >
+            {negatief ? '−' : '+'}
+          </button>
+          <input
+            type="text"
+            inputMode="decimal"
+            aria-label={`Temperatuur ${apparaat.naam}`}
+            placeholder="°C"
+            value={waarde}
+            onChange={(e) => setWaarde(e.target.value)}
+            className={`w-20 rounded-[4px] border-[1.5px] bg-bg px-2 py-2.5 text-center text-base font-bold tabular-nums outline-none ${
+              afwijkt ? 'border-bad' : signaal ? 'border-warn' : 'border-line-strong focus:border-accent'
+            }`}
+          />
+        </div>
 
         {geldig && !afwijkt && (
           <Knop soort="primair" bezig={bewaar.isPending} onClick={bewaren}>
