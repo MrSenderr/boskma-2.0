@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
-import { useModus, type Modus } from '../lib/modus'
+import { useModus, zetModus, type Modus } from '../lib/modus'
+import { useWieBenIk } from '../lib/wie'
 
 const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus }[] = [
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beheer' },
@@ -83,8 +84,18 @@ export function Schil() {
   const [open, setOpen] = useState(false)
   const { email, uitloggen } = useAuth()
   const [modus, zetModusState] = useModus()
+  const { data: wie } = useWieBenIk()
   const locatie = useLocation()
-  const zichtbaar = MENU.filter((m) => m.voor === modus)
+
+  // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
+  // De echte grens ligt in de database; dit is alleen het scherm.
+  const isBeheerder = wie?.rol === 'beheerder'
+  const gezicht: Modus = isBeheerder ? modus : 'medewerker'
+  const zichtbaar = MENU.filter((m) => m.voor === gezicht)
+
+  useEffect(() => {
+    if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')
+  }, [wie, isBeheerder, modus])
   const titel =
     MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
     'Boskma'
@@ -130,10 +141,10 @@ export function Schil() {
           ))}
         </nav>
 
-        <ModusSchakelaar modus={modus} zet={zetModusState} />
+        {isBeheerder && <ModusSchakelaar modus={modus} zet={zetModusState} />}
 
         <div className="border-t border-white/10 p-3">
-          <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">{email}</p>
+          <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">{wie?.naam || email}</p>
           <button
             type="button"
             onClick={uitloggen}
