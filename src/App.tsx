@@ -12,6 +12,7 @@ import { Apparaten } from './pages/Apparaten'
 import { Taken } from './pages/Taken'
 import { Logboek } from './pages/Logboek'
 import { Ronde } from './pages/Ronde'
+import { Werklijst } from './pages/Werklijst'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -42,6 +43,7 @@ function Poort() {
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
         <Route path="ronde" element={<Ronde />} />
+        <Route path="lijst/:lijst" element={<Werklijst />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="haccp" element={<Haccp />}>

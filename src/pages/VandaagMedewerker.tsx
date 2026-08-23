@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom'
-import { Cake, Check, ChevronRight, Thermometer } from 'lucide-react'
+import { Cake, Check, ChevronRight, ListChecks, Thermometer } from 'lucide-react'
 import { korteDatum } from '../lib/personeel'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { useWieBenIk } from '../lib/wie'
 import { jarigen, urgentie, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
+import { useLijstStanden } from '../lib/werklijst'
+import { LIJSTEN } from '../lib/taken'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
@@ -25,6 +27,7 @@ export function VandaagMedewerker() {
   const { data: verjaardagen } = useVerjaardagen()
   const { data: mijnTaken } = useMijnTaken(wie?.medewerker_id)
   const afvinken = useTaakAfvinken()
+  const { data: standen } = useLijstStanden()
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -81,6 +84,41 @@ export function VandaagMedewerker() {
           </Link>
         )}
       </section>
+
+      {standen && LIJSTEN.some((l) => standen[l.waarde]) && (
+        <section className="flex flex-col gap-3">
+          <Kopje>Werklijsten</Kopje>
+          <div className="flex flex-col gap-2">
+            {LIJSTEN.map((l) => {
+              const s = standen[l.waarde]
+              if (!s) return null
+              const af = s.gedaan === s.totaal
+              return (
+                <Link
+                  key={l.waarde}
+                  to={`/lijst/${l.waarde}`}
+                  data-touch
+                  className={`flex items-center gap-4 rounded-card border bg-surface p-4 hover:bg-surface-2 ${
+                    af ? 'border-good' : 'border-line'
+                  }`}
+                >
+                  <ListChecks className="size-6 shrink-0 text-muted" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2 font-display text-lg">
+                      {l.label}
+                      {af && <Pil soort="goed">Klaar</Pil>}
+                    </span>
+                    <span className="block text-sm text-muted">
+                      {s.gedaan} van {s.totaal} gedaan
+                    </span>
+                  </span>
+                  <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {(mijnTaken ?? []).length > 0 && (
         <section className="flex flex-col gap-3">
@@ -142,10 +180,7 @@ export function VandaagMedewerker() {
         )
       })()}
 
-      <p className="max-w-prose text-sm text-muted">
-        Hier komen straks ook je takenlijsten te staan — openen, voorbereiden en
-        sluiten — zodat je op één scherm ziet wat er van je wordt verwacht.
-      </p>
+
     </div>
   )
 }
