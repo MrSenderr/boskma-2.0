@@ -136,14 +136,23 @@ export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'):
 
 /** De bijlagen die met het mutatieformulier meegaan: de loonheffingsverklaring
  *  en de twee kanten van het identiteitsbewijs, voor zover aangeleverd. */
-export function bijlagenVan(p: Persoon) {
+export type Bijlage = { filename: string; url?: string; pad?: string }
+
+export function bijlagenVan(p: Persoon): Bijlage[] {
   const o = (p.onboarding_data ?? {}) as Record<string, unknown>
   const naam = [p.voornaam, p.achternaam].filter(Boolean).join('_').toLowerCase().replace(/[^a-z0-9_]/g, '')
-  const lijst: { filename: string; url: string }[] = []
+  const lijst: Bijlage[] = []
 
+  // Het invulformulier bewaart een pad in de opslag ("id-kopie/onboarding-….jpg");
+  // oudere gegevens soms een volledig webadres. De server kan allebei ophalen.
   const voegToe = (sleutel: string, bestandsnaam: string) => {
-    const url = o[sleutel]
-    if (typeof url === 'string' && url.startsWith('http')) lijst.push({ filename: bestandsnaam, url })
+    const waarde = o[sleutel]
+    if (typeof waarde !== 'string' || !waarde) return
+    lijst.push(
+      waarde.startsWith('http')
+        ? { filename: bestandsnaam, url: waarde }
+        : { filename: bestandsnaam, pad: waarde },
+    )
   }
 
   voegToe('loonheffing_pdf', `loonheffingsverklaring_${naam}.pdf`)
