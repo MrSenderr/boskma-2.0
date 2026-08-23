@@ -50,21 +50,39 @@ export function jarigen(lijst: Verjaardag[]) {
   return { vandaag, komend }
 }
 
+/** De datum is een deadline, geen startdag: een klus is meteen zichtbaar en de
+ *  datum zegt wanneer hij af moet. Ververst vaak genoeg dat een taak die je net
+ *  hebt gegeven binnen een minuut op zijn scherm staat. */
 export function useMijnTaken(medewerkerId: string | null | undefined) {
   return useQuery({
     queryKey: ['persoonlijke-taken', medewerkerId],
     enabled: Boolean(medewerkerId),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
     queryFn: async (): Promise<PersoonlijkeTaak[]> => {
+      const vandaag = new Date().toLocaleDateString('sv-SE')
       const { data, error } = await supabase
         .from('persoonlijke_taken')
         .select('id,medewerker_id,tekst,toelichting,datum,gedaan_op')
         .eq('medewerker_id', medewerkerId!)
-        .lte('datum', new Date().toLocaleDateString('sv-SE'))
         .order('datum', { ascending: true })
       if (error) throw new Error(error.message)
-      return (data ?? []) as unknown as PersoonlijkeTaak[]
+      const alles = (data ?? []) as unknown as PersoonlijkeTaak[]
+      // Alles wat nog open staat, plus wat vandaag is afgevinkt — zodat je ziet
+      // dat je vinkje is aangekomen.
+      return alles.filter((t) => !t.gedaan_op || (t.gedaan_op ?? '').slice(0, 10) === vandaag)
     },
   })
+}
+
+/** Hoe dringend is deze taak? */
+export function urgentie(taak: PersoonlijkeTaak): 'gedaan' | 'telaat' | 'vandaag' | 'later' {
+  if (taak.gedaan_op) return 'gedaan'
+  const vandaag = new Date().toLocaleDateString('sv-SE')
+  if (taak.datum < vandaag) return 'telaat'
+  if (taak.datum === vandaag) return 'vandaag'
+  return 'later'
 }
 
 export function useTakenVan(medewerkerId: string) {

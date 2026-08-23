@@ -51,7 +51,7 @@ export function TaakGeven({ persoon }: { persoon: Persoon }) {
           </div>
           <div className="sm:w-44">
             <Veld
-              label="Op welke dag"
+              label="Klaar op"
               type="date"
               value={datum}
               onChange={(e) => setDatum(e.target.value)}
@@ -63,7 +63,8 @@ export function TaakGeven({ persoon }: { persoon: Persoon }) {
           </Knop>
         </div>
         <p className="text-sm text-muted">
-          Verschijnt op zijn Vandaag-scherm vanaf die dag, tot hij hem afvinkt.
+          Staat meteen op zijn Vandaag-scherm, met die datum als deadline. Blijft
+          staan tot hij hem afvinkt.
         </p>
       </Kaart>
 
@@ -76,7 +77,7 @@ export function TaakGeven({ persoon }: { persoon: Persoon }) {
             >
               <span className="min-w-0 flex-1">{t.tekst}</span>
               <span className="text-sm tabular-nums text-muted">{korteDatum(t.datum)}</span>
-              {t.datum < new Date().toLocaleDateString('sv-SE') && <Pil soort="fout">Te laat</Pil>}
+              {t.datum < new Date().toLocaleDateString('sv-SE') && <Pil soort="fout">Over datum</Pil>}
               <button
                 type="button"
                 aria-label={`${t.tekst} weghalen`}

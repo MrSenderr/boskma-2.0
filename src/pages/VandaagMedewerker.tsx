@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Cake, Check, ChevronRight, Thermometer } from 'lucide-react'
+import { korteDatum } from '../lib/personeel'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { useWieBenIk } from '../lib/wie'
-import { jarigen, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
+import { jarigen, urgentie, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
@@ -87,7 +88,7 @@ export function VandaagMedewerker() {
           <Kaart>
             {(mijnTaken ?? []).map((t) => {
               const gedaan = Boolean(t.gedaan_op)
-              const teLaat = !gedaan && t.datum < new Date().toLocaleDateString('sv-SE')
+              const staat = urgentie(t)
               return (
                 <button
                   key={t.id}
@@ -107,7 +108,9 @@ export function VandaagMedewerker() {
                     <span className={`block ${gedaan ? 'text-muted line-through' : ''}`}>{t.tekst}</span>
                     {t.toelichting && <span className="block text-sm text-muted">{t.toelichting}</span>}
                   </span>
-                  {teLaat && <Pil soort="fout">Stond voor eerder</Pil>}
+                  {staat === 'telaat' && <Pil soort="fout">Was voor {korteDatum(t.datum)}</Pil>}
+                  {staat === 'vandaag' && <Pil soort="letop">Vandaag</Pil>}
+                  {staat === 'later' && <Pil soort="neutraal">Voor {korteDatum(t.datum)}</Pil>}
                 </button>
               )
             })}
