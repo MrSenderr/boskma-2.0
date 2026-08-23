@@ -5,6 +5,7 @@ import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
+import { TaakGeven } from '../components/TaakGeven'
 import {
   aannemen,
   afwijzen,
@@ -181,6 +182,8 @@ export function Persoon() {
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Invullink persoon={p} />}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Loonbureau persoon={p} />}
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <TaakGeven persoon={p} />}
 
       {/* ---------------------------------------------------- sollicitatie --- */}
       <section className="flex flex-col gap-3">

@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, Thermometer } from 'lucide-react'
+import { Cake, Check, ChevronRight, Thermometer } from 'lucide-react'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { useWieBenIk } from '../lib/wie'
+import { jarigen, useMijnTaken, useTaakAfvinken, useVerjaardagen } from '../lib/vandaag'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
@@ -20,6 +21,9 @@ export function VandaagMedewerker() {
   const { data: wie } = useWieBenIk()
   const { data: apparaten, isPending, error, refetch } = useApparaten()
   const { data: metingen } = useMetingenVandaag('opening')
+  const { data: verjaardagen } = useVerjaardagen()
+  const { data: mijnTaken } = useMijnTaken(wie?.medewerker_id)
+  const afvinken = useTaakAfvinken()
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -76,6 +80,64 @@ export function VandaagMedewerker() {
           </Link>
         )}
       </section>
+
+      {(mijnTaken ?? []).length > 0 && (
+        <section className="flex flex-col gap-3">
+          <Kopje>Voor jou</Kopje>
+          <Kaart>
+            {(mijnTaken ?? []).map((t) => {
+              const gedaan = Boolean(t.gedaan_op)
+              const teLaat = !gedaan && t.datum < new Date().toLocaleDateString('sv-SE')
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => afvinken.mutate({ id: t.id, gedaan: !gedaan })}
+                  className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
+                >
+                  <span
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${
+                      gedaan ? 'border-good bg-good text-white' : 'border-line-strong'
+                    }`}
+                    aria-hidden
+                  >
+                    {gedaan && <Check className="size-4" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block ${gedaan ? 'text-muted line-through' : ''}`}>{t.tekst}</span>
+                    {t.toelichting && <span className="block text-sm text-muted">{t.toelichting}</span>}
+                  </span>
+                  {teLaat && <Pil soort="fout">Stond voor eerder</Pil>}
+                </button>
+              )
+            })}
+          </Kaart>
+        </section>
+      )}
+
+      {verjaardagen && (() => {
+        const { vandaag, komend } = jarigen(verjaardagen)
+        if (vandaag.length === 0 && komend.length === 0) return null
+        return (
+          <section className="flex flex-col gap-3">
+            <Kopje>Verjaardagen</Kopje>
+            <Kaart className="flex flex-col gap-2 p-4">
+              {vandaag.map((v) => (
+                <p key={v.naam} className="flex items-center gap-2 font-semibold">
+                  <Cake className="size-4 shrink-0 text-accent" aria-hidden />
+                  {v.naam} is vandaag jarig
+                </p>
+              ))}
+              {komend.map((v) => (
+                <p key={v.naam} className="flex items-center gap-2 text-sm text-muted">
+                  <Cake className="size-4 shrink-0" aria-hidden />
+                  {v.naam} over {v.dagen} {v.dagen === 1 ? 'dag' : 'dagen'}
+                </p>
+              ))}
+            </Kaart>
+          </section>
+        )
+      })()}
 
       <p className="max-w-prose text-sm text-muted">
         Hier komen straks ook je takenlijsten te staan — openen, voorbereiden en
