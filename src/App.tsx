@@ -10,6 +10,7 @@ import { Binnenkort } from './pages/Binnenkort'
 import { Instellingen } from './pages/Instellingen'
 import { Haccp } from './pages/Haccp'
 import { Apparaten } from './pages/Apparaten'
+import { Taken } from './pages/Taken'
 import { Ronde } from './pages/Ronde'
 import { huidigeModus } from './lib/modus'
 import { Laden } from './components/ui'
@@ -34,15 +35,7 @@ function Poort() {
         <Route path="haccp" element={<Haccp />}>
           <Route index element={<Navigate to="apparaten" replace />} />
           <Route path="apparaten" element={<Apparaten />} />
-          <Route
-            path="taken"
-            element={
-              <Binnenkort
-                module="Taken"
-                uitleg="De drie werklijsten — openen, voorbereiden, sluiten — met hun hoeken. Komt hierna."
-              />
-            }
-          />
+          <Route path="taken" element={<Taken />} />
           <Route
             path="logboek"
             element={
