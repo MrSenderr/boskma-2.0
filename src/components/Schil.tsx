@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -8,6 +8,8 @@ import { useTestmodus } from '../lib/instellingen'
 
 const MENU = [
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true },
+  // Wat een medewerker ziet. Straks is dit voor hen het enige menu-item.
+  { pad: '/ronde', label: 'Ronde', icoon: Thermometer, exact: false },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false },
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false },

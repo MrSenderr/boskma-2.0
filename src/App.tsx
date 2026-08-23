@@ -10,6 +10,7 @@ import { Binnenkort } from './pages/Binnenkort'
 import { Instellingen } from './pages/Instellingen'
 import { Haccp } from './pages/Haccp'
 import { Apparaten } from './pages/Apparaten'
+import { Ronde } from './pages/Ronde'
 import { Laden } from './components/ui'
 
 const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ function Poort() {
     <Routes>
       <Route element={<Schil />}>
         <Route index element={<Vandaag />} />
+        <Route path="ronde" element={<Ronde />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="haccp" element={<Haccp />}>
