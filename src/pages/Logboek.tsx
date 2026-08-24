@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Thermometer } from 'lucide-react'
-import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
+import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { toonNaam } from '../lib/personeel'
 import { LogboekTaken } from './LogboekTaken'
@@ -148,53 +148,67 @@ export function Logboek() {
           uitleg="Zodra er een temperatuurronde is gedaan, staat hij hier — met wie hem deed en hoe laat."
         />
       ) : (
-        <div className="flex flex-col gap-4">
-          {[...perDag.entries()].map(([datum, regels]) => (
-            <section key={datum} className="flex flex-col gap-2">
-              <Kopje>{dagLabel(datum)}</Kopje>
-              <Kaart className="overflow-x-auto">
-                <table className="w-full min-w-[34rem] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left">
-                      <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Apparaat</th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted">Temp.</th>
-                      <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Tijd</th>
-                      <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Door</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {regels.map((r) => (
-                      <tr
-                        key={r.id}
-                        className={`border-b border-line last:border-b-0 ${r.afwijking ? 'bg-bad-soft' : ''}`}
-                      >
-                        <td className="px-4 py-2.5 font-medium">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <Thermometer className="size-4 shrink-0 text-muted" aria-hidden />
-                            {r.apparaat_naam}
-                            {r.afwijking && <Pil soort="fout">Afwijking</Pil>}
+        /* Eén tabel voor alle dagen, met de dag als tussenkop. Een tabel per dag
+           gaf per dag andere kolombreedtes — dan staat "Temp." bij vandaag ergens
+           anders dan bij gisteren, en dat leest niet. */
+        <Kaart className="overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-sm">
+            <colgroup>
+              <col />
+              <col className="w-24" />
+              <col className="w-20" />
+              <col className="w-44" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-line-strong text-left">
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Apparaat</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted">Temp.</th>
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Tijd</th>
+                <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted">Door</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...perDag.entries()].map(([datum, regels]) => (
+                <Fragment key={datum}>
+                  <tr>
+                    <th
+                      colSpan={4}
+                      className="border-y border-line bg-surface-2 px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted"
+                    >
+                      {dagLabel(datum)}
+                    </th>
+                  </tr>
+                  {regels.map((r) => (
+                    <tr
+                      key={r.id}
+                      className={`border-b border-line last:border-b-0 ${r.afwijking ? 'bg-bad-soft' : ''}`}
+                    >
+                      <td className="px-4 py-2.5 font-medium">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <Thermometer className="size-4 shrink-0 text-muted" aria-hidden />
+                          {r.apparaat_naam}
+                          {r.afwijking && <Pil soort="fout">Afwijking</Pil>}
+                        </span>
+                        {(r.actie || r.opmerking) && (
+                          <span className="mt-0.5 block text-sm text-muted">
+                            {[r.actie, r.opmerking].filter(Boolean).join(' — ')}
                           </span>
-                          {(r.actie || r.opmerking) && (
-                            <span className="mt-0.5 block text-sm text-muted">
-                              {[r.actie, r.opmerking].filter(Boolean).join(' — ')}
-                            </span>
-                          )}
-                        </td>
-                        <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${r.afwijking ? 'text-bad' : ''}`}>
-                          {r.temperatuur} °C
-                        </td>
-                        <td className="px-4 py-2.5 tabular-nums text-muted">{(r.tijd ?? '').slice(0, 5)}</td>
-                        <td className="px-4 py-2.5 text-muted">
-                          {toonNaam(r.door_naam ?? r.employee_naam)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Kaart>
-            </section>
-          ))}
-        </div>
+                        )}
+                      </td>
+                      <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${r.afwijking ? 'text-bad' : ''}`}>
+                        {r.temperatuur} °C
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-muted">{(r.tijd ?? '').slice(0, 5)}</td>
+                      <td className="px-4 py-2.5 text-muted">
+                        {toonNaam(r.door_naam ?? r.employee_naam)}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </Kaart>
       )}
 
       <p className="max-w-prose text-sm text-muted">
