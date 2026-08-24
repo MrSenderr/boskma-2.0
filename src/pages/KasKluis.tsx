@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Banknote, Coins, Landmark, Scale } from 'lucide-react'
+import { AlertTriangle, ArrowLeftRight, Banknote, Coins, Landmark, Scale } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
@@ -14,6 +14,7 @@ const invoer =
 
 const SOORTNAAM: Record<string, string> = {
   uit_kassa: 'Uit de kassa',
+  wisseling: 'Gewisseld',
   naar_bank: 'Naar de bank',
   naar_kassa: 'Terug in de lade',
   correctie: 'Correctie',
@@ -33,6 +34,13 @@ export function KasKluis() {
 
   // Bijstellen gaat op wat er wérkelijk ligt, niet op een verschil dat je zelf
   // moet uitrekenen. De app boekt het verschil.
+  // Wisselen is geen correctie: het totaal blijft gelijk, alleen de verhouding
+  // munten/briefgeld verschuift.
+  const [wisselen, setWisselen] = useState(false)
+  const [wisselKant, setWisselKant] = useState<'munten_erbij' | 'munten_eraf'>('munten_erbij')
+  const [wisselBedrag, setWisselBedrag] = useState('')
+  const [wisselWie, setWisselWie] = useState('')
+
   const [bijstellen, setBijstellen] = useState(false)
   const [echtMunt, setEchtMunt] = useState('')
   const [echtBiljet, setEchtBiljet] = useState('')
@@ -76,6 +84,35 @@ export function KasKluis() {
   const leeg = data.mutaties.length === 0
   const kanBijstellen =
     nieuwMunt !== null && nieuwBiljet !== null && (leeg || reden.trim().length > 0)
+
+  const wisselCent = naarCent(wisselBedrag)
+  // Je kunt niet meer weggeven dan er ligt van wat je weggeeft.
+  const wisselVoorraad = wisselKant === 'munten_erbij' ? huidigBiljet : huidigMunt
+  const wisselTeveel = wisselCent !== null && wisselCent > wisselVoorraad
+  const kanWisselen = wisselCent !== null && wisselCent > 0 && !wisselTeveel
+
+  function wissel() {
+    if (wisselCent === null) return
+    setFout(null)
+    const erbij = wisselKant === 'munten_erbij'
+    boeken.mutate(
+      {
+        soort: 'wisseling',
+        muntCent: erbij ? wisselCent : -wisselCent,
+        biljetCent: erbij ? -wisselCent : wisselCent,
+        opmerking: wisselWie.trim() || null,
+        doorNaam: wie?.naam ?? email ?? 'onbekend',
+      },
+      {
+        onSuccess: () => {
+          setWisselen(false)
+          setWisselBedrag('')
+          setWisselWie('')
+        },
+        onError: (e) => setFout(e.message),
+      },
+    )
+  }
 
   function stelBij() {
     if (nieuwMunt === null || nieuwBiljet === null) return
@@ -205,6 +242,75 @@ export function KasKluis() {
         </Kaart>
       )}
 
+      {wisselen && (
+        <Kaart className="flex flex-col gap-3 p-4">
+          <p className="font-display text-lg">Iemand komt wisselen</p>
+          <p className="text-sm text-muted">
+            Gelijk oversteken. Het totaal in de kluis verandert niet, alleen de
+            verhouding tussen munten en briefgeld.
+          </p>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setWisselKant('munten_erbij')}
+              aria-pressed={wisselKant === 'munten_erbij'}
+              className={`min-h-14 flex-1 rounded-[4px] border-2 px-3 text-sm font-semibold ${
+                wisselKant === 'munten_erbij' ? 'border-brand bg-surface-2' : 'border-line'
+              }`}
+            >
+              Ik krijg munten
+              <span className="mt-0.5 block font-normal text-muted">en geef briefgeld terug</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setWisselKant('munten_eraf')}
+              aria-pressed={wisselKant === 'munten_eraf'}
+              className={`min-h-14 flex-1 rounded-[4px] border-2 px-3 text-sm font-semibold ${
+                wisselKant === 'munten_eraf' ? 'border-brand bg-surface-2' : 'border-line'
+              }`}
+            >
+              Ik krijg briefgeld
+              <span className="mt-0.5 block font-normal text-muted">en geef munten terug</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="wissel-bedrag" className="text-sm font-semibold text-muted">
+              Bedrag — je geeft {wisselKant === 'munten_erbij' ? 'briefgeld' : 'munten'} weg, er ligt{' '}
+              {euro(wisselVoorraad)}
+            </label>
+            <input
+              id="wissel-bedrag"
+              inputMode="decimal"
+              autoFocus
+              className={invoer}
+              placeholder="0,00"
+              value={wisselBedrag}
+              onChange={(e) => setWisselBedrag(e.target.value)}
+            />
+            {wisselTeveel && <span className="text-sm text-bad">Zoveel ligt er niet.</span>}
+          </div>
+
+          <input
+            className={invoer}
+            placeholder="Met wie (mag leeg)"
+            aria-label="Met wie gewisseld"
+            value={wisselWie}
+            onChange={(e) => setWisselWie(e.target.value)}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <Knop soort="primair" bezig={boeken.isPending} disabled={!kanWisselen} onClick={wissel}>
+              Vastleggen
+            </Knop>
+            <Knop soort="rustig" onClick={() => setWisselen(false)}>
+              Annuleren
+            </Knop>
+          </div>
+        </Kaart>
+      )}
+
       {wat ? (
         <Kaart className="flex flex-col gap-3 p-4">
           <p className="font-display text-lg">
@@ -251,6 +357,12 @@ export function KasKluis() {
             <Coins className="size-4" aria-hidden />
             Munten terug in de lade
           </Knop>
+          {!leeg && !wisselen && (
+            <Knop soort="rustig" onClick={() => setWisselen(true)}>
+              <ArrowLeftRight className="size-4" aria-hidden />
+              Iemand komt wisselen
+            </Knop>
+          )}
           {!leeg && !bijstellen && (
             <Knop
               soort="rustig"

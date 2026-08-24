@@ -39,7 +39,7 @@ export type TellingRegel = {
 
 export type KluisMutatie = {
   id: number
-  soort: 'uit_kassa' | 'naar_bank' | 'naar_kassa' | 'correctie'
+  soort: 'uit_kassa' | 'naar_bank' | 'naar_kassa' | 'correctie' | 'wisseling'
   munt_cent: number
   biljet_cent: number
   telling_id: number | null
