@@ -27,13 +27,30 @@ type TimerDoos = {
 
 const Doos = createContext<TimerDoos | null>(null)
 
-/** Een korte dubbele piep, opgebouwd in de browser zelf. */
-function piep() {
+/* De geluidsmachine wordt aangemaakt op het moment dat je een timer start.
+   Dat is een tik van de gebruiker, en alleen dan mag een browser geluid
+   vrijgeven — iOS en Chrome zetten een machine die uit een tijdklok komt
+   meteen op stil. Daarom bewaren we hem en gebruiken we hem later opnieuw. */
+type MetWebkit = typeof window & { webkitAudioContext?: typeof AudioContext }
+let machine: AudioContext | null = null
+
+function ontgrendelGeluid() {
   try {
-    type MetWebkit = typeof window & { webkitAudioContext?: typeof AudioContext }
     const Maker = window.AudioContext ?? (window as MetWebkit).webkitAudioContext
     if (!Maker) return
-    const ctx = new Maker()
+    if (!machine) machine = new Maker()
+    if (machine.state === 'suspended') void machine.resume()
+  } catch {
+    // Geen geluid is vervelend, maar geen reden om de timer te laten vallen.
+  }
+}
+
+/** Drie korte piepjes, opgebouwd in de browser zelf. */
+function piep() {
+  try {
+    const ctx = machine
+    if (!ctx) return
+    if (ctx.state === 'suspended') void ctx.resume()
     const nu = ctx.currentTime
     for (const start of [0, 0.35, 0.7]) {
       const toon = ctx.createOscillator()
@@ -47,10 +64,10 @@ function piep() {
       toon.start(nu + start)
       toon.stop(nu + start + 0.3)
     }
-    setTimeout(() => void ctx.close(), 1500)
+    // Niet sluiten: dezelfde machine moet straks de volgende timer laten piepen,
+    // en een nieuwe zou opnieuw op stil beginnen.
   } catch {
-    // Geen geluid is vervelend maar geen reden om de timer te laten vallen; de
-    // melding staat gewoon in beeld.
+    // De melding in beeld blijft hoe dan ook staan.
   }
 }
 
@@ -59,6 +76,7 @@ export function Timers({ children }: { children: ReactNode }) {
   const volgende = useRef(1)
 
   const start = useCallback((naam: string, minuten: number) => {
+    ontgrendelGeluid()
     setTimers((was) => [
       ...was,
       { id: volgende.current++, naam, eindeOp: Date.now() + minuten * 60_000, afgelopen: false },
