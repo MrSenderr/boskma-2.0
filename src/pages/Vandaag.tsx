@@ -3,6 +3,7 @@ import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
+import { Meldingen } from '../components/Meldingen'
 
 export function Vandaag() {
   const { data, isPending, error, refetch } = usePersonen()
@@ -19,6 +20,8 @@ export function Vandaag() {
 
   return (
     <div className="flex flex-col gap-6">
+      <Meldingen />
+
       <Wijzigingen />
 
       <Reacties />

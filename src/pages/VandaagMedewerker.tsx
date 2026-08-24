@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Cake, ChevronRight, Droplet, MessageSquare, Thermometer, Truck } from 'lucide-react'
+import { Cake, ChevronRight, Droplet, MessageSquare, MessageSquareWarning, Thermometer, Truck } from 'lucide-react'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
@@ -161,6 +161,15 @@ export function VandaagMedewerker() {
           >
             <Droplet className="size-5 shrink-0 text-muted" aria-hidden />
             <span className="flex-1 font-semibold">Frituurvet</span>
+            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+          </Link>
+          <Link
+            to="/melden"
+            data-touch
+            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
+          >
+            <MessageSquareWarning className="size-5 shrink-0 text-muted" aria-hidden />
+            <span className="flex-1 font-semibold">Iets melden</span>
             <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
           </Link>
         </div>

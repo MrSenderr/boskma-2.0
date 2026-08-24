@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Check, Thermometer } from 'lucide-react'
+import { Check, MessageSquareWarning, Thermometer } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useApparaten, type Apparaat } from '../lib/apparaten'
 import {
@@ -18,6 +19,22 @@ import type { Meetmoment } from '../lib/apparaten'
 
 /* Wat een medewerker ziet. Eén scherm, één taak: de ronde langs de koelingen.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
+
+/** Klein knopje om te melden dat er iets mis is met dit apparaat. Staat hier,
+ *  want dit is het moment waarop iemand het merkt — en dan hoeft niemand later
+ *  uit te leggen wélke koeling het was. */
+function MeldKnop({ apparaat }: { apparaat: Apparaat }) {
+  return (
+    <Link
+      to={`/melden?apparaat=${apparaat.id}`}
+      aria-label={`Iets melden over ${apparaat.naam}`}
+      title={`Iets melden over ${apparaat.naam}`}
+      className="flex size-9 shrink-0 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-bad"
+    >
+      <MessageSquareWarning className="size-4" aria-hidden />
+    </Link>
+  )
+}
 
 function Regel({
   apparaat,
@@ -48,7 +65,10 @@ function Regel({
   if (meting) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 last:border-b-0">
-        <span className="font-medium">{meting.apparaat_naam}</span>
+        <span className="flex items-center gap-1">
+          <span className="font-medium">{meting.apparaat_naam}</span>
+          <MeldKnop apparaat={apparaat} />
+        </span>
         <span className="flex items-center gap-2">
           <span className="font-bold tabular-nums">{meting.temperatuur} °C</span>
           {meting.afwijking ? <Pil soort="fout">Afwijking</Pil> : <Pil soort="goed">Goed</Pil>}
@@ -89,7 +109,10 @@ function Regel({
     >
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{apparaat.naam}</p>
+          <p className="flex items-center gap-1 font-medium">
+            {apparaat.naam}
+            <MeldKnop apparaat={apparaat} />
+          </p>
           <p className="text-sm text-muted">
             {apparaat.min_temp !== null && apparaat.max_temp !== null
               ? `${apparaat.min_temp} tot ${apparaat.max_temp} °C`

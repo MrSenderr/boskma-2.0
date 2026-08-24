@@ -17,6 +17,7 @@ import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
 import { MijnTaken } from './pages/MijnTaken'
 import { Levering } from './pages/Levering'
+import { Melden } from './pages/Melden'
 import { Frituurvet } from './pages/Frituurvet'
 import { Leveringen } from './pages/Leveringen'
 import { Week } from './pages/Week'
@@ -81,6 +82,7 @@ function Poort() {
           <Route path="lijst" element={<MepLijst />} />
         </Route>
         <Route path="levering" element={<Levering />} />
+        <Route path="melden" element={<Melden />} />
         <Route path="frituurvet" element={<Frituurvet />} />
         <Route path="lijst/:lijst" element={<Werklijst />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
