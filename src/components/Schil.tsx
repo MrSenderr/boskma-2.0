@@ -179,7 +179,11 @@ export function Schil() {
           <ThemaKnop />
         </header>
 
-        <TestBalk />
+        {/* Alleen voor jou. Een medewerker heeft niets aan "testmodus staat aan"
+            en mag de instelling niet eens lezen — die valt terug op de veilige
+            aanname en zag daardoor de balk. In medewerkersweergave blijft hij
+            ook weg, anders klopt je voorbeeld niet met wat zij zien. */}
+        {isBeheerder && gezicht === 'beheer' && <TestBalk />}
 
         <TimerBalk />
 
