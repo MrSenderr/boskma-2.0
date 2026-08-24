@@ -18,6 +18,9 @@ import { MijnDossier } from './pages/MijnDossier'
 import { MijnTaken } from './pages/MijnTaken'
 import { Levering } from './pages/Levering'
 import { Frituurvet } from './pages/Frituurvet'
+import { Leveringen } from './pages/Leveringen'
+import { Week } from './pages/Week'
+import { Uitdraai } from './pages/Uitdraai'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -63,6 +66,9 @@ function Poort() {
           <Route path="apparaten" element={<Apparaten />} />
           <Route path="taken" element={<Taken />} />
           <Route path="logboek" element={<Logboek />} />
+          <Route path="leveringen" element={<Leveringen />} />
+          <Route path="week" element={<Week />} />
+          <Route path="uitdraai" element={<Uitdraai />} />
         </Route>
         <Route path="instellingen" element={<Instellingen />} />
         <Route path="*" element={<Navigate to="/" replace />} />

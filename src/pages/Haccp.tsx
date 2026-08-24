@@ -5,6 +5,9 @@ const TABS = [
   { pad: 'apparaten', label: 'Apparaten' },
   { pad: 'taken', label: 'Taken' },
   { pad: 'logboek', label: 'Logboek' },
+  { pad: 'leveringen', label: 'Leveringen' },
+  { pad: 'week', label: 'Week' },
+  { pad: 'uitdraai', label: 'Uitdraai' },
 ]
 
 export function Haccp() {

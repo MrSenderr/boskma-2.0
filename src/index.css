@@ -130,3 +130,56 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Afdrukken. De uitdraai voor een controle is een gewone pagina die je afdrukt
+   of als PDF bewaart — geen bestand van een server, want dat is één ding minder
+   dat stuk kan als er iemand voor je neus staat.
+   Zie docs/Modules/haccp/haccpmodule.md. */
+@media print {
+  /* Het menu, de kop en alles wat naar een knop wijst hoort niet op papier. */
+  aside,
+  header,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+  /* Altijd op wit met zwart, ook als het scherm op donker staat. De donkere
+     kleuren worden gezet via [data-theme] en via prefers-color-scheme; die
+     selectors moeten hier dus alle drie overschreven worden, anders drukt de
+     app zwarte vlakken af. */
+  :root,
+  :root[data-theme="dark"],
+  :root[data-theme="light"],
+  :root:not([data-theme="light"]) {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --text: #000000;
+    --muted: #444444;
+    --line: #bbbbbb;
+    --line-strong: #666666;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  /* De inhoud staat naast een menu dat er niet meer is. */
+  .lg\:ml-60 {
+    margin-left: 0 !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  /* Een tabel niet midden in een regel afbreken. */
+  tr,
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  a[href]::after {
+    content: none !important;
+  }
+}
