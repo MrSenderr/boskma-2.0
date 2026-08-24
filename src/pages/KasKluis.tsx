@@ -73,7 +73,7 @@ export function KasKluis() {
 
   /* ---------------------------------------------------------- handelingen --- */
 
-  if (handeling === 'beginstand' || leeg) {
+  if (handeling === 'beginstand') {
     const totaal = waardeVan(alles, aantallen)
     return (
       <div className="flex flex-col gap-4">
@@ -89,14 +89,19 @@ export function KasKluis() {
 
         <CoupureInvoer coupures={alles} aantallen={aantallen} zet={setAantallen} totaalLabel="Ligt er in totaal" />
 
-        <Knop
-          soort="primair"
-          bezig={boeken.isPending}
-          disabled={totaal === 0}
-          onClick={() => boek('correctie', aantallen, 'Beginstand')}
-        >
-          Beginstand vastleggen
-        </Knop>
+        <div className="flex flex-wrap gap-2">
+          <Knop
+            soort="primair"
+            bezig={boeken.isPending}
+            disabled={totaal === 0}
+            onClick={() => boek('correctie', aantallen, 'Beginstand')}
+          >
+            Beginstand vastleggen
+          </Knop>
+          <Knop soort="rustig" onClick={sluit}>
+            Annuleren
+          </Knop>
+        </div>
       </div>
     )
   }
@@ -361,6 +366,24 @@ export function KasKluis() {
         </p>
       )}
 
+      {/* Uitnodigend, niet dwingend: je moet ook gewoon kunnen kijken zonder
+          eerst iets in te vullen. Verdwijnt zodra er iets geboekt is — en dat
+          gebeurt vanzelf bij je eerste kastelling. */}
+      {leeg && (
+        <Kaart className="flex flex-col gap-3 border-accent p-4">
+          <div>
+            <p className="font-display text-lg">Ligt er al geld in de kluis?</p>
+            <p className="mt-1 text-sm text-muted">
+              De app begint op nul. Tel wat er nu ligt en voer het één keer in, dan
+              telt hij vanaf daar zelf mee.
+            </p>
+          </div>
+          <Knop soort="primair" className="w-fit" onClick={() => setHandeling('beginstand')}>
+            Beginstand invoeren
+          </Knop>
+        </Kaart>
+      )}
+
       {fout && <p className="rounded-[4px] border border-bad bg-bad-soft px-3 py-2 text-sm text-bad">{fout}</p>}
 
       <div className="flex flex-wrap gap-2">
@@ -401,6 +424,13 @@ export function KasKluis() {
               </tr>
             </thead>
             <tbody>
+              {data.mutaties.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-4 text-sm text-muted">
+                    Nog niets geboekt.
+                  </td>
+                </tr>
+              )}
               {data.mutaties.map((m) => (
                 <tr key={m.id} className="border-b border-line last:border-b-0">
                   <td className="px-4 py-2.5 text-muted">{korteDatum(m.datum)}</td>
