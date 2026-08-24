@@ -222,14 +222,33 @@ export function useTellingBewaren() {
       // Wat uit de lade komt gaat naar de kluis: munten als voorraad, briefgeld
       // tot de eerstvolgende bankstorting.
       if (totalen.eruitMunt > 0 || totalen.eruitBiljet > 0) {
-        const { error: kluisFout } = await supabase.from('kluis_mutaties').insert({
-          soort: 'uit_kassa',
-          munt_cent: totalen.eruitMunt,
-          biljet_cent: totalen.eruitBiljet,
-          telling_id: id,
-          door_naam: v.doorNaam,
-        })
+        const { data: mutatie, error: kluisFout } = await supabase
+          .from('kluis_mutaties')
+          .insert({
+            soort: 'uit_kassa',
+            munt_cent: totalen.eruitMunt,
+            biljet_cent: totalen.eruitBiljet,
+            telling_id: id,
+            door_naam: v.doorNaam,
+          })
+          .select('id')
+          .single()
         if (kluisFout) throw new Error(kluisFout.message)
+
+        // De coupures zijn hier bekend; die horen mee naar de kluis. Anders weet
+        // je wel dat er honderd euro aan munten ligt, maar niet of dat rollen
+        // dubbeltjes zijn of twee-euromunten.
+        const kluisRegels = v.verdeling
+          .filter((r) => r.eruit > 0)
+          .map((r) => ({
+            mutatie_id: (mutatie as { id: number }).id,
+            waarde_cent: r.waarde_cent,
+            aantal: r.eruit,
+          }))
+        if (kluisRegels.length > 0) {
+          const { error } = await supabase.from('kluis_mutatie_regels').insert(kluisRegels)
+          if (error) throw new Error(error.message)
+        }
       }
 
       return id
@@ -243,15 +262,25 @@ export function useTellingBewaren() {
 
 /* -------------------------------------------------------------------- kluis --- */
 
+export type KluisStand = {
+  munt: number
+  biljet: number
+  /** Hoeveel er van elke coupure in de kluis ligt. */
+  perCoupure: Record<number, number>
+  mutaties: KluisMutatie[]
+}
+
 export function useKluis(hoeveel = 60) {
   return useQuery({
     queryKey: ['kluis', hoeveel],
     staleTime: 0,
-    queryFn: async (): Promise<{ munt: number; biljet: number; mutaties: KluisMutatie[] }> => {
+    queryFn: async (): Promise<KluisStand> => {
       // Het saldo is de optelsom van alle mutaties, niet een apart bijgehouden
-      // getal: dan kan het niet uit elkaar lopen met de geschiedenis.
-      const [alles, laatste] = await Promise.all([
+      // getal: dan kan het niet uit elkaar lopen met de geschiedenis. Hetzelfde
+      // geldt voor de aantallen per coupure.
+      const [alles, regels, laatste] = await Promise.all([
         supabase.from('kluis_mutaties').select('munt_cent,biljet_cent'),
+        supabase.from('kluis_mutatie_regels').select('waarde_cent,aantal'),
         supabase
           .from('kluis_mutaties')
           .select('id,soort,munt_cent,biljet_cent,telling_id,datum,opmerking,door_naam')
@@ -260,16 +289,39 @@ export function useKluis(hoeveel = 60) {
           .limit(hoeveel),
       ])
       if (alles.error) throw new Error(alles.error.message)
+      if (regels.error) throw new Error(regels.error.message)
       if (laatste.error) throw new Error(laatste.error.message)
 
       const rijen = (alles.data ?? []) as { munt_cent: number; biljet_cent: number }[]
+      const perCoupure: Record<number, number> = {}
+      ;((regels.data ?? []) as { waarde_cent: number; aantal: number }[]).forEach((r) => {
+        perCoupure[r.waarde_cent] = (perCoupure[r.waarde_cent] ?? 0) + r.aantal
+      })
+
       return {
         munt: rijen.reduce((n, r) => n + r.munt_cent, 0),
         biljet: rijen.reduce((n, r) => n + r.biljet_cent, 0),
+        perCoupure,
         mutaties: (laatste.data ?? []) as unknown as KluisMutatie[],
       }
     },
   })
+}
+
+/** Aantallen per coupure, getekend: positief is erbij, negatief is eraf. */
+export type Aantallen = Record<number, number>
+
+/** De bedragen die bij een set aantallen horen. Altijd hieruit afgeleid, nooit
+ *  los ingevoerd — dan kunnen geld en aantallen niet uit elkaar lopen. */
+export function bedragenVan(coupures: Coupure[], aantallen: Aantallen) {
+  let munt = 0
+  let biljet = 0
+  coupures.forEach((c) => {
+    const bedrag = (aantallen[c.waarde_cent] ?? 0) * c.waarde_cent
+    if (c.soort === 'munt') munt += bedrag
+    else biljet += bedrag
+  })
+  return { munt, biljet }
 }
 
 export function useKluisMutatie() {
@@ -277,19 +329,39 @@ export function useKluisMutatie() {
   return useMutation({
     mutationFn: async (m: {
       soort: KluisMutatie['soort']
-      muntCent: number
-      biljetCent: number
+      coupures: Coupure[]
+      /** Getekend: positief is erbij, negatief is eraf. */
+      aantallen: Aantallen
       opmerking: string | null
       doorNaam: string
     }) => {
-      const { error } = await supabase.from('kluis_mutaties').insert({
-        soort: m.soort,
-        munt_cent: m.muntCent,
-        biljet_cent: m.biljetCent,
-        opmerking: m.opmerking?.trim() || null,
-        door_naam: m.doorNaam,
-      })
+      const bedragen = bedragenVan(m.coupures, m.aantallen)
+
+      const { data, error } = await supabase
+        .from('kluis_mutaties')
+        .insert({
+          soort: m.soort,
+          munt_cent: bedragen.munt,
+          biljet_cent: bedragen.biljet,
+          opmerking: m.opmerking?.trim() || null,
+          door_naam: m.doorNaam,
+        })
+        .select('id')
+        .single()
       if (error) throw new Error(error.message)
+
+      const regels = Object.entries(m.aantallen)
+        .map(([waarde, aantal]) => ({
+          mutatie_id: (data as { id: number }).id,
+          waarde_cent: Number(waarde),
+          aantal,
+        }))
+        .filter((r) => r.aantal !== 0)
+
+      if (regels.length > 0) {
+        const { error: regelFout } = await supabase.from('kluis_mutatie_regels').insert(regels)
+        if (regelFout) throw new Error(regelFout.message)
+      }
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ['kluis'] }),
   })
