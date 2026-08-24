@@ -357,8 +357,15 @@ export function KasKluis() {
             <Coins className="size-4" aria-hidden />
             Munten terug in de lade
           </Knop>
-          {!leeg && !wisselen && (
-            <Knop soort="rustig" onClick={() => setWisselen(true)}>
+          {/* Altijd zichtbaar, ook als er nog niets in de kluis ligt — anders
+              denk je dat de knop er niet is. Uitgegrijsd als er niets te
+              wisselen valt. */}
+          {!wisselen && (
+            <Knop
+              soort="rustig"
+              disabled={data.munt + data.biljet <= 0}
+              onClick={() => setWisselen(true)}
+            >
               <ArrowLeftRight className="size-4" aria-hidden />
               Iemand komt wisselen
             </Knop>

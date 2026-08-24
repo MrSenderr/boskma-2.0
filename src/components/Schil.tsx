@@ -32,6 +32,9 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
    Zonder dit staat er "Boskma" boven een levering, het frituurvet, een melding
    of een werklijst — en dan weet je niet waar je bent. */
 const EXTRA_TITELS: { pad: string; label: string }[] = [
+  // De kas hangt aan een recht en staat daarom niet in MENU; de kop moet hem
+  // wél kennen.
+  { pad: '/kas', label: 'Kas' },
   { pad: '/levering', label: 'Levering' },
   { pad: '/frituurvet', label: 'Frituurvet' },
   { pad: '/melden', label: 'Melden' },
