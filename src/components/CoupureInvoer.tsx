@@ -1,12 +1,14 @@
-import { Kaart } from './ui'
+import { Kopje } from './ui'
 import { coupureNaam, euro, type Aantallen, type Coupure, type Soort } from '../lib/kas'
 
-/* Aantallen per munt en biljet invullen. Eén component voor de beginstand, een
-   storting, het wisselen en het natellen — dan werkt het overal hetzelfde en kan
-   het maar op één plek fout gaan. Zie docs/Modules/kas.md. */
+/* Aantallen per munt en biljet invullen. Eén component voor het tellen, het
+   wisselgeld, de beginstand, een storting en het natellen — dan werkt het
+   overal hetzelfde en kan het maar op één plek fout gaan.
 
-const invoer =
-  'w-24 shrink-0 rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-right text-lg font-bold tabular-nums outline-none focus:border-accent'
+   Twee kolommen, want tien rijen onder elkaar is op een telefoon twee schermen
+   scrollen terwijl je met je handen in het geld zit. En geen subtotaal per
+   coupure: dat is ruis. Wat je wél wilt zien is de splitsing munten/briefgeld,
+   en die staat onderaan. Zie docs/Modules/kas.md. */
 
 export function CoupureInvoer({
   coupures,
@@ -14,7 +16,7 @@ export function CoupureInvoer({
   zet,
   soort,
   beschikbaar,
-  totaalLabel = 'Totaal',
+  totaalLabel,
 }: {
   coupures: Coupure[]
   aantallen: Aantallen
@@ -23,52 +25,83 @@ export function CoupureInvoer({
   soort?: Soort
   /** Hoeveel er van elke coupure ligt; meer invullen kan dan niet. */
   beschikbaar?: Record<number, number>
+  /** Zonder label geen totaalregel — dan maakt het scherm zijn eigen. */
   totaalLabel?: string
 }) {
   const zichtbaar = coupures.filter((c) => !soort || c.soort === soort)
-  const totaal = zichtbaar.reduce((n, c) => n + (aantallen[c.waarde_cent] ?? 0) * c.waarde_cent, 0)
+  const groepen: { soort: Soort; naam: string }[] = soort
+    ? [{ soort, naam: soort === 'munt' ? 'Munten' : 'Biljetten' }]
+    : [
+        { soort: 'munt', naam: 'Munten' },
+        { soort: 'biljet', naam: 'Biljetten' },
+      ]
+
+  const waarde = (s?: Soort) =>
+    zichtbaar
+      .filter((c) => !s || c.soort === s)
+      .reduce((n, c) => n + (aantallen[c.waarde_cent] ?? 0) * c.waarde_cent, 0)
 
   return (
-    <div className="flex flex-col gap-2">
-      <Kaart>
-        {zichtbaar.map((c) => {
-          const aantal = aantallen[c.waarde_cent] ?? 0
-          const max = beschikbaar?.[c.waarde_cent]
-          const teveel = max !== undefined && aantal > max
-          return (
-            <div
-              key={c.waarde_cent}
-              className="flex items-center gap-3 border-b border-line px-4 py-2 last:border-b-0"
-            >
-              <span className="w-20 shrink-0 font-display text-lg">{coupureNaam(c.waarde_cent)}</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                className={`${invoer} ${teveel ? 'border-bad' : ''}`}
-                aria-label={`Aantal van ${coupureNaam(c.waarde_cent)}`}
-                value={aantal || ''}
-                onChange={(e) => {
-                  const n = e.target.value.replace(/\D/g, '')
-                  zet({ ...aantallen, [c.waarde_cent]: n === '' ? 0 : Number(n) })
-                }}
-              />
-              <span className="min-w-0 flex-1 text-right text-sm tabular-nums text-muted">
-                {max !== undefined && (
-                  <span className={teveel ? 'font-semibold text-bad' : ''}>
-                    {teveel ? `er zijn er maar ${max}` : `${max} in de kluis`}
-                  </span>
-                )}
-                {max === undefined && aantal > 0 && euro(aantal * c.waarde_cent)}
-              </span>
+    <div className="flex flex-col gap-3">
+      {groepen.map((g) => {
+        const inGroep = zichtbaar.filter((c) => c.soort === g.soort)
+        if (inGroep.length === 0) return null
+        return (
+          <div key={g.soort} className="flex flex-col gap-1.5">
+            {groepen.length > 1 && <Kopje>{g.naam}</Kopje>}
+            <div className="grid grid-cols-2 gap-1.5">
+              {inGroep.map((c) => {
+                const aantal = aantallen[c.waarde_cent] ?? 0
+                const max = beschikbaar?.[c.waarde_cent]
+                const teveel = max !== undefined && aantal > max
+                return (
+                  <label
+                    key={c.waarde_cent}
+                    className={`flex items-center gap-2 rounded-card border-[1.5px] bg-surface pl-3 pr-1 focus-within:border-accent ${
+                      teveel ? 'border-bad' : 'border-line-strong'
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">{coupureNaam(c.waarde_cent)}</span>
+                      {max !== undefined && (
+                        <span className={`block text-xs ${teveel ? 'font-semibold text-bad' : 'text-muted'}`}>
+                          {teveel ? `er zijn er ${max}` : `van ${max}`}
+                        </span>
+                      )}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      aria-label={`Aantal van ${coupureNaam(c.waarde_cent)}`}
+                      className="w-16 shrink-0 border-0 bg-transparent px-2 py-3 text-right text-lg font-bold tabular-nums outline-none"
+                      value={aantal || ''}
+                      onChange={(e) => {
+                        const n = e.target.value.replace(/\D/g, '')
+                        zet({ ...aantallen, [c.waarde_cent]: n === '' ? 0 : Number(n) })
+                      }}
+                    />
+                  </label>
+                )
+              })}
             </div>
-          )
-        })}
-      </Kaart>
+          </div>
+        )
+      })}
 
-      <p className="flex items-baseline justify-between gap-3 px-1">
-        <span className="text-sm text-muted">{totaalLabel}</span>
-        <span className="font-display text-2xl tabular-nums">{euro(totaal)}</span>
-      </p>
+      {totaalLabel && (
+        <div className="rounded-card border-[1.5px] border-line-strong bg-surface p-3">
+          {groepen.length > 1 && (
+            <p className="mb-1 flex flex-wrap justify-between gap-x-4 text-sm text-muted">
+              <span>Munten {euro(waarde('munt'))}</span>
+              <span>Briefgeld {euro(waarde('biljet'))}</span>
+            </p>
+          )}
+          <p className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted">{totaalLabel}</span>
+            <span className="font-display text-2xl tabular-nums">{euro(waarde())}</span>
+          </p>
+        </div>
+      )}
     </div>
   )
 }

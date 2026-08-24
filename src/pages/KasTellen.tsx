@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, ArrowLeft, Check } from 'lucide-react'
 import { Kaart, Knop, Laden, Mislukt } from '../components/ui'
+import { CoupureInvoer } from '../components/CoupureInvoer'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
 import {
@@ -18,9 +19,6 @@ import {
    Twee stappen: eerst de lade tellen, dan zien wat er blijft en wat eruit gaat.
    Het totaal loopt tijdens het tellen mee, want dat is het getal dat je in NTF
    overtikt. */
-
-const invoer =
-  'w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-right text-lg font-bold tabular-nums outline-none focus:border-accent'
 
 export function KasTellen() {
   const { email } = useAuth()
@@ -40,6 +38,10 @@ export function KasTellen() {
   const verdeling = verdeel(coupures, aantallen)
   const totalen = tel(verdeling)
   const gewenst = kasbedrag(coupures)
+  const muntTotaal = verdeling
+    .filter((v) => v.soort === 'munt')
+    .reduce((n, v) => n + v.geteld * v.waarde_cent, 0)
+  const biljetTotaal = totalen.geteld - muntTotaal
 
   if (klaar) {
     return (
@@ -206,39 +208,22 @@ export function KasTellen() {
         je in de kassa overtikt.
       </p>
 
-      <Kaart>
-        {verdeling.map((v) => (
-          <div
-            key={v.waarde_cent}
-            className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0"
-          >
-            <span className="w-20 shrink-0 font-display text-lg">{coupureNaam(v.waarde_cent)}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={`${invoer} max-w-[7rem]`}
-              aria-label={`Aantal van ${coupureNaam(v.waarde_cent)}`}
-              value={aantallen[v.waarde_cent] ?? ''}
-              onChange={(e) => {
-                const n = e.target.value.replace(/\D/g, '')
-                setAantallen({ ...aantallen, [v.waarde_cent]: n === '' ? 0 : Number(n) })
-              }}
-            />
-            <span className="min-w-0 flex-1 text-right tabular-nums text-muted">
-              {v.geteld > 0 ? euro(v.geteld * v.waarde_cent) : ''}
-            </span>
-          </div>
-        ))}
-      </Kaart>
+      <CoupureInvoer coupures={coupures} aantallen={aantallen} zet={setAantallen} />
 
-      <Kaart className="sticky bottom-2 flex flex-wrap items-center justify-between gap-3 border-line-strong p-4">
-        <span>
-          <span className="block text-sm text-muted">Totaal in de lade</span>
-          <span className="font-display text-3xl tabular-nums">{euro(totalen.geteld)}</span>
-        </span>
-        <Knop soort="primair" disabled={totalen.geteld === 0} onClick={() => setStap('splitsen')}>
-          Splitsen
-        </Knop>
+      <Kaart className="sticky bottom-2 border-line-strong p-3">
+        <p className="mb-1 flex flex-wrap justify-between gap-x-4 text-sm text-muted">
+          <span>Munten {euro(muntTotaal)}</span>
+          <span>Briefgeld {euro(biljetTotaal)}</span>
+        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span>
+            <span className="block text-sm text-muted">Totaal in de lade</span>
+            <span className="block font-display text-3xl tabular-nums">{euro(totalen.geteld)}</span>
+          </span>
+          <Knop soort="primair" disabled={totalen.geteld === 0} onClick={() => setStap('splitsen')}>
+            Splitsen
+          </Knop>
+        </div>
       </Kaart>
 
       <p className="text-sm text-muted">
