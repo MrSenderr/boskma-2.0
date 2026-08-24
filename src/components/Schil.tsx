@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
+import { TimerBalk } from './TimerBalk'
 
 const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus | 'beide' }[] = [
   // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
@@ -14,6 +15,7 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
   { pad: '/mep', label: 'MEP', icoon: ChefHat, exact: false, voor: 'beide' },
+  { pad: '/werkkaarten', label: 'Werkkaarten', icoon: UtensilsCrossed, exact: false, voor: 'beide' },
   { pad: '/recepten', label: 'Recepten', icoon: BookOpen, exact: false, voor: 'beide' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
@@ -178,6 +180,8 @@ export function Schil() {
         </header>
 
         <TestBalk />
+
+        <TimerBalk />
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
           <Outlet />

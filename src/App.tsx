@@ -21,6 +21,10 @@ import { Frituurvet } from './pages/Frituurvet'
 import { Leveringen } from './pages/Leveringen'
 import { Week } from './pages/Week'
 import { Uitdraai } from './pages/Uitdraai'
+import { Werkkaarten } from './pages/Werkkaarten'
+import { WerkkaartCategorie } from './pages/WerkkaartCategorie'
+import { Werkkaart } from './pages/Werkkaart'
+import { WerkkaartBeheer } from './pages/WerkkaartBeheer'
 import { Recepten } from './pages/Recepten'
 import { Recept } from './pages/Recept'
 import { Mep } from './pages/Mep'
@@ -34,6 +38,7 @@ import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
+import { Timers } from './lib/timers'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -63,6 +68,10 @@ function Poort() {
         {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
         <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
         <Route path="taken" element={<MijnTaken />} />
+        <Route path="werkkaarten" element={<Werkkaarten />} />
+        <Route path="werkkaarten/beheer" element={<WerkkaartBeheer />} />
+        <Route path="werkkaarten/kaart/:id" element={<Werkkaart />} />
+        <Route path="werkkaarten/:categorie" element={<WerkkaartCategorie />} />
         <Route path="recepten" element={<Recepten />} />
         <Route path="recepten/:id" element={<Recept />} />
         <Route path="mep" element={<Mep />}>
@@ -103,9 +112,11 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Poort />
-        </BrowserRouter>
+        <Timers>
+          <BrowserRouter>
+            <Poort />
+          </BrowserRouter>
+        </Timers>
       </AuthProvider>
     </QueryClientProvider>
   )
