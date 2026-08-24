@@ -276,6 +276,40 @@ export function WerkkaartBeheer() {
             />
           </div>
 
+          <div className="flex flex-wrap gap-3">
+            <div className="flex min-w-[9rem] flex-1 flex-col gap-1.5">
+              <label htmlFor="w-btijd" className="text-sm font-semibold text-muted">
+                Timer bij de voorbereiding (minuten)
+              </label>
+              <input
+                id="w-btijd"
+                type="number"
+                min={0}
+                className={`${invoer} tabular-nums`}
+                placeholder="leeg = geen timer"
+                value={bewerkt.bereiding_minuten ?? ''}
+                onChange={(e) =>
+                  setBewerkt({
+                    ...bewerkt,
+                    bereiding_minuten: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div className="flex min-w-[9rem] flex-1 flex-col gap-1.5">
+              <label htmlFor="w-blabel" className="text-sm font-semibold text-muted">
+                Waar die timer over gaat
+              </label>
+              <input
+                id="w-blabel"
+                className={invoer}
+                placeholder="Broodje in de oven"
+                value={bewerkt.bereiding_label ?? ''}
+                onChange={(e) => setBewerkt({ ...bewerkt, bereiding_label: e.target.value })}
+              />
+            </div>
+          </div>
+
           <Kopje>Stappen</Kopje>
           <Stappen stappen={ontwerp} zet={setOntwerp} stapel={stapel} />
 

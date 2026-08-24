@@ -15,6 +15,8 @@ export type Categorie = {
   volgorde: number
   weergave: Weergave
   gedeelde_bereiding: string | null
+  bereiding_minuten: number | null
+  bereiding_label: string | null
   actief: boolean
 }
 
@@ -25,6 +27,8 @@ export type Werkkaart = {
   weergave: Weergave | null
   gebruikt_gedeelde: boolean
   eigen_bereiding: string | null
+  bereiding_minuten: number | null
+  bereiding_label: string | null
   foto_pad: string | null
   volgorde: number
   actief: boolean
@@ -66,7 +70,7 @@ export function useCategorieen() {
     queryFn: async (): Promise<Categorie[]> => {
       const { data, error } = await supabase
         .from('werkkaart_categorieen')
-        .select('id,naam,volgorde,weergave,gedeelde_bereiding,actief')
+        .select('id,naam,volgorde,weergave,gedeelde_bereiding,bereiding_minuten,bereiding_label,actief')
         .eq('actief', true)
         .order('volgorde', { ascending: true })
       if (error) throw new Error(error.message)
@@ -82,7 +86,7 @@ export function useWerkkaarten() {
     queryFn: async (): Promise<Werkkaart[]> => {
       const { data, error } = await supabase
         .from('werkkaarten')
-        .select('id,categorie_id,naam,weergave,gebruikt_gedeelde,eigen_bereiding,foto_pad,volgorde,actief')
+        .select('id,categorie_id,naam,weergave,gebruikt_gedeelde,eigen_bereiding,bereiding_minuten,bereiding_label,foto_pad,volgorde,actief')
         .eq('actief', true)
         .order('volgorde', { ascending: true })
       if (error) throw new Error(error.message)
@@ -120,6 +124,8 @@ export function useKaartBewaren() {
         weergave: k.weergave ?? null,
         gebruikt_gedeelde: k.gebruikt_gedeelde ?? true,
         eigen_bereiding: k.eigen_bereiding?.trim() || null,
+        bereiding_minuten: k.bereiding_minuten ?? null,
+        bereiding_label: k.bereiding_label?.trim() || null,
         volgorde: k.volgorde ?? 999,
         actief: k.actief ?? true,
         bijgewerkt_op: new Date().toISOString(),

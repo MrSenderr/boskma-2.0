@@ -29,7 +29,20 @@ function Tijdknop({ stap, kaartnaam }: { stap: Stap; kaartnaam: string }) {
   )
 }
 
-function Bereiding({ tekst, titel }: { tekst: string; titel: string }) {
+function Bereiding({
+  tekst,
+  titel,
+  minuten,
+  label,
+  kaartnaam,
+}: {
+  tekst: string
+  titel: string
+  minuten?: number | null
+  label?: string | null
+  kaartnaam: string
+}) {
+  const { start } = useTimers()
   return (
     <Kaart className="border-accent bg-accent-soft p-4">
       <p className="flex items-center gap-2 font-display text-base">
@@ -37,10 +50,18 @@ function Bereiding({ tekst, titel }: { tekst: string; titel: string }) {
         {titel}
       </p>
       <div className="mt-2 flex flex-col gap-1 text-sm">
-        {tekst.split('\n').map((regel, i) => (
-          <p key={i}>{regel}</p>
-        ))}
+        {tekst.split('\n').map((regel, i) => (regel ? <p key={i}>{regel}</p> : <span key={i} className="h-2" />))}
       </div>
+      {minuten ? (
+        <button
+          type="button"
+          onClick={() => start(`${kaartnaam} — ${label ?? 'in de oven'}`, minuten)}
+          className="mt-3 flex min-h-11 w-fit items-center gap-2 rounded-[4px] bg-accent px-4 py-2 text-sm font-bold text-white hover:opacity-90"
+        >
+          <TimerIcoon className="size-4" aria-hidden />
+          {label ?? 'Timer'} — {minuten} min
+        </button>
+      ) : null}
     </Kaart>
   )
 }
@@ -75,9 +96,23 @@ export function Werkkaart() {
       <h2 className="font-display text-2xl">{kaart.naam}</h2>
 
       {kaart.gebruikt_gedeelde && cat?.gedeelde_bereiding && (
-        <Bereiding titel={`Voor elke ${cat.naam.toLowerCase().replace(/s$/, '')}`} tekst={cat.gedeelde_bereiding} />
+        <Bereiding
+          titel={`Voor elke ${cat.naam.toLowerCase().replace(/s$/, '')}`}
+          tekst={cat.gedeelde_bereiding}
+          minuten={cat.bereiding_minuten}
+          label={cat.bereiding_label}
+          kaartnaam={kaart.naam}
+        />
       )}
-      {kaart.eigen_bereiding && <Bereiding titel="Voorbereiding" tekst={kaart.eigen_bereiding} />}
+      {kaart.eigen_bereiding && (
+        <Bereiding
+          titel="Voorbereiding"
+          tekst={kaart.eigen_bereiding}
+          minuten={kaart.bereiding_minuten}
+          label={kaart.bereiding_label}
+          kaartnaam={kaart.naam}
+        />
+      )}
 
       {weergave === 'stapel' ? (
         <section className="flex flex-col gap-3">
