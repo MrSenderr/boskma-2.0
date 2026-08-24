@@ -201,3 +201,16 @@ export function toonNaam(naam: string | null | undefined) {
       .trim() || naam
   )
 }
+
+/** Leeftijd op vandaag. Voor het loonbureau is dit geen bijzaak: het minimumloon
+ *  hangt aan de leeftijd, dus je wilt het zien zonder te rekenen. */
+export function leeftijd(geboortedatum: string | null | undefined): number | null {
+  if (!geboortedatum) return null
+  const g = new Date(geboortedatum)
+  if (Number.isNaN(g.getTime())) return null
+  const nu = new Date()
+  let jaren = nu.getFullYear() - g.getFullYear()
+  const maanden = nu.getMonth() - g.getMonth()
+  if (maanden < 0 || (maanden === 0 && nu.getDate() < g.getDate())) jaren--
+  return jaren >= 0 && jaren < 130 ? jaren : null
+}

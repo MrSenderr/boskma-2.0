@@ -11,6 +11,7 @@ import {
   aannemen,
   afwijzen,
   korteDatum,
+  leeftijd,
   naamVan,
   terugNaarSollicitant,
   toestandVan,
@@ -168,15 +169,6 @@ export function Persoon() {
                   : 'Er wacht op dit moment niets op jou.'}
             </p>
           </Kaart>
-          {!p.aangenomen_op || !p.onboarding_verstuurd_op ? (
-            <Knop
-              soort="rustig"
-              onClick={() => wijzig.mutate(terugNaarSollicitant())}
-              className="w-fit"
-            >
-              Toch terug naar sollicitant
-            </Knop>
-          ) : null}
         </section>
       )}
 
@@ -190,7 +182,14 @@ export function Persoon() {
       <section className="flex flex-col gap-3">
         <Kopje>Van de sollicitatie</Kopje>
         <Kaart>
-          <Rij label="Geboortedatum" waarde={korteDatum(p.geboortedatum)} />
+          <Rij
+            label="Geboortedatum"
+            waarde={
+              leeftijd(p.geboortedatum) === null
+                ? korteDatum(p.geboortedatum)
+                : `${korteDatum(p.geboortedatum)} — ${leeftijd(p.geboortedatum)} jaar`
+            }
+          />
           <Rij label="Telefoon" waarde={toonWaarde(p.telefoonnummer)} />
           <Rij label="E-mail" waarde={toonWaarde(p.email)} />
         </Kaart>
@@ -242,6 +241,23 @@ export function Persoon() {
       <Tijdlijn p={p} />
 
       {p.fase === 'medewerker' && <UitDienst persoon={p} />}
+
+      {/* Zelden nodig, dus niet bovenaan in de weg. */}
+      {p.fase === 'medewerker' && (!p.aangenomen_op || !p.onboarding_verstuurd_op) && (
+        <section className="flex flex-col gap-2">
+          <Knop
+            soort="rustig"
+            onClick={() => wijzig.mutate(terugNaarSollicitant())}
+            className="w-fit"
+          >
+            Toch terug naar sollicitant
+          </Knop>
+          <p className="text-sm text-muted">
+            Aangenomen terwijl het toch niet doorging? Hiermee gaat deze persoon
+            terug naar de sollicitanten. Wat er is ingevuld blijft staan.
+          </p>
+        </section>
+      )}
     </div>
   )
 }
