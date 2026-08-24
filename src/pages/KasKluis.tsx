@@ -4,7 +4,7 @@ import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
 import { toonNaam, korteDatum } from '../lib/personeel'
-import { euro, useKluis, useKluisGrens, useKluisMutatie } from '../lib/kas'
+import { euro, naarCent, useKluis, useKluisGrens, useKluisMutatie } from '../lib/kas'
 
 /* De kluis. Twee voorraden: briefgeld dat naar de bank gaat, en munten die
    blijven liggen als wisselgeld. Zie docs/Modules/kas.md. */
@@ -17,14 +17,6 @@ const SOORTNAAM: Record<string, string> = {
   naar_bank: 'Naar de bank',
   naar_kassa: 'Terug in de lade',
   correctie: 'Correctie',
-}
-
-/** Van "125,50" of "125.5" naar 12550 cent. In centen rekenen, altijd. */
-function naarCent(tekst: string): number | null {
-  const schoon = tekst.trim().replace(/[€\s]/g, '').replace(',', '.')
-  if (!/^\d+(\.\d{0,2})?$/.test(schoon)) return null
-  const [heel, deel = ''] = schoon.split('.')
-  return Number(heel) * 100 + Number(deel.padEnd(2, '0'))
 }
 
 export function KasKluis() {

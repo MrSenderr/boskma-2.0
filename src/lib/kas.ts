@@ -310,3 +310,34 @@ export function useKluisGrens() {
     },
   })
 }
+
+/** Alleen Sander kan de grens veranderen; wie de kas telt mag hem lezen. Dat
+ *  staat in de database, niet in dit scherm. */
+export function useKluisGrensZetten() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (biljetCent: number) => {
+      const { error } = await supabase
+        .from('instellingen')
+        .update({ waarde: { biljet_cent: Math.max(0, Math.floor(biljetCent)) }, bijgewerkt_op: new Date().toISOString() })
+        .eq('sleutel', 'kluis_grens')
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['instelling', 'kluis_grens'] }),
+  })
+}
+
+/** Van "2000", "125,50" of "1.500,50" naar centen. Eén plek, want twee versies
+ *  van dezelfde omrekening lopen vroeg of laat uit elkaar.
+ *
+ *  Een punt is een duizendtalteken zodra er ook een komma staat; anders wordt
+ *  hij als decimaalteken gelezen, want wie "125.50" intikt bedoelt geen
+ *  honderdvijfentwintigduizend. */
+export function naarCent(tekst: string): number | null {
+  let schoon = tekst.trim().replace(/[€\s]/g, '')
+  if (schoon.includes(',')) schoon = schoon.replace(/\./g, '')
+  schoon = schoon.replace(',', '.')
+  if (!/^\d+(\.\d{0,2})?$/.test(schoon)) return null
+  const [heel, deel = ''] = schoon.split('.')
+  return Number(heel) * 100 + Number(deel.padEnd(2, '0'))
+}
