@@ -21,6 +21,9 @@ import { Frituurvet } from './pages/Frituurvet'
 import { Leveringen } from './pages/Leveringen'
 import { Week } from './pages/Week'
 import { Uitdraai } from './pages/Uitdraai'
+import { Schermen } from './pages/Schermen'
+import { SchermenLijst } from './pages/SchermenLijst'
+import { SchermAfbeeldingen } from './pages/SchermAfbeeldingen'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -69,6 +72,11 @@ function Poort() {
           <Route path="leveringen" element={<Leveringen />} />
           <Route path="week" element={<Week />} />
           <Route path="uitdraai" element={<Uitdraai />} />
+        </Route>
+        <Route path="schermen" element={<Schermen />}>
+          <Route index element={<Navigate to="lijst" replace />} />
+          <Route path="lijst" element={<SchermenLijst />} />
+          <Route path="afbeeldingen" element={<SchermAfbeeldingen />} />
         </Route>
         <Route path="instellingen" element={<Instellingen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
