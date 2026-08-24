@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
+import { useRecepten, useReceptAanTaak } from '../lib/recepten'
 import {
   ZONDER_GROEP,
   groepenVan,
@@ -121,6 +122,8 @@ export function MepLijst() {
   const { data, isPending, error, refetch } = useMepTaken(true)
   const bewaren = useMepTaakBewaren()
   const aanUit = useMepTaakAanUit()
+  const { data: recepten } = useRecepten()
+  const koppelen = useReceptAanTaak()
   const [concept, setConcept] = useState<Concept | null>(null)
   const [fout, setFout] = useState<string | null>(null)
 
@@ -188,6 +191,25 @@ export function MepLijst() {
                     )}
                   </span>
 
+                  <select
+                    className="min-h-11 max-w-[12rem] rounded-[4px] border border-line-strong bg-bg px-2 text-sm"
+                    aria-label={`Recept bij ${t.naam}`}
+                    value={t.recept_id ?? ''}
+                    onChange={(e) =>
+                      koppelen.mutate(
+                        { taakId: t.id, receptId: e.target.value ? Number(e.target.value) : null },
+                        { onError: (x) => setFout(x.message) },
+                      )
+                    }
+                  >
+                    <option value="">geen recept</option>
+                    {(recepten ?? []).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.naam}
+                      </option>
+                    ))}
+                  </select>
+
                   <button
                     type="button"
                     onClick={() =>
@@ -229,7 +251,8 @@ export function MepLijst() {
       <p className="max-w-prose text-sm text-muted">
         Uitzetten haalt een taak van de avondlijst zonder hem weg te gooien — ijs in
         de winter uit, in de zomer weer aan. Wat er in oude lijsten staat blijft
-        gewoon staan.
+        gewoon staan. Koppel je er een recept aan, dan staat dat in de keuken met
+        één tik open bij die taak.
       </p>
     </div>
   )

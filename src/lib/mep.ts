@@ -21,6 +21,7 @@ export type MepTaak = {
   toelichting: string | null
   volgorde: number
   actief: boolean
+  recept_id: number | null
 }
 
 export type MepDagTaak = {
@@ -55,7 +56,7 @@ export function useMepTaken(ookInactieve = false) {
     queryFn: async (): Promise<MepTaak[]> => {
       let vraag = supabase
         .from('mep_sjablonen')
-        .select('id,naam,groep,toelichting,volgorde,actief')
+        .select('id,naam,groep,toelichting,volgorde,actief,recept_id')
         .order('volgorde', { ascending: true })
         .order('id', { ascending: true })
       if (!ookInactieve) vraag = vraag.eq('actief', true)

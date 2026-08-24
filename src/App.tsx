@@ -21,6 +21,8 @@ import { Frituurvet } from './pages/Frituurvet'
 import { Leveringen } from './pages/Leveringen'
 import { Week } from './pages/Week'
 import { Uitdraai } from './pages/Uitdraai'
+import { Recepten } from './pages/Recepten'
+import { Recept } from './pages/Recept'
 import { Mep } from './pages/Mep'
 import { MepVandaag } from './pages/MepVandaag'
 import { MepKlaarzetten } from './pages/MepKlaarzetten'
@@ -61,6 +63,8 @@ function Poort() {
         {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
         <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
         <Route path="taken" element={<MijnTaken />} />
+        <Route path="recepten" element={<Recepten />} />
+        <Route path="recepten/:id" element={<Recept />} />
         <Route path="mep" element={<Mep />}>
           <Route index element={<Navigate to="vandaag" replace />} />
           <Route path="vandaag" element={<MepVandaag />} />

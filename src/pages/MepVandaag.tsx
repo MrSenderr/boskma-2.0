@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Check, ChefHat, Clock } from 'lucide-react'
+import { BookOpen, Check, ChefHat, Clock } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
 import { korteDatum, toonNaam } from '../lib/personeel'
 import { vandaagStr } from '../lib/openingstijden'
-import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepVandaag } from '../lib/mep'
+import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVandaag } from '../lib/mep'
 
 /* Waar de keuken vandaag mee werkt. Zie docs/Modules/mep.md. */
 
@@ -14,6 +15,7 @@ export function MepVandaag() {
   const { data: wie } = useWieBenIk()
   const { data, isPending, error, refetch } = useMepVandaag()
   const { data: notitie } = useMepNotitie(vandaagStr())
+  const { data: taken } = useMepTaken(true)
   const aftikken = useMepAftikken()
   const [fout, setFout] = useState<string | null>(null)
 
@@ -54,9 +56,10 @@ export function MepVandaag() {
       <Kaart>
         {data.map((t) => {
           const laat = isBlijvenLiggen(t)
+          const recept = (taken ?? []).find((x) => x.id === t.sjabloon_id)?.recept_id ?? null
           return (
+            <div key={t.id} className="border-b border-line last:border-b-0">
             <button
-              key={t.id}
               type="button"
               onClick={() =>
                 aftikken.mutate(
@@ -69,7 +72,7 @@ export function MepVandaag() {
                   { onError: (e) => setFout(e.message) },
                 )
               }
-              className="flex w-full items-start gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
+              className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
             >
               <span
                 className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${
@@ -109,6 +112,18 @@ export function MepVandaag() {
                 )}
               </span>
             </button>
+
+            {recept && !t.gedaan && (
+              <Link
+                to={`/recepten/${recept}`}
+                data-touch
+                className="mb-2 ml-12 inline-flex items-center gap-1.5 rounded-[4px] border border-line-strong px-3 py-2 text-sm font-semibold hover:bg-surface-2"
+              >
+                <BookOpen className="size-4" aria-hidden />
+                Recept
+              </Link>
+            )}
+            </div>
           )
         })}
       </Kaart>
