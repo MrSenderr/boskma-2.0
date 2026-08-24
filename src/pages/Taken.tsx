@@ -22,6 +22,9 @@ import {
 const invoer =
   'w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent'
 
+/** Waarde die geen echte hoek is, maar 'ik wil er een verzinnen'. */
+const NIEUWE_HOEK = '__nieuw__'
+
 type Concept = {
   id?: number
   naam: string
@@ -46,6 +49,13 @@ function Formulier({
   onAnnuleer: () => void
   bezig: boolean
 }) {
+  // Een hoek is geen aparte tabel maar gewoon de naam die bij een taak staat,
+  // dus een lijstje met bestaande hoeken mag het verzinnen van een nieuwe niet
+  // in de weg zitten. Vandaar de keuze onderaan de lijst.
+  const [nieuweHoek, setNieuweHoek] = useState(
+    concept.hoek !== '' && !hoeken.includes(concept.hoek),
+  )
+
   return (
     <Kaart className="flex flex-col gap-4 border-accent p-4">
       <Veld
@@ -85,19 +95,50 @@ function Formulier({
           <label className="text-sm font-semibold text-muted" htmlFor="t-hoek">
             Hoek
           </label>
-          <input
-            id="t-hoek"
-            list="hoeken"
-            className={invoer}
-            placeholder="bijv. keuken"
-            value={concept.hoek}
-            onChange={(e) => onWijzig({ ...concept, hoek: e.target.value })}
-          />
-          <datalist id="hoeken">
-            {hoeken.map((h) => (
-              <option key={h} value={h} />
-            ))}
-          </datalist>
+          {nieuweHoek ? (
+            <>
+              <input
+                id="t-hoek"
+                className={invoer}
+                placeholder="bijv. bakwand"
+                autoFocus
+                value={concept.hoek}
+                onChange={(e) => onWijzig({ ...concept, hoek: e.target.value })}
+              />
+              <button
+                type="button"
+                className="w-fit text-sm font-semibold text-muted underline hover:text-text"
+                onClick={() => {
+                  setNieuweHoek(false)
+                  onWijzig({ ...concept, hoek: hoeken[0] ?? '' })
+                }}
+              >
+                Toch een bestaande hoek kiezen
+              </button>
+            </>
+          ) : (
+            <select
+              id="t-hoek"
+              className={invoer}
+              value={hoeken.includes(concept.hoek) ? concept.hoek : ''}
+              onChange={(e) => {
+                if (e.target.value === NIEUWE_HOEK) {
+                  setNieuweHoek(true)
+                  onWijzig({ ...concept, hoek: '' })
+                } else {
+                  onWijzig({ ...concept, hoek: e.target.value })
+                }
+              }}
+            >
+              <option value="">Kies een hoek…</option>
+              {hoeken.map((h) => (
+                <option key={h} value={h}>
+                  {hoekLabel(h)}
+                </option>
+              ))}
+              <option value={NIEUWE_HOEK}>Nieuwe hoek…</option>
+            </select>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -304,6 +345,9 @@ export function Taken() {
 
       {concept && (
         <Formulier
+          /* Opnieuw beginnen bij een andere taak, anders blijft het formulier
+             hangen in de stand van de vorige. */
+          key={concept.id ?? 'nieuw'}
           concept={concept}
           hoeken={alleHoeken}
           onWijzig={setConcept}
