@@ -7,6 +7,7 @@ import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
 import { TaakGeven } from '../components/TaakGeven'
 import { Dossier } from '../components/Dossier'
+import { Rechten } from '../components/Rechten'
 import {
   aannemen,
   afwijzen,
@@ -257,6 +258,8 @@ export function Persoon() {
       )}
 
       <Tijdlijn p={p} />
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <Rechten persoon={p} />}
 
       {p.fase === 'medewerker' && <UitDienst persoon={p} />}
 

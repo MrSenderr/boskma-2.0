@@ -7,7 +7,7 @@ import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { isOpen, sluitingsrondeVanaf, standVanDeDag, useRooster, vandaagStr } from '../lib/openingstijden'
 import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/vandaag'
-import { PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
+import { MepBlok, PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
 import { useVerslagen } from '../lib/dossier'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
@@ -123,6 +123,8 @@ export function VandaagMedewerker() {
 
       {open ? (
         <>
+          <MepBlok />
+
           <Werklijsten />
 
           <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />

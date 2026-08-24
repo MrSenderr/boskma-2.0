@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -13,6 +13,7 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
+  { pad: '/mep', label: 'MEP', icoon: ChefHat, exact: false, voor: 'beide' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
