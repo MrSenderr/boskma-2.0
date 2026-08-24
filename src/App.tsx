@@ -18,6 +18,11 @@ import { MijnDossier } from './pages/MijnDossier'
 import { MijnTaken } from './pages/MijnTaken'
 import { Levering } from './pages/Levering'
 import { Melden } from './pages/Melden'
+import { Kas } from './pages/Kas'
+import { KasTellen } from './pages/KasTellen'
+import { KasKluis } from './pages/KasKluis'
+import { KasNaslag } from './pages/KasNaslag'
+import { KasInstellen } from './pages/KasInstellen'
 import { Frituurvet } from './pages/Frituurvet'
 import { Leveringen } from './pages/Leveringen'
 import { Week } from './pages/Week'
@@ -83,6 +88,13 @@ function Poort() {
         </Route>
         <Route path="levering" element={<Levering />} />
         <Route path="melden" element={<Melden />} />
+        <Route path="kas" element={<Kas />}>
+          <Route index element={<Navigate to="tellen" replace />} />
+          <Route path="tellen" element={<KasTellen />} />
+          <Route path="kluis" element={<KasKluis />} />
+          <Route path="naslag" element={<KasNaslag />} />
+          <Route path="instellen" element={<KasInstellen />} />
+        </Route>
         <Route path="frituurvet" element={<Frituurvet />} />
         <Route path="lijst/:lijst" element={<Werklijst />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />

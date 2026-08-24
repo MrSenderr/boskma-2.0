@@ -8,7 +8,7 @@ import { useWieBenIk } from './wie'
    het personeel te kunnen. Wat je hier leest bepaalt alleen welke knoppen er
    staan — de echte grens ligt in de database, in heeft_recht(). */
 
-export type Recht = 'recepten' | 'mep' | 'haccp'
+export type Recht = 'recepten' | 'mep' | 'haccp' | 'kas'
 
 export const RECHTEN: { waarde: Recht; label: string; uitleg: string }[] = [
   {
@@ -25,6 +25,12 @@ export const RECHTEN: { waarde: Recht; label: string; uitleg: string }[] = [
     waarde: 'haccp',
     label: 'HACCP beheren',
     uitleg: 'Mag apparaten en werklijsten aanpassen. Metingen doen mag iedereen al.',
+  },
+  {
+    waarde: 'kas',
+    label: 'De kas tellen',
+    uitleg:
+      'Mag de kastelling doen en bij de kluis. Dit gaat over geld — geef het alleen aan wie de zaak ook afsluit.',
   },
 ]
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed } from 'lucide-react'
+import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed, Wallet } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -8,6 +8,7 @@ import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
 import { LIJSTEN } from '../lib/taken'
+import { magIk, useMijnRechten } from '../lib/rechten'
 import { TimerBalk } from './TimerBalk'
 
 const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus | 'beide' }[] = [
@@ -105,6 +106,7 @@ export function Schil() {
   const { email, uitloggen } = useAuth()
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
+  const { data: rechten } = useMijnRechten()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
@@ -112,6 +114,9 @@ export function Schil() {
   const isBeheerder = wie?.rol === 'beheerder'
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
   const zichtbaar = MENU.filter((m) => m.voor === gezicht || m.voor === 'beide')
+  // De kas hangt aan een eigen recht en staat dus niet in de vaste menulijst:
+  // wie het niet mag, hoort de knop niet te zien staan.
+  const magKassen = magIk(rechten, 'kas')
 
   useEffect(() => {
     if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')
@@ -144,7 +149,12 @@ export function Schil() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {zichtbaar.map(({ pad, label, icoon: Icoon, exact }) => (
+          {[
+            ...zichtbaar,
+            ...(magKassen
+              ? [{ pad: '/kas', label: 'Kas', icoon: Wallet, exact: false, voor: gezicht }]
+              : []),
+          ].map(({ pad, label, icoon: Icoon, exact }) => (
             <NavLink
               key={pad}
               to={pad}
