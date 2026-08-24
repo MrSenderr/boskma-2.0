@@ -30,27 +30,27 @@ function Tijdknop({ stap, kaartnaam }: { stap: Stap; kaartnaam: string }) {
 }
 
 function Bereiding({
-  tekst,
-  titel,
+  regels,
   minuten,
   label,
   kaartnaam,
 }: {
-  tekst: string
-  titel: string
+  regels: string[]
   minuten?: number | null
   label?: string | null
   kaartnaam: string
 }) {
   const { start } = useTimers()
+  if (regels.length === 0 && !minuten) return null
+
   return (
     <Kaart className="border-accent bg-accent-soft p-4">
       <p className="flex items-center gap-2 font-display text-base">
         <Flame className="size-4 shrink-0 text-accent" aria-hidden />
-        {titel}
+        Bereiding
       </p>
       <div className="mt-2 flex flex-col gap-1 text-sm">
-        {tekst.split('\n').map((regel, i) => (regel ? <p key={i}>{regel}</p> : <span key={i} className="h-2" />))}
+        {regels.map((regel, i) => (regel ? <p key={i}>{regel}</p> : <span key={i} className="h-2" />))}
       </div>
       {minuten ? (
         <button
@@ -95,24 +95,20 @@ export function Werkkaart() {
 
       <h2 className="font-display text-2xl">{kaart.naam}</h2>
 
-      {kaart.gebruikt_gedeelde && cat?.gedeelde_bereiding && (
-        <Bereiding
-          titel={`Voor elke ${cat.naam.toLowerCase().replace(/s$/, '')}`}
-          tekst={cat.gedeelde_bereiding}
-          minuten={cat.bereiding_minuten}
-          label={cat.bereiding_label}
-          kaartnaam={kaart.naam}
-        />
-      )}
-      {kaart.eigen_bereiding && (
-        <Bereiding
-          titel="Voorbereiding"
-          tekst={kaart.eigen_bereiding}
-          minuten={kaart.bereiding_minuten}
-          label={kaart.bereiding_label}
-          kaartnaam={kaart.naam}
-        />
-      )}
+      {/* Het gedeelde stuk en de eigen toevoeging lezen als één lijstje. Zo staat
+          er bij een classic niets over een cheeseburger, terwijl een wijziging
+          aan de uien nog steeds maar op één plek hoeft. */}
+      <Bereiding
+        regels={[
+          ...(kaart.gebruikt_gedeelde && cat?.gedeelde_bereiding
+            ? cat.gedeelde_bereiding.split('\n')
+            : []),
+          ...(kaart.eigen_bereiding ? kaart.eigen_bereiding.split('\n') : []),
+        ]}
+        minuten={kaart.bereiding_minuten ?? (kaart.gebruikt_gedeelde ? cat?.bereiding_minuten : null)}
+        label={kaart.bereiding_label ?? (kaart.gebruikt_gedeelde ? cat?.bereiding_label : null)}
+        kaartnaam={kaart.naam}
+      />
 
       {weergave === 'stapel' ? (
         <section className="flex flex-col gap-3">
