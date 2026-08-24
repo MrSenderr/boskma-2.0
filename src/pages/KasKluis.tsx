@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, Banknote, Coins, Landmark } from 'lucide-react'
+import { AlertTriangle, Banknote, Coins, Landmark, Scale } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
@@ -39,6 +39,13 @@ export function KasKluis() {
   const [opmerking, setOpmerking] = useState('')
   const [fout, setFout] = useState<string | null>(null)
 
+  // Bijstellen gaat op wat er wérkelijk ligt, niet op een verschil dat je zelf
+  // moet uitrekenen. De app boekt het verschil.
+  const [bijstellen, setBijstellen] = useState(false)
+  const [echtMunt, setEchtMunt] = useState('')
+  const [echtBiljet, setEchtBiljet] = useState('')
+  const [reden, setReden] = useState('')
+
   if (isPending) return <Laden tekst="Kluis laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
@@ -64,6 +71,37 @@ export function KasKluis() {
           setWat(null)
           setBedrag('')
           setOpmerking('')
+        },
+        onError: (e) => setFout(e.message),
+      },
+    )
+  }
+
+  const nieuwMunt = naarCent(echtMunt)
+  const nieuwBiljet = naarCent(echtBiljet)
+  const huidigMunt = data.munt
+  const huidigBiljet = data.biljet
+  const leeg = data.mutaties.length === 0
+  const kanBijstellen =
+    nieuwMunt !== null && nieuwBiljet !== null && (leeg || reden.trim().length > 0)
+
+  function stelBij() {
+    if (nieuwMunt === null || nieuwBiljet === null) return
+    setFout(null)
+    boeken.mutate(
+      {
+        soort: 'correctie',
+        muntCent: nieuwMunt - huidigMunt,
+        biljetCent: nieuwBiljet - huidigBiljet,
+        opmerking: reden.trim() || (leeg ? 'Beginstand' : null),
+        doorNaam: wie?.naam ?? email ?? 'onbekend',
+      },
+      {
+        onSuccess: () => {
+          setBijstellen(false)
+          setEchtMunt('')
+          setEchtBiljet('')
+          setReden('')
         },
         onError: (e) => setFout(e.message),
       },
@@ -101,6 +139,78 @@ export function KasKluis() {
 
       {fout && (
         <p className="rounded-[4px] border border-bad bg-bad-soft px-3 py-2 text-sm text-bad">{fout}</p>
+      )}
+
+      {(leeg || bijstellen) && (
+        <Kaart className={`flex flex-col gap-3 p-4 ${leeg ? 'border-accent' : ''}`}>
+          <p className="font-display text-lg">
+            {leeg ? 'Wat ligt er nu in de kluis?' : 'Kluis bijstellen'}
+          </p>
+          <p className="text-sm text-muted">
+            {leeg
+              ? 'De app begint op nul, maar er ligt al geld. Tel het één keer en vul het hier in; daarna telt de app zelf mee.'
+              : 'Vul in wat er wérkelijk ligt. De app boekt het verschil, zodat je in de geschiedenis kunt zien dat er is bijgesteld.'}
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            <div className="flex min-w-[9rem] flex-1 flex-col gap-1.5">
+              <label htmlFor="echt-munt" className="text-sm font-semibold text-muted">
+                Munten
+              </label>
+              <input
+                id="echt-munt"
+                inputMode="decimal"
+                className={invoer}
+                placeholder="0,00"
+                value={echtMunt}
+                onChange={(e) => setEchtMunt(e.target.value)}
+              />
+            </div>
+            <div className="flex min-w-[9rem] flex-1 flex-col gap-1.5">
+              <label htmlFor="echt-biljet" className="text-sm font-semibold text-muted">
+                Briefgeld
+              </label>
+              <input
+                id="echt-biljet"
+                inputMode="decimal"
+                className={invoer}
+                placeholder="0,00"
+                value={echtBiljet}
+                onChange={(e) => setEchtBiljet(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {!leeg && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="bijstel-reden" className="text-sm font-semibold text-muted">
+                Waarom klopt het niet?
+              </label>
+              <input
+                id="bijstel-reden"
+                className={invoer}
+                placeholder="Bijvoorbeeld: storting van vorige week niet geboekt"
+                value={reden}
+                onChange={(e) => setReden(e.target.value)}
+              />
+              <span className="text-sm text-muted">
+                Verplicht. Een kluissaldo dat zomaar verspringt is later niet uit te
+                leggen.
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <Knop soort="primair" bezig={boeken.isPending} disabled={!kanBijstellen} onClick={stelBij}>
+              {leeg ? 'Beginstand vastleggen' : 'Bijstellen'}
+            </Knop>
+            {!leeg && (
+              <Knop soort="rustig" onClick={() => setBijstellen(false)}>
+                Annuleren
+              </Knop>
+            )}
+          </div>
+        </Kaart>
       )}
 
       {wat ? (
@@ -149,6 +259,19 @@ export function KasKluis() {
             <Coins className="size-4" aria-hidden />
             Munten terug in de lade
           </Knop>
+          {!leeg && !bijstellen && (
+            <Knop
+              soort="rustig"
+              onClick={() => {
+                setBijstellen(true)
+                setEchtMunt(String(data.munt / 100).replace('.', ','))
+                setEchtBiljet(String(data.biljet / 100).replace('.', ','))
+              }}
+            >
+              <Scale className="size-4" aria-hidden />
+              Klopt niet, bijstellen
+            </Knop>
+          )}
         </div>
       )}
 
