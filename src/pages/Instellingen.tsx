@@ -15,7 +15,7 @@ export function Instellingen() {
   const huidigAdres = adres ?? testmodus.adres
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
         <Kopje>Testmodus</Kopje>
 
@@ -98,15 +98,6 @@ export function Instellingen() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <Kopje>Toegang</Kopje>
-        <Kaart className="p-5">
-          <p className="text-sm text-muted">
-            Wie de app mag gebruiken staat vast in de database. Iemand toevoegen doen
-            we samen — daar hoort ook een account bij.
-          </p>
-        </Kaart>
-      </section>
     </div>
   )
 }
