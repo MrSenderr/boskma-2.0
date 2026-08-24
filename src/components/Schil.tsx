@@ -7,6 +7,7 @@ import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
+import { LIJSTEN } from '../lib/taken'
 import { TimerBalk } from './TimerBalk'
 
 const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus | 'beide' }[] = [
@@ -24,6 +25,16 @@ const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; v
   { pad: '/taken', label: 'Taken', icoon: ListChecks, exact: false, voor: 'medewerker' },
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
+]
+
+/* Schermen die geen menu-item hebben maar wel een naam in de kop verdienen.
+   Zonder dit staat er "Boskma" boven een levering, het frituurvet, een melding
+   of een werklijst — en dan weet je niet waar je bent. */
+const EXTRA_TITELS: { pad: string; label: string }[] = [
+  { pad: '/levering', label: 'Levering' },
+  { pad: '/frituurvet', label: 'Frituurvet' },
+  { pad: '/melden', label: 'Melden' },
+  ...LIJSTEN.map((l) => ({ pad: `/lijst/${l.waarde}`, label: l.label })),
 ]
 
 function ThemaKnop() {
@@ -107,6 +118,7 @@ export function Schil() {
   }, [wie, isBeheerder, modus])
   const titel =
     MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
+    EXTRA_TITELS.find((t) => locatie.pathname.startsWith(t.pad))?.label ??
     'Boskma'
 
   return (
