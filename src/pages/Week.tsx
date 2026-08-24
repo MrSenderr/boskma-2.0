@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Droplet, Truck } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
-import { korteDatum } from '../lib/personeel'
+import { korteDatum, toonNaam } from '../lib/personeel'
 import {
   isoWeekVan,
   useWeekAftikken,
@@ -73,7 +73,7 @@ export function Week() {
         <p className="flex flex-wrap items-center gap-2 rounded-[4px] border border-good bg-good-soft px-3 py-2 text-sm text-good">
           <Check className="size-4 shrink-0" aria-hidden />
           Nagekeken op {korteDatum(akkoord.akkoord_op)}
-          {akkoord.door ? ` door ${akkoord.door}` : ''}.
+          {akkoord.door ? ` door ${toonNaam(akkoord.door)}` : ''}.
           {akkoord.opmerking ? ` ${akkoord.opmerking}` : ''}
         </p>
       )}

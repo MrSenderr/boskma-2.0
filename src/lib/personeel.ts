@@ -186,3 +186,18 @@ export const terugNaarSollicitant = (): Partial<Persoon> => ({
   status: 'gesprek',
   aangenomen_op: null,
 })
+
+/** Vangnet voor de enkele registratie die nog op een mailadres staat. In de
+ *  database staan namen, maar een uitdraai voor een controle mag nooit ineens
+ *  "daan@..." laten zien omdat er ergens iets is misgegaan. */
+export function toonNaam(naam: string | null | undefined) {
+  if (!naam) return '—'
+  if (!naam.includes('@')) return naam
+  return (
+    naam
+      .split('@')[0]
+      .replace(/[._-]+/g, ' ')
+      .replace(/\b\p{Ll}/gu, (c) => c.toUpperCase())
+      .trim() || naam
+  )
+}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, Printer } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden } from '../components/ui'
 import { LIJSTEN } from '../lib/taken'
+import { toonNaam } from '../lib/personeel'
 import { dagenTerug, useUitdraai, vandaagStr, type Onderdeel } from '../lib/uitdraai'
 
 /* De uitdraai voor een controle. Zie docs/Modules/haccp/haccpmodule.md. */
@@ -175,7 +176,7 @@ export function Uitdraai() {
                       <td className={cel}>{r.apparaat_naam}</td>
                       <td className={cel}>{r.meetmoment === 'sluiting' ? 'Sluiting' : 'Opening'}</td>
                       <td className={`${cel} text-right font-bold tabular-nums`}>{r.temperatuur} °C</td>
-                      <td className={cel}>{r.door_naam ?? '—'}</td>
+                      <td className={cel}>{toonNaam(r.door_naam)}</td>
                       <td className={cel}>
                         {r.afwijking
                           ? [r.actie ?? 'geen actie vastgelegd', r.opmerking].filter(Boolean).join(' — ')
@@ -248,7 +249,7 @@ export function Uitdraai() {
                       <td className={cel}>{r.leverancier}</td>
                       <td className={`${cel} text-right font-bold tabular-nums`}>{r.temperatuur} °C</td>
                       <td className={cel}>{r.ok ? 'Ja' : 'Geweigerd'}</td>
-                      <td className={cel}>{r.door_naam ?? r.employee_naam ?? '—'}</td>
+                      <td className={cel}>{toonNaam(r.door_naam ?? r.employee_naam)}</td>
                       <td className={cel}>{r.opmerking ?? ''}</td>
                     </tr>
                   ))}
@@ -274,7 +275,7 @@ export function Uitdraai() {
                     {d.map((r) => (
                       <tr key={r.id}>
                         <td className={cel}>{kort(r.datum)}</td>
-                        <td className={cel}>{r.door_naam ?? '—'}</td>
+                        <td className={cel}>{toonNaam(r.door_naam)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -311,7 +312,7 @@ export function Uitdraai() {
                           day: 'numeric', month: 'short', year: 'numeric',
                         })}
                       </td>
-                      <td className={cel}>{r.door ?? '—'}</td>
+                      <td className={cel}>{toonNaam(r.door)}</td>
                       <td className={cel}>{r.opmerking ?? ''}</td>
                     </tr>
                   ))}

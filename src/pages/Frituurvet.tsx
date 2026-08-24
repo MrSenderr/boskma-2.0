@@ -3,7 +3,7 @@ import { ArrowDown, Droplet } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { korteDatum } from '../lib/personeel'
+import { korteDatum, toonNaam } from '../lib/personeel'
 import {
   AANTAL_PANNEN,
   laatsteDoorschuif,
@@ -37,7 +37,7 @@ export function Frituurvet() {
         <p className="mt-1 text-sm text-muted">
           {laatste
             ? `Laatst doorgeschoven op ${korteDatum(laatste.gedaan_op)}${
-                laatste.door_naam ? ` door ${laatste.door_naam}` : ''
+                laatste.door_naam ? ` door ${toonNaam(laatste.door_naam)}` : ''
               }.`
             : 'Er is nog niet doorgeschoven. Vanaf de eerste keer rekent de app de rest uit.'}
         </p>
@@ -148,7 +148,7 @@ export function Frituurvet() {
                 className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5 last:border-b-0 text-sm"
               >
                 <span className="font-medium">{korteDatum(d.gedaan_op)}</span>
-                <span className="text-muted">{d.door_naam ?? '—'}</span>
+                <span className="text-muted">{toonNaam(d.door_naam)}</span>
               </div>
             ))}
           </Kaart>

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, Thermometer } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
+import { toonNaam } from '../lib/personeel'
 import { LogboekTaken } from './LogboekTaken'
 
 /* Terugkijken wat er geregistreerd is. Zie docs/modules/haccp/haccpmodule.md.
@@ -184,7 +185,7 @@ export function Logboek() {
                         </td>
                         <td className="px-4 py-2.5 tabular-nums text-muted">{(r.tijd ?? '').slice(0, 5)}</td>
                         <td className="px-4 py-2.5 text-muted">
-                          {r.door_naam ?? r.employee_naam ?? '—'}
+                          {toonNaam(r.door_naam ?? r.employee_naam)}
                         </td>
                       </tr>
                     ))}

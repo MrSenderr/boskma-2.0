@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Truck } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useLeveringen } from '../lib/leveringen'
+import { toonNaam } from '../lib/personeel'
 
 /* Wat er binnenkwam, hoe koud, en of het is aangenomen. Alleen lezen: een
    levering die is afgetekend blijft staan. Zie
@@ -109,7 +110,7 @@ export function Leveringen() {
                       {l.temperatuur} °C
                     </span>
                     {l.ok ? <Pil soort="goed">Aangenomen</Pil> : <Pil soort="fout">Geweigerd</Pil>}
-                    <span className="text-sm text-muted">{l.door_naam ?? l.employee_naam ?? '—'}</span>
+                    <span className="text-sm text-muted">{toonNaam(l.door_naam ?? l.employee_naam)}</span>
                     {l.opmerking && <span className="w-full text-sm text-muted">{l.opmerking}</span>}
                   </div>
                 ))}
