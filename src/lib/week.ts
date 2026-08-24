@@ -5,6 +5,7 @@ import type { Meting } from './metingen'
 import type { Levering } from './leveringen'
 import type { Doorschuif } from './frituurvet'
 import { RONDES, apparatenVoor } from './rondes'
+import { isOpen, type Rooster } from './openingstijden'
 
 /* De weekafsluiting. Zie docs/Modules/haccp/haccpmodule.md.
 
@@ -55,6 +56,7 @@ export function volgendeWeek({ jaar, week }: WeekNummer): WeekNummer {
 
 export type DagStand = {
   datum: string
+  open: boolean
   rondes: { moment: string; label: string; gedaan: number; totaal: number }[]
 }
 
@@ -72,11 +74,12 @@ export type Weekoverzicht = {
 /** Alles wat er in één week is vastgelegd. Let op: hoeveel er gemeten hád
  *  moeten worden, wordt afgeleid uit de apparaten zoals ze nu staan. Is er later
  *  een koeling bijgekomen, dan lijkt het alsof die er die week ook al stond. */
-export function useWeekoverzicht(week: WeekNummer) {
+export function useWeekoverzicht(week: WeekNummer, rooster: Rooster | undefined) {
   const { van, tot } = weekGrenzen(week)
 
   return useQuery({
-    queryKey: ['weekoverzicht', van],
+    queryKey: ['weekoverzicht', van, Boolean(rooster)],
+    enabled: Boolean(rooster),
     queryFn: async (): Promise<Weekoverzicht> => {
       const [app, temps, taken, lev, vet] = await Promise.all([
         supabase.from('haccp_apparaten').select('id,naam,type,actief,min_temp,max_temp,signaal_min,signaal_max,meetmoment,volgorde,opmerking'),
@@ -110,10 +113,15 @@ export function useWeekoverzicht(week: WeekNummer) {
         const d = new Date(van + 'T12:00:00Z')
         d.setUTCDate(d.getUTCDate() + i)
         const datum = d.toISOString().slice(0, 10)
+        // Een dag dat de zaak dicht is telt niet mee. Anders staat er elke
+        // maandag "0 van 6 gemeten" in het rood, en dat is geen verzuim maar
+        // een gesloten deur.
+        const open = isOpen(rooster, datum)
         dagen.push({
           datum,
+          open,
           rondes: RONDES.map((r) => {
-            const hoort = apparatenVoor(apparaten, r.moment)
+            const hoort = open ? apparatenVoor(apparaten, r.moment) : []
             const opDieDag = metingen.filter((m) => m.datum === datum && m.meetmoment === r.moment)
             return {
               moment: r.moment,

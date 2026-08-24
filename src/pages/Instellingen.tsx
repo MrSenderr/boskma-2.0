@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useTestmodus, useTestmodusWijzigen } from '../lib/instellingen'
+import { Openingstijden } from '../components/Openingstijden'
 
 export function Instellingen() {
   const { data: testmodus, isPending, error, refetch } = useTestmodus()
@@ -15,7 +16,7 @@ export function Instellingen() {
   const huidigAdres = adres ?? testmodus.adres
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
         <Kopje>Testmodus</Kopje>
 
@@ -98,6 +99,10 @@ export function Instellingen() {
         </p>
       </section>
 
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-xl">Openingstijden</h2>
+        <Openingstijden />
+      </section>
     </div>
   )
 }

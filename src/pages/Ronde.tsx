@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
+import { sluitingsrondeVanaf, useRooster, vandaagStr } from '../lib/openingstijden'
 import type { Meetmoment } from '../lib/apparaten'
 
 /* Wat een medewerker ziet. Eén scherm, één taak: de ronde langs de koelingen.
@@ -186,9 +187,13 @@ function Regel({
 
 export function Ronde() {
   const { data: apparaten, isPending, error, refetch } = useApparaten()
+  const { data: rooster } = useRooster()
   // Vóór sluitingstijd staat de openingsronde voor; daarna de sluitingsronde.
-  // Je kunt altijd naar de andere, want een gemiste ronde haal je nog in.
-  const [moment, setMoment] = useState<Exclude<Meetmoment, 'beide'>>(rondeVanNu)
+  // Niets gekozen betekent: volg de klok. Kies je zelf, dan blijft dat staan —
+  // een gemiste ronde moet je kunnen inhalen.
+  const [gekozen, setGekozen] = useState<Exclude<Meetmoment, 'beide'> | null>(null)
+  const moment = gekozen ?? rondeVanNu(sluitingsrondeVanaf(rooster, vandaagStr()))
+  const setMoment = setGekozen
   const { data: metingen } = useMetingenVandaag(moment)
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()

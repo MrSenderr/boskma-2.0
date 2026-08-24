@@ -4,6 +4,7 @@ import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
+import { isOpen, sluitingsrondeVanaf, standVanDeDag, useRooster, vandaagStr } from '../lib/openingstijden'
 import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/vandaag'
 import { PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
@@ -27,6 +28,7 @@ export function VandaagMedewerker() {
   const { data: sluiting } = useMetingenVandaag('sluiting')
   const { data: verjaardagen } = useVerjaardagen()
   const { data: verslagen } = useVerslagen(wie?.medewerker_id)
+  const { data: rooster } = useRooster()
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -35,13 +37,16 @@ export function VandaagMedewerker() {
 
   // De sluitingsronde is pas aan de beurt als de zaak bijna dicht is; daarvoor
   // heeft hij geen zin. Wat af is verdwijnt.
-  const nu = rondeVanNu()
+  const vandaag = vandaagStr()
+  const open = isOpen(rooster, vandaag)
+  const nu = rondeVanNu(sluitingsrondeVanaf(rooster, vandaag))
   const teDoen = RONDES.filter((r) => r.moment === 'opening' || nu === 'sluiting')
     .map((r) => ({
       ...r,
       ...standVan(apparatenVoor(apparaten, r.moment), r.moment === 'opening' ? opening : sluiting),
     }))
     .filter((r) => r.totaal > 0 && !r.klaar)
+  const teDoenVandaag = open ? teDoen : []
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,10 +95,10 @@ export function VandaagMedewerker() {
         )
       })()}
 
-      {teDoen.length > 0 && (
+      {teDoenVandaag.length > 0 && (
         <section className="flex flex-col gap-3">
           <Kopje>Wat er vandaag moet</Kopje>
-          {teDoen.map((r) => (
+          {teDoenVandaag.map((r) => (
             <Link
               key={r.moment}
               to="/temperaturen"
@@ -116,9 +121,21 @@ export function VandaagMedewerker() {
         </section>
       )}
 
-      <Werklijsten />
+      {open ? (
+        <>
+          <Werklijsten />
 
-      <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
+          <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
+        </>
+      ) : (
+        <Kaart className="p-5">
+          <p className="font-display text-lg">Vandaag is de zaak dicht.</p>
+          <p className="mt-1 text-sm text-muted">
+            {standVanDeDag(rooster, vandaag).reden ??
+              'Er staan vandaag geen rondes of werklijsten klaar.'}
+          </p>
+        </Kaart>
+      )}
 
       {/* Een levering komt op een willekeurig moment binnen en het vet schuift
           door wanneer het nodig is. Geen van beide is een taak die af moet, dus

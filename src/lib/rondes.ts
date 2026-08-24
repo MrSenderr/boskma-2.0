@@ -3,11 +3,10 @@ import type { Meting } from './metingen'
 
 /* Wanneer welke ronde aan de beurt is. Zie docs/Modules/haccp/haccpmodule.md.
 
-   De zaak is open tot 20:00 en daarna wordt er schoongemaakt, dus vanaf 19:00
-   is de sluitingsronde aan de beurt. Eén getal, hier, zodat het veranderen van
-   openingstijden geen zoektocht door de schermen wordt. */
-
-export const SLUITING_VANAF_UUR = 19
+   Het uur waarop de sluitingsronde aan de beurt is, staat niet meer los
+   ingesteld: het volgt de sluitingstijd uit het rooster (zie
+   docs/Modules/openingstijden.md). Verandert de zaak van openingstijden, dan
+   schuift de ronde vanzelf mee. */
 
 export const RONDES: { moment: Exclude<Meetmoment, 'beide'>; label: string }[] = [
   { moment: 'opening', label: 'Openingsronde' },
@@ -15,8 +14,8 @@ export const RONDES: { moment: Exclude<Meetmoment, 'beide'>; label: string }[] =
 ]
 
 /** Welke ronde staat er nu voor de deur? */
-export function rondeVanNu(): Exclude<Meetmoment, 'beide'> {
-  return new Date().getHours() >= SLUITING_VANAF_UUR ? 'sluiting' : 'opening'
+export function rondeVanNu(sluitingsrondeVanafUur: number): Exclude<Meetmoment, 'beide'> {
+  return new Date().getHours() >= sluitingsrondeVanafUur ? 'sluiting' : 'opening'
 }
 
 /** 'beide' telt bij allebei de rondes mee. */

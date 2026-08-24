@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Droplet, Truck } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { korteDatum, toonNaam } from '../lib/personeel'
+import { useRooster } from '../lib/openingstijden'
 import {
   isoWeekVan,
   useWeekAftikken,
@@ -29,7 +30,8 @@ function dagNaam(datum: string) {
 export function Week() {
   // Standaard de week die net voorbij is: die tik je af, niet de lopende.
   const [week, setWeek] = useState<WeekNummer>(() => vorigeWeek(isoWeekVan(new Date())))
-  const { data, isPending, error, refetch } = useWeekoverzicht(week)
+  const { data: rooster } = useRooster()
+  const { data, isPending, error, refetch } = useWeekoverzicht(week, rooster)
   const { data: akkoord } = useWeekakkoord(week)
   const aftikken = useWeekAftikken()
   const [opmerking, setOpmerking] = useState('')
@@ -98,7 +100,10 @@ export function Week() {
                 <tbody>
                   {data.dagen.map((d) => (
                     <tr key={d.datum} className="border-b border-line last:border-b-0">
-                      <td className="px-4 py-2.5 font-medium">{dagNaam(d.datum)}</td>
+                      <td className={`px-4 py-2.5 font-medium ${d.open ? '' : 'text-muted'}`}>
+                        {dagNaam(d.datum)}
+                        {!d.open && <span className="ml-2 text-sm font-normal">dicht</span>}
+                      </td>
                       {d.rondes.map((r) => {
                         const compleet = r.totaal > 0 && r.gedaan === r.totaal
                         const niets = r.gedaan === 0
@@ -120,9 +125,10 @@ export function Week() {
               </table>
             </Kaart>
             <p className="text-sm text-muted">
-              Hoeveel er gemeten had moeten worden, wordt afgeleid uit de apparaten
-              zoals ze nu staan. Is er later een koeling bijgekomen, dan lijkt het
-              alsof die er toen ook al stond.
+              Dagen dat de zaak dicht is tellen niet mee. Hoeveel er gemeten had
+              moeten worden, wordt afgeleid uit de apparaten zoals ze nu staan; is
+              er later een koeling bijgekomen, dan lijkt het alsof die er toen ook
+              al stond.
             </p>
           </section>
 
