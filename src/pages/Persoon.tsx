@@ -86,6 +86,18 @@ export function Persoon() {
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
   const toestand = toestandVan(p)
+  // Alles is rond: de gegevens zijn binnen en het loonbureau heeft ze gehad.
+  // Vanaf dan zijn de invullink en het loonbureaublok naslag, geen werk.
+  const lopend =
+    p.fase === 'medewerker' && Boolean(p.loonbureau_verstuurd_op) && !p.uit_dienst_op
+
+  // Niets te melden is ook een antwoord, maar dan hoeft er geen kaart te staan.
+  const watMoet =
+    toestand.sleutel === 'aangenomen'
+      ? 'Deze medewerker heeft de invullink nog niet gehad — hieronder maak je hem aan.'
+      : toestand.sleutel === 'compleet'
+        ? 'De gegevens zijn binnen. Vul hieronder de contractgegevens aan en verstuur naar het loonbureau.'
+        : null
   const ingevuld = p.onboarding_data ?? null
 
   return (
@@ -157,26 +169,32 @@ export function Persoon() {
         </section>
       )}
 
-      {p.fase === 'medewerker' && (
+      {p.fase === 'medewerker' && watMoet && (
         <section className="flex flex-col gap-3">
           <Kopje>Wat er nu moet</Kopje>
           <Kaart className="p-4">
-            <p className="text-sm">
-              {toestand.sleutel === 'aangenomen'
-                ? 'Deze medewerker heeft de invullink nog niet gehad — hieronder maak je hem aan.'
-                : toestand.sleutel === 'compleet'
-                  ? 'De gegevens zijn binnen. Vul hieronder de contractgegevens aan en verstuur naar het loonbureau.'
-                  : 'Er wacht op dit moment niets op jou.'}
-            </p>
+            <p className="text-sm">{watMoet}</p>
           </Kaart>
         </section>
       )}
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Invullink persoon={p} />}
-
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Loonbureau persoon={p} />}
+      {/* Zolang er nog iets moet, staat het bovenaan. Is alles rond, dan is
+          dit archief en gaat het dagelijkse werk voor. */}
+      {!lopend && p.fase === 'medewerker' && !p.uit_dienst_op && (
+        <>
+          <Invullink persoon={p} />
+          <Loonbureau persoon={p} />
+        </>
+      )}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <TaakGeven persoon={p} />}
+
+      {p.fase === 'medewerker' && (
+        <section className="flex flex-col gap-4">
+          <h3 className="font-display text-xl">Dossier</h3>
+          <Dossier persoon={p} />
+        </section>
+      )}
 
       {/* ---------------------------------------------------- sollicitatie --- */}
       <section className="flex flex-col gap-3">
@@ -231,11 +249,11 @@ export function Persoon() {
         </section>
       )}
 
-      {p.fase === 'medewerker' && (
-        <section className="flex flex-col gap-4">
-          <h3 className="font-display text-xl">Dossier</h3>
-          <Dossier persoon={p} />
-        </section>
+      {lopend && (
+        <>
+          <Loonbureau persoon={p} />
+          <Invullink persoon={p} />
+        </>
       )}
 
       <Tijdlijn p={p} />
