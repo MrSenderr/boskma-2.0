@@ -16,6 +16,8 @@ import { Werklijst } from './pages/Werklijst'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
 import { MijnTaken } from './pages/MijnTaken'
+import { Levering } from './pages/Levering'
+import { Frituurvet } from './pages/Frituurvet'
 import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
@@ -49,6 +51,8 @@ function Poort() {
         {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
         <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
         <Route path="taken" element={<MijnTaken />} />
+        <Route path="levering" element={<Levering />} />
+        <Route path="frituurvet" element={<Frituurvet />} />
         <Route path="lijst/:lijst" element={<Werklijst />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />

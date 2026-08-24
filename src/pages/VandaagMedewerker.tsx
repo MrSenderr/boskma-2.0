@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
-import { Cake, ChevronRight, MessageSquare, Thermometer } from 'lucide-react'
+import { Cake, ChevronRight, Droplet, MessageSquare, Thermometer, Truck } from 'lucide-react'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
+import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/vandaag'
 import { PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
@@ -22,19 +23,25 @@ function groet() {
 export function VandaagMedewerker() {
   const { data: wie } = useWieBenIk()
   const { data: apparaten, isPending, error, refetch } = useApparaten()
-  const { data: metingen } = useMetingenVandaag('opening')
+  const { data: opening } = useMetingenVandaag('opening')
+  const { data: sluiting } = useMetingenVandaag('sluiting')
   const { data: verjaardagen } = useVerjaardagen()
   const { data: verslagen } = useVerslagen(wie?.medewerker_id)
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
-  const teMeten = apparaten.filter(
-    (a) => a.actief && (a.meetmoment === 'opening' || a.meetmoment === 'beide'),
-  )
-  const gedaan = teMeten.filter((a) => (metingen ?? []).some((m) => m.apparaat_id === a.id)).length
-  const klaar = teMeten.length > 0 && gedaan === teMeten.length
   const voornaam = (wie?.naam ?? '').split(' ')[0]
+
+  // De sluitingsronde is pas aan de beurt als de zaak bijna dicht is; daarvoor
+  // heeft hij geen zin. Wat af is verdwijnt.
+  const nu = rondeVanNu()
+  const teDoen = RONDES.filter((r) => r.moment === 'opening' || nu === 'sluiting')
+    .map((r) => ({
+      ...r,
+      ...standVan(apparatenVoor(apparaten, r.moment), r.moment === 'opening' ? opening : sluiting),
+    }))
+    .filter((r) => r.totaal > 0 && !r.klaar)
 
   return (
     <div className="flex flex-col gap-6">
@@ -83,34 +90,62 @@ export function VandaagMedewerker() {
         )
       })()}
 
-      {/* Weg zodra alles gemeten is. Wat af is hoeft niet te blijven staan;
-          terugkijken doe je in het logboek. */}
-      {teMeten.length > 0 && !klaar && (
+      {teDoen.length > 0 && (
         <section className="flex flex-col gap-3">
           <Kopje>Wat er vandaag moet</Kopje>
-          <Link
-            to="/temperaturen"
-            data-touch
-            className="flex items-center gap-4 rounded-card border border-line bg-surface p-5 hover:bg-surface-2"
-          >
-            <Thermometer className="size-6 shrink-0 text-muted" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-2 font-display text-lg">
-                Temperaturen
-                <Pil soort="fout">Nog doen</Pil>
-              </p>
-              <p className="text-sm text-muted">
-                {gedaan} van {teMeten.length} gemeten
-              </p>
-            </div>
-            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
-          </Link>
+          {teDoen.map((r) => (
+            <Link
+              key={r.moment}
+              to="/temperaturen"
+              data-touch
+              className="flex items-center gap-4 rounded-card border border-line bg-surface p-5 hover:bg-surface-2"
+            >
+              <Thermometer className="size-6 shrink-0 text-muted" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2 font-display text-lg">
+                  {r.label}
+                  <Pil soort="fout">Nog doen</Pil>
+                </p>
+                <p className="text-sm text-muted">
+                  {r.gedaan} van {r.totaal} gemeten
+                </p>
+              </div>
+              <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+            </Link>
+          ))}
         </section>
       )}
 
       <Werklijsten />
 
       <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
+
+      {/* Een levering komt op een willekeurig moment binnen en het vet schuift
+          door wanneer het nodig is. Geen van beide is een taak die af moet, dus
+          staan ze hier als knop en niet in een lijstje. */}
+      <section className="flex flex-col gap-3">
+        <Kopje>Tussendoor</Kopje>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            to="/levering"
+            data-touch
+            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
+          >
+            <Truck className="size-5 shrink-0 text-muted" aria-hidden />
+            <span className="flex-1 font-semibold">Levering aantekenen</span>
+            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+          </Link>
+          <Link
+            to="/frituurvet"
+            data-touch
+            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
+          >
+            <Droplet className="size-5 shrink-0 text-muted" aria-hidden />
+            <span className="flex-1 font-semibold">Frituurvet</span>
+            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+          </Link>
+        </div>
+      </section>
 
       {verjaardagen && (() => {
         const { vandaag, komend } = jarigen(verjaardagen)
