@@ -116,8 +116,15 @@ export function Werkkaart() {
           <p className="text-sm text-muted">Van onder naar boven opbouwen.</p>
           <div className="flex flex-col gap-1.5">
             {/* Het broodje is geen stap — het gaat apart de oven in — maar de
-                omlijsting, zodat de stapel leest als de burger die eruit komt. */}
-            {kaart.broodje && <BroodjeBoven className="ml-11" />}
+                omlijsting, zodat de stapel leest als de burger die eruit komt.
+                De marge staat op een omhulsel: zet je hem op de tekening zelf,
+                dan wordt die 100% breed én ingesprongen, en steekt hij rechts
+                buiten beeld. */}
+            {kaart.broodje && (
+              <div className="ml-11">
+                <BroodjeBoven />
+              </div>
+            )}
 
             <div className="flex flex-col-reverse gap-1.5">
               {lijst.map((s) => (
@@ -135,7 +142,11 @@ export function Werkkaart() {
               ))}
             </div>
 
-            {kaart.broodje && <BroodjeOnder className="ml-11" />}
+            {kaart.broodje && (
+              <div className="ml-11">
+                <BroodjeOnder />
+              </div>
+            )}
           </div>
         </section>
       ) : (
