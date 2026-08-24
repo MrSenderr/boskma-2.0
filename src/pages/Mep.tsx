@@ -14,7 +14,7 @@ export function Mep() {
   const tabs = [
     { pad: 'vandaag', label: 'Vandaag' },
     { pad: 'klaarzetten', label: `Voor ${dagnaam}` },
-    ...(magIk(rechten, 'mep') ? [{ pad: 'lijst', label: 'Vaste lijst' }] : []),
+    ...(magIk(rechten, 'mep') ? [{ pad: 'lijst', label: 'MEP-taken' }] : []),
   ]
 
   return (

@@ -183,81 +183,84 @@ export function MepLijst() {
             <Kopje>{groep}</Kopje>
             <Kaart>
               {inGroep.map((t: MepTaak) => (
-                <div
-                  key={t.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3 last:border-b-0"
-                >
-                  <span className={`min-w-0 flex-1 ${t.actief ? '' : 'text-muted line-through'}`}>
-                    <span className="block font-medium">{t.naam}</span>
-                    {t.toelichting && (
-                      <span className="block text-sm text-muted">{t.toelichting}</span>
-                    )}
-                  </span>
+                <div key={t.id} className="border-b border-line px-4 py-3 last:border-b-0">
+                  {/* Op een telefoon past naam en bediening niet naast elkaar;
+                      dan gaat de naam boven en de knoppenrij eronder. */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <span className={`min-w-0 flex-1 ${t.actief ? '' : 'text-muted line-through'}`}>
+                      <span className="block font-medium">{t.naam}</span>
+                      {t.toelichting && (
+                        <span className="block text-sm text-muted">{t.toelichting}</span>
+                      )}
+                    </span>
 
-                  <select
-                    className="min-h-11 max-w-[12rem] rounded-[4px] border border-line-strong bg-bg px-2 text-sm"
-                    aria-label={`Recept bij ${t.naam}`}
-                    value={t.recept_id ?? ''}
-                    onChange={(e) =>
-                      koppelen.mutate(
-                        { taakId: t.id, receptId: e.target.value ? Number(e.target.value) : null },
-                        { onError: (x) => setFout(x.message) },
-                      )
-                    }
-                  >
-                    <option value="">geen recept</option>
-                    {(recepten ?? []).map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.naam}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        className="min-h-11 w-full rounded-[4px] border border-line-strong bg-bg px-2 text-sm sm:w-auto sm:max-w-[11rem]"
+                        aria-label={`Recept bij ${t.naam}`}
+                        value={t.recept_id ?? ''}
+                        onChange={(e) =>
+                          koppelen.mutate(
+                            { taakId: t.id, receptId: e.target.value ? Number(e.target.value) : null },
+                            { onError: (x) => setFout(x.message) },
+                          )
+                        }
+                      >
+                        <option value="">geen recept</option>
+                        {(recepten ?? []).map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.naam}
+                          </option>
+                        ))}
+                      </select>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setConcept({
-                        id: t.id,
-                        naam: t.naam,
-                        groep: t.groep ?? '',
-                        toelichting: t.toelichting ?? '',
-                        volgorde: t.volgorde,
-                      })
-                    }
-                    className="min-h-11 rounded-[4px] px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-text"
-                  >
-                    Wijzigen
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setConcept({
+                            id: t.id,
+                            naam: t.naam,
+                            groep: t.groep ?? '',
+                            toelichting: t.toelichting ?? '',
+                            volgorde: t.volgorde,
+                          })
+                        }
+                        className="min-h-11 rounded-[4px] border border-line-strong px-3 text-sm font-semibold hover:bg-surface-2"
+                      >
+                        Wijzigen
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      aanUit.mutate(
-                        { id: t.id, actief: !t.actief },
-                        { onError: (e) => setFout(e.message) },
-                      )
-                    }
-                    aria-pressed={t.actief}
-                    className={`min-h-11 rounded-[4px] px-3 text-sm font-semibold ${
-                      t.actief ? 'border border-line-strong hover:bg-surface-2' : 'bg-brand text-on-brand'
-                    }`}
-                  >
-                    {t.actief ? 'Uitzetten' : 'Aanzetten'}
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          aanUit.mutate(
+                            { id: t.id, actief: !t.actief },
+                            { onError: (e) => setFout(e.message) },
+                          )
+                        }
+                        aria-pressed={t.actief}
+                        className={`min-h-11 rounded-[4px] px-3 text-sm font-semibold ${
+                          t.actief ? 'border border-line-strong hover:bg-surface-2' : 'bg-brand text-on-brand'
+                        }`}
+                      >
+                        {t.actief ? 'Uitzetten' : 'Aanzetten'}
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setWeg(t.id)}
-                    aria-label={`${t.naam} weggooien`}
-                    className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeg(t.id)}
+                        aria-label={`${t.naam} weggooien`}
+                        className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    </div>
+                  </div>
 
                   {weg === t.id && (
-                    <div className="flex w-full flex-col gap-2 rounded-[4px] border border-bad bg-bad-soft p-3">
+                    <div className="mt-2 flex flex-col gap-2 rounded-[4px] border border-bad bg-bad-soft p-3">
                       <p className="text-sm text-bad">
-                        "{t.naam}" uit de vaste lijst weggooien? Wat er ooit mee
+                        "{t.naam}" uit de MEP-taken weggooien? Wat er ooit mee
                         gemaakt is blijft in de oude dagelijsten staan — alleen op
                         deze lijst is hij weg.
                       </p>
@@ -288,10 +291,10 @@ export function MepLijst() {
       })}
 
       <p className="max-w-prose text-sm text-muted">
-        Uitzetten haalt een taak van de avondlijst zonder hem weg te gooien — ijs in
-        de winter uit, in de zomer weer aan. Wat er in oude lijsten staat blijft
-        gewoon staan. Koppel je er een recept aan, dan staat dat in de keuken met
-        één tik open bij die taak.
+        Dit is de lijst waaruit je 's avonds kiest. Uitzetten haalt een taak van
+        die lijst zonder hem weg te gooien — ijs in de winter uit, in de zomer weer
+        aan. Wat er in oude dagelijsten staat blijft gewoon staan. Koppel je er een
+        recept aan, dan staat dat in de keuken met één tik open bij die taak.
       </p>
     </div>
   )

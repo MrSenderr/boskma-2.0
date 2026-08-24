@@ -367,25 +367,29 @@ export function WerkkaartBeheer() {
                 {(kaarten ?? [])
                   .filter((k) => k.categorie_id === gekozen)
                   .map((k) => (
-                    <div key={k.id} className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 last:border-b-0">
-                      <span className="min-w-0 flex-1 font-medium">{k.naam}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setBewerkt(k); setGeladen(null) }}
-                        className="min-h-11 rounded-[4px] px-3 text-sm font-semibold text-muted hover:bg-surface-2 hover:text-text"
-                      >
-                        Wijzigen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWeg(k.id)}
-                        aria-label={`${k.naam} weggooien`}
-                        className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </button>
+                    <div key={k.id} className="border-b border-line px-4 py-3 last:border-b-0">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <span className="min-w-0 flex-1 font-medium">{k.naam}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setBewerkt(k); setGeladen(null) }}
+                            className="min-h-11 rounded-[4px] border border-line-strong px-3 text-sm font-semibold hover:bg-surface-2"
+                          >
+                            Wijzigen
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWeg(k.id)}
+                            aria-label={`${k.naam} weggooien`}
+                            className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
+                          >
+                            <Trash2 className="size-4" aria-hidden />
+                          </button>
+                        </div>
+                      </div>
                       {weg === k.id && (
-                        <div className="flex w-full flex-wrap gap-2 rounded-[4px] border border-bad bg-bad-soft p-3">
+                        <div className="mt-2 flex flex-wrap gap-2 rounded-[4px] border border-bad bg-bad-soft p-3">
                           <p className="w-full text-sm text-bad">"{k.naam}" met alle stappen weggooien?</p>
                           <Knop soort="gevaar" bezig={weggooien.isPending} onClick={() => weggooien.mutate(k.id, { onSuccess: () => setWeg(null), onError: (e) => setFout(e.message) })}>
                             Ja, weggooien
