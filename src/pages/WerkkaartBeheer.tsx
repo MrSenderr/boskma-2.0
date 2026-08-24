@@ -55,78 +55,84 @@ function Stappen({
       )}
 
       {stappen.map((s, i) => (
-        <Kaart key={i} className="flex flex-wrap items-center gap-2 p-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-on-brand tabular-nums">
-            {i + 1}
-          </span>
-
-          <input
-            className={`${invoer} min-w-[10rem] flex-1`}
-            placeholder="Wat er moet gebeuren"
-            aria-label={`Stap ${i + 1}`}
-            value={s.tekst}
-            onChange={(e) => wijzig(i, { tekst: e.target.value })}
-          />
-
-          <input
-            type="number"
-            min={0}
-            className={`${klein} w-20 tabular-nums`}
-            placeholder="min"
-            aria-label={`Minuten bij stap ${i + 1}`}
-            value={s.minuten ?? ''}
-            onChange={(e) => wijzig(i, { minuten: e.target.value === '' ? null : Number(e.target.value) })}
-          />
-
-          <label className="flex items-center gap-1.5 text-sm">
+        <Kaart key={i} className="flex flex-col gap-2 p-2 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-2">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-on-brand tabular-nums">
+              {i + 1}
+            </span>
             <input
-              type="checkbox"
-              className="size-5 accent-[#B87A22]"
-              checked={s.apparaat}
-              onChange={(e) => wijzig(i, { apparaat: e.target.checked })}
+              className={`${invoer} min-w-0 flex-1`}
+              placeholder="Wat er moet gebeuren"
+              aria-label={`Stap ${i + 1}`}
+              value={s.tekst}
+              onChange={(e) => wijzig(i, { tekst: e.target.value })}
             />
-            oven
-          </label>
+          </div>
 
-          {stapel && (
-            <select
-              className={klein}
-              aria-label={`Kleur van stap ${i + 1}`}
-              value={s.kleur ?? 'overig'}
-              onChange={(e) => wijzig(i, { kleur: e.target.value })}
-            >
-              {KLEUREN.map((k) => (
-                <option key={k.waarde} value={k.waarde}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          )}
+          {/* Op een telefoon past de bediening niet naast de tekst. */}
+          <div className="flex flex-wrap items-center gap-2 pl-10 sm:pl-0">
+            <input
+              type="number"
+              min={0}
+              className={`${klein} w-20 tabular-nums`}
+              placeholder="min"
+              aria-label={`Minuten bij stap ${i + 1}`}
+              value={s.minuten ?? ''}
+              onChange={(e) => wijzig(i, { minuten: e.target.value === '' ? null : Number(e.target.value) })}
+            />
 
-          <button
-            type="button"
-            onClick={() => verplaats(i, -1)}
-            aria-label="Naar boven"
-            className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
-          >
-            <ChevronUp className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => verplaats(i, 1)}
-            aria-label="Naar beneden"
-            className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
-          >
-            <ChevronDown className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => zet(stappen.filter((_, n) => n !== i))}
-            aria-label={`Stap ${i + 1} weghalen`}
-            className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
+            <label className="flex min-h-11 items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                className="size-5 accent-[#B87A22]"
+                checked={s.apparaat}
+                onChange={(e) => wijzig(i, { apparaat: e.target.checked })}
+              />
+              oven
+            </label>
+
+            {stapel && (
+              <select
+                className={klein}
+                aria-label={`Kleur van stap ${i + 1}`}
+                value={s.kleur ?? 'overig'}
+                onChange={(e) => wijzig(i, { kleur: e.target.value })}
+              >
+                {KLEUREN.map((k) => (
+                  <option key={k.waarde} value={k.waarde}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <span className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => verplaats(i, -1)}
+                aria-label="Naar boven"
+                className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
+              >
+                <ChevronUp className="size-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => verplaats(i, 1)}
+                aria-label="Naar beneden"
+                className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
+              >
+                <ChevronDown className="size-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => zet(stappen.filter((_, n) => n !== i))}
+                aria-label={`Stap ${i + 1} weghalen`}
+                className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </button>
+            </span>
+          </div>
         </Kaart>
       ))}
 
