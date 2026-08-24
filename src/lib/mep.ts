@@ -251,3 +251,17 @@ export function useMepTaakAanUit() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['mep-taken'] }),
   })
 }
+
+/** Een taak uit de vaste lijst weggooien. Oude dagelijsten bewaren de naam in
+ *  een eigen kolom en de verwijzing staat op "leegmaken bij verwijderen", dus
+ *  wat er ooit gemaakt is blijft leesbaar — alleen het draadje valt weg. */
+export function useMepTaakWeggooien() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from('mep_sjablonen').delete().eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['mep-taken'] }),
+  })
+}

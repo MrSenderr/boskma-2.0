@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useRecepten, useReceptAanTaak } from '../lib/recepten'
 import {
@@ -7,6 +7,7 @@ import {
   groepenVan,
   useMepTaakAanUit,
   useMepTaakBewaren,
+  useMepTaakWeggooien,
   useMepTaken,
   type MepTaak,
 } from '../lib/mep'
@@ -122,10 +123,12 @@ export function MepLijst() {
   const { data, isPending, error, refetch } = useMepTaken(true)
   const bewaren = useMepTaakBewaren()
   const aanUit = useMepTaakAanUit()
+  const weggooien = useMepTaakWeggooien()
   const { data: recepten } = useRecepten()
   const koppelen = useReceptAanTaak()
   const [concept, setConcept] = useState<Concept | null>(null)
   const [fout, setFout] = useState<string | null>(null)
+  const [weg, setWeg] = useState<number | null>(null)
 
   if (isPending) return <Laden tekst="Lijst laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -241,6 +244,42 @@ export function MepLijst() {
                   >
                     {t.actief ? 'Uitzetten' : 'Aanzetten'}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWeg(t.id)}
+                    aria-label={`${t.naam} weggooien`}
+                    className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </button>
+
+                  {weg === t.id && (
+                    <div className="flex w-full flex-col gap-2 rounded-[4px] border border-bad bg-bad-soft p-3">
+                      <p className="text-sm text-bad">
+                        "{t.naam}" uit de vaste lijst weggooien? Wat er ooit mee
+                        gemaakt is blijft in de oude dagelijsten staan — alleen op
+                        deze lijst is hij weg.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Knop
+                          soort="gevaar"
+                          bezig={weggooien.isPending}
+                          onClick={() =>
+                            weggooien.mutate(t.id, {
+                              onSuccess: () => setWeg(null),
+                              onError: (e) => setFout(e.message),
+                            })
+                          }
+                        >
+                          Ja, weggooien
+                        </Knop>
+                        <Knop soort="rustig" onClick={() => setWeg(null)}>
+                          Toch niet
+                        </Knop>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </Kaart>
