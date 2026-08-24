@@ -262,6 +262,23 @@ export function WerkkaartBeheer() {
             </label>
           )}
 
+          {stapel && (
+            <label className="flex items-start gap-3 rounded-[4px] bg-surface-2 p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-5 shrink-0 accent-[#003A41]"
+                checked={bewerkt.broodje ?? false}
+                onChange={(e) => setBewerkt({ ...bewerkt, broodje: e.target.checked })}
+              />
+              <span>
+                Een broodje om de stapel tekenen
+                <span className="mt-0.5 block text-muted">
+                  Onder- en bovenkant van een burgerbroodje om de blokken heen.
+                </span>
+              </span>
+            </label>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <label htmlFor="w-eigen" className="text-sm font-semibold text-muted">
               Eigen voorbereiding (mag leeg)

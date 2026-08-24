@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Flame, Timer as TimerIcoon } from 'lucide-react'
 import { Kaart, Laden, Mislukt } from '../components/ui'
 import { useTimers } from '../lib/timers'
+import { BroodjeBoven, BroodjeOnder } from '../components/Broodje'
 import {
   kleurKlasse,
   useCategorieen,
@@ -113,20 +114,28 @@ export function Werkkaart() {
       {weergave === 'stapel' ? (
         <section className="flex flex-col gap-3">
           <p className="text-sm text-muted">Van onder naar boven opbouwen.</p>
-          <div className="flex flex-col-reverse gap-1.5">
-            {lijst.map((s) => (
-              <div key={s.id} className="flex items-center gap-3">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-on-brand tabular-nums">
-                  {s.volgorde}
-                </span>
-                <span
-                  className={`flex-1 rounded-full px-4 py-3 text-center font-semibold ${kleurKlasse(s.kleur)}`}
-                >
-                  {s.tekst}
-                </span>
-                <Tijdknop stap={s} kaartnaam={kaart.naam} />
-              </div>
-            ))}
+          <div className="flex flex-col gap-1.5">
+            {/* Het broodje is geen stap — het gaat apart de oven in — maar de
+                omlijsting, zodat de stapel leest als de burger die eruit komt. */}
+            {kaart.broodje && <BroodjeBoven className="ml-11" />}
+
+            <div className="flex flex-col-reverse gap-1.5">
+              {lijst.map((s) => (
+                <div key={s.id} className="flex items-center gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-on-brand tabular-nums">
+                    {s.volgorde}
+                  </span>
+                  <span
+                    className={`flex-1 rounded-full px-4 py-3 text-center font-semibold ${kleurKlasse(s.kleur)}`}
+                  >
+                    {s.tekst}
+                  </span>
+                  <Tijdknop stap={s} kaartnaam={kaart.naam} />
+                </div>
+              ))}
+            </div>
+
+            {kaart.broodje && <BroodjeOnder className="ml-11" />}
           </div>
         </section>
       ) : (

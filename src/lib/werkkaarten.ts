@@ -30,6 +30,7 @@ export type Werkkaart = {
   bereiding_minuten: number | null
   bereiding_label: string | null
   foto_pad: string | null
+  broodje: boolean
   volgorde: number
   actief: boolean
 }
@@ -86,7 +87,7 @@ export function useWerkkaarten() {
     queryFn: async (): Promise<Werkkaart[]> => {
       const { data, error } = await supabase
         .from('werkkaarten')
-        .select('id,categorie_id,naam,weergave,gebruikt_gedeelde,eigen_bereiding,bereiding_minuten,bereiding_label,foto_pad,volgorde,actief')
+        .select('id,categorie_id,naam,weergave,gebruikt_gedeelde,eigen_bereiding,bereiding_minuten,bereiding_label,foto_pad,broodje,volgorde,actief')
         .eq('actief', true)
         .order('volgorde', { ascending: true })
       if (error) throw new Error(error.message)
@@ -126,6 +127,7 @@ export function useKaartBewaren() {
         eigen_bereiding: k.eigen_bereiding?.trim() || null,
         bereiding_minuten: k.bereiding_minuten ?? null,
         bereiding_label: k.bereiding_label?.trim() || null,
+        broodje: k.broodje ?? false,
         volgorde: k.volgorde ?? 999,
         actief: k.actief ?? true,
         bijgewerkt_op: new Date().toISOString(),
