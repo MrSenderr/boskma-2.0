@@ -4,6 +4,7 @@ import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
 import { Meldingen } from '../components/Meldingen'
+import { PersoonlijkeTakenSeintje } from '../components/PersoonlijkeTakenSeintje'
 
 export function Vandaag() {
   const { data, isPending, error, refetch } = usePersonen()
@@ -21,6 +22,8 @@ export function Vandaag() {
   return (
     <div className="flex flex-col gap-6">
       <Meldingen />
+
+      <PersoonlijkeTakenSeintje />
 
       <Wijzigingen />
 

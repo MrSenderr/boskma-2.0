@@ -135,3 +135,87 @@ export function useTaakWeghalen() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['taken-van'] }),
   })
 }
+
+/* ------------------------------------------------------------- beheerkant --- */
+
+export type TaakVanIemand = PersoonlijkeTaak & {
+  gezien_op: string | null
+  sollicitaties: { voornaam: string | null; achternaam: string | null } | null
+}
+
+const MET_NAAM =
+  'id,medewerker_id,tekst,toelichting,datum,gedaan_op,gezien_op,sollicitaties(voornaam,achternaam)'
+
+/** Afgevinkt en nog niet door jou gezien. Blijft staan tot je hem aftikt, net
+ *  als de gewijzigde gegevens en de reacties op verslagen. */
+export function useAfgevinkteTaken() {
+  return useQuery({
+    queryKey: ['taken-afgevinkt'],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<TaakVanIemand[]> => {
+      const { data, error } = await supabase
+        .from('persoonlijke_taken')
+        .select(MET_NAAM)
+        .not('gedaan_op', 'is', null)
+        .is('gezien_op', null)
+        .order('gedaan_op', { ascending: false })
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as TaakVanIemand[]
+    },
+  })
+}
+
+/** Wat er blijft liggen: over de datum heen en nog niet gedaan. */
+export function useTakenOverDatum() {
+  const vandaag = new Date().toLocaleDateString('sv-SE')
+  return useQuery({
+    queryKey: ['taken-over-datum', vandaag],
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<TaakVanIemand[]> => {
+      const { data, error } = await supabase
+        .from('persoonlijke_taken')
+        .select(MET_NAAM)
+        .is('gedaan_op', null)
+        .lt('datum', vandaag)
+        .order('datum', { ascending: true })
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as TaakVanIemand[]
+    },
+  })
+}
+
+export function useTaakGezien() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from('persoonlijke_taken')
+        .update({ gezien_op: new Date().toISOString() })
+        .eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['taken-afgevinkt'] }),
+  })
+}
+
+/** Alles, voor het logboek. */
+export function useAlleTaken(dagen = 90) {
+  const vanaf = new Date()
+  vanaf.setDate(vanaf.getDate() - dagen + 1)
+  const grens = vanaf.toLocaleDateString('sv-SE')
+  return useQuery({
+    queryKey: ['taken-alle', dagen],
+    queryFn: async (): Promise<TaakVanIemand[]> => {
+      const { data, error } = await supabase
+        .from('persoonlijke_taken')
+        .select(MET_NAAM)
+        .gte('datum', grens)
+        .order('datum', { ascending: false })
+        .order('id', { ascending: false })
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as TaakVanIemand[]
+    },
+  })
+}

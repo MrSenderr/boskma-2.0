@@ -17,7 +17,11 @@ export function TaakGeven({ persoon }: { persoon: Persoon }) {
   const [datum, setDatum] = useState(new Date().toLocaleDateString('sv-SE'))
 
   const open = (taken ?? []).filter((t) => !t.gedaan_op)
-  const afgerond = (taken ?? []).filter((t) => t.gedaan_op).slice(0, 3)
+  // Op afvinkdatum, niet op deadline: je wilt zien wat er het laatst gedaan is.
+  const afgerond = (taken ?? [])
+    .filter((t) => t.gedaan_op)
+    .sort((a, b) => (b.gedaan_op ?? '').localeCompare(a.gedaan_op ?? ''))
+    .slice(0, 10)
 
   function geef() {
     if (!tekst.trim()) return

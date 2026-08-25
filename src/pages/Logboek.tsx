@@ -5,6 +5,7 @@ import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { toonNaam } from '../lib/personeel'
 import { LogboekTaken } from './LogboekTaken'
+import { LogboekPersoonlijk } from './LogboekPersoonlijk'
 
 /* Terugkijken wat er geregistreerd is. Zie docs/modules/haccp/haccpmodule.md.
    Alleen lezen: een logboek waar dingen uit kunnen verdwijnen is geen logboek. */
@@ -61,7 +62,7 @@ function useLogboek(dagen: number) {
 }
 
 export function Logboek() {
-  const [soort, setSoort] = useState<'temperaturen' | 'taken'>('temperaturen')
+  const [soort, setSoort] = useState<'temperaturen' | 'taken' | 'persoonlijk'>('temperaturen')
   const [dagen, setDagen] = useState(30)
   const [alleenAfwijkingen, setAlleenAfwijkingen] = useState(false)
   const { data, isPending, error, refetch } = useLogboek(dagen)
@@ -82,7 +83,7 @@ export function Logboek() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex gap-1 rounded-[4px] bg-surface-2 p-1">
-        {(['temperaturen', 'taken'] as const).map((s) => (
+        {(['temperaturen', 'taken', 'persoonlijk'] as const).map((s) => (
           <button
             key={s}
             type="button"
@@ -92,13 +93,15 @@ export function Logboek() {
               soort === s ? 'bg-brand text-on-brand' : 'text-muted hover:bg-surface'
             }`}
           >
-            {s === 'temperaturen' ? 'Temperaturen' : 'Taken'}
+            {s === 'temperaturen' ? 'Temperaturen' : s === 'taken' ? 'Werklijsten' : 'Persoonlijk'}
           </button>
         ))}
       </div>
 
       {soort === 'taken' ? (
         <LogboekTaken />
+      ) : soort === 'persoonlijk' ? (
+        <LogboekPersoonlijk />
       ) : (
         <>
       <div className="flex flex-wrap items-center gap-2">
