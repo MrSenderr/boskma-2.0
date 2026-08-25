@@ -161,3 +161,16 @@ export function bijlagenVan(p: Persoon): Bijlage[] {
 
   return lijst
 }
+
+/** Wat er mee hoort te gaan, en of het er is. Zonder dit zag je alleen wát er
+ *  meeging — een ontbrekende loonheffingsverklaring viel niet op, want de
+ *  ID-kopie stond er wel en dan leek de lijst gevuld. */
+export function bijlagenStand(p: Persoon) {
+  const o = (p.onboarding_data ?? {}) as Record<string, unknown>
+  const heeft = (sleutel: string) => typeof o[sleutel] === 'string' && (o[sleutel] as string).length > 0
+  return [
+    { label: 'Loonheffingsverklaring', aanwezig: heeft('loonheffing_pdf'), blijvend: true },
+    { label: 'ID-kopie voorzijde', aanwezig: heeft('id_kopie_url'), blijvend: false },
+    { label: 'ID-kopie achterzijde', aanwezig: heeft('id_kopie_achterzijde'), blijvend: false },
+  ]
+}

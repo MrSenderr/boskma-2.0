@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Building2, Check, FileText, Pencil, Send, X } from 'lucide-react'
+import { AlertTriangle, Building2, Check, FileText, Pencil, Send, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import {
   CONTRACTTYPES,
@@ -11,7 +11,7 @@ import {
   usePersoonWijzigen,
   type Persoon,
 } from '../lib/personeel'
-import { bijlagenVan, bouwMutatieformulier } from '../lib/mutatieformulier'
+import { bijlagenStand, bijlagenVan, bouwMutatieformulier } from '../lib/mutatieformulier'
 import { useTestmodus } from '../lib/instellingen'
 import { supabase } from '../lib/supabase'
 
@@ -300,22 +300,34 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
       <Kaart className="flex flex-col gap-4 p-4">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold">Wat er meegaat</p>
-          <ul className="flex flex-col gap-1 text-sm text-muted">
+          <ul className="flex flex-col gap-1 text-sm">
             <li className="flex items-center gap-2">
-              <FileText className="size-4 shrink-0" aria-hidden /> Mutatieformulier
+              <FileText className="size-4 shrink-0 text-muted" aria-hidden /> Mutatieformulier
             </li>
-            {bijlagen.map((b) => (
-              <li key={b.filename} className="flex items-center gap-2">
-                <FileText className="size-4 shrink-0" aria-hidden /> {b.filename}
+            {bijlagenStand(p).map((b) => (
+              <li
+                key={b.label}
+                className={`flex items-start gap-2 ${b.aanwezig ? 'text-muted' : 'text-warn'}`}
+              >
+                {b.aanwezig ? (
+                  <FileText className="mt-0.5 size-4 shrink-0" aria-hidden />
+                ) : (
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                )}
+                <span>
+                  {b.label}
+                  {!b.aanwezig && (
+                    <span className="block">
+                      {b.blijvend
+                        ? 'Ontbreekt. Deze gaat dus niet mee — maak een nieuwe invullink als het loonbureau hem nodig heeft.'
+                        : p.loonbureau_verstuurd_op
+                          ? 'Ontbreekt. ID-kopieën worden veertien dagen na het versturen weggegooid; dat is normaal.'
+                          : 'Ontbreekt. De medewerker heeft het invulformulier nog niet gedaan, of heeft geen kopie geüpload.'}
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
-            {bijlagen.length === 0 && (
-              <li className="text-warn">
-                {p.onboarding_ingevuld_op
-                  ? 'Geen loonheffingsverklaring of ID-kopie bij deze medewerker gevonden. Wil je die meesturen, maak dan een nieuwe invullink.'
-                  : 'De medewerker heeft het invulformulier nog niet ingevuld — daar komen de loonheffingsverklaring en de ID-kopie vandaan.'}
-              </li>
-            )}
           </ul>
         </div>
 
