@@ -48,12 +48,15 @@ function Regel({
     <div className="border-b border-line px-4 py-3 last:border-b-0">
       <button
         type="button"
+        // Tijdens het aan- of afzetten niet nog eens: anders vuurt een tweede
+        // tik voordat de lijst is bijgewerkt.
+        disabled={aanzetten.isPending || afzetten.isPending}
         onClick={() =>
           aan
             ? afzetten.mutate(aan.id, { onError: (e) => meldFout(e.message) })
             : aanzetten.mutate({ datum, taak, doorNaam }, { onError: (e) => meldFout(e.message) })
         }
-        className="flex w-full items-start gap-3 text-left"
+        className="flex w-full items-start gap-3 text-left disabled:opacity-60"
       >
         <span
           className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${

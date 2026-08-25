@@ -128,7 +128,10 @@ export function useMepAanzetten() {
         naam: v.taak.naam,
         aangezet_door: v.doorNaam,
       })
-      if (error) throw new Error(error.message)
+      // 23505 is "staat er al". Dat gebeurt bij een dubbele tik terwijl de
+      // eerste nog onderweg is, en dan is de uitkomst precies wat je wilde —
+      // geen reden om er een foutmelding van te maken.
+      if (error && error.code !== '23505') throw new Error(error.message)
     },
     onSuccess: () => ververs(client),
   })
