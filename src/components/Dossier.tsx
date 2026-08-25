@@ -117,6 +117,10 @@ function Schrijven({ persoon, sluiten }: { persoon: Persoon; sluiten: () => void
 
 function Documenten({ persoon }: { persoon: Persoon }) {
   const { data } = useDocumenten(persoon.id)
+  // De loonheffingsverklaring komt uit het invulformulier en staat in
+  // onboarding_data. Hem hier tonen in plaats van kopiëren naar de
+  // dossiertabel: dan is er één waarheid en kan het niet uit elkaar lopen.
+  const verklaring = (persoon.onboarding_data as Record<string, unknown> | null)?.loonheffing_pdf
   const toevoegen = useDocumentToevoegen(persoon.id)
   const weggooien = useDocumentWeggooien()
   const invoerRef = useRef<HTMLInputElement>(null)
@@ -126,6 +130,24 @@ function Documenten({ persoon }: { persoon: Persoon }) {
   return (
     <section className="flex flex-col gap-3">
       <Kopje>Documenten</Kopje>
+
+      {typeof verklaring === 'string' && verklaring.length > 0 && (
+        <Kaart>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+            <FileText className="size-5 shrink-0 text-muted" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">Loonheffingsverklaring</span>
+              <span className="block text-sm text-muted">
+                Ondertekend bij het invulformulier
+                {persoon.onboarding_ingevuld_op ? ` op ${korteDatum(persoon.onboarding_ingevuld_op)}` : ''}
+              </span>
+            </span>
+            <Knop soort="rustig" onClick={() => documentOpenen(verklaring).catch((e) => setFout(e.message))}>
+              Openen
+            </Knop>
+          </div>
+        </Kaart>
+      )}
 
       {(data ?? []).length > 0 && (
         <Kaart>
