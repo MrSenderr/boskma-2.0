@@ -145,6 +145,11 @@ export function KasTellen() {
                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{v.blijft}</td>
                   <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${v.eruit > 0 ? 'text-accent' : 'text-muted'}`}>
                     {v.eruit || '—'}
+                    {v.rollen > 0 && (
+                      <span className="block text-xs font-normal text-muted">
+                        {v.rollen === 1 ? '1 rol' : `${v.rollen} rollen`}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -152,11 +157,15 @@ export function KasTellen() {
           </table>
         </Kaart>
 
-        <p className="text-sm text-muted">
+        <p className="max-w-prose text-sm text-muted">
           Van de {euro(totalen.eruitMunt + totalen.eruitBiljet)} die eruit gaat is{' '}
           <span className="font-semibold text-text">{euro(totalen.eruitBiljet)}</span> briefgeld — dat
           is wat er naar de bank kan. De {euro(totalen.eruitMunt)} aan munten blijft in de kluis als
           wisselgeld.
+        </p>
+        <p className="max-w-prose text-sm text-muted">
+          Munten gaan alleen per hele rol eruit. Heb je er een paar te veel, dan
+          blijven die gewoon liggen — daar loop je niet mee naar de kluis.
         </p>
 
         <div className="flex flex-col gap-1.5">

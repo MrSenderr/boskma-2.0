@@ -14,6 +14,8 @@ export type Coupure = {
   waarde_cent: number
   soort: Soort
   gewenst: number
+  /** Hoeveel er in een rol gaan. Alleen bij munten; bij biljetten leeg. */
+  rol: number | null
   volgorde: number
 }
 
@@ -73,27 +75,39 @@ export type Verdeling = {
   eruit: number
   /** Hoeveel je er tekort komt om op het gewenste aantal te komen. */
   tekort: number
+  /** Hoeveel rollen er eruit gaan; alleen bij munten. */
+  rollen: number
 }
 
-/** De hele splitsing, per coupure. Simpel en voorspelbaar: van elke coupure
- *  blijft het gewenste aantal liggen, de rest gaat eruit, en wat er niet is
- *  wordt als tekort gemeld. Geen slimmigheid die je later niet meer kunt
- *  navertellen. */
+/** De hele splitsing, per coupure.
+ *
+ *  Biljetten: wat boven het gewenste aantal zit gaat eruit. Die moeten naar de
+ *  bank en leveren geen gedoe met rollen op.
+ *
+ *  Munten: alleen hele rollen gaan eruit. Vier dubbeltjes te veel breng je niet
+ *  naar de kluis, veertig wel — dat is een rol. Wat er van het overschot
+ *  overblijft, blijft gewoon in de lade liggen.
+ *
+ *  Verder geen slimmigheid: je moet met de hand kunnen nacontroleren wat de app
+ *  zegt, en dat is bij geld belangrijker dan een optimale verdeling. */
 export function verdeel(coupures: Coupure[], geteld: Record<number, number>): Verdeling[] {
   return coupures
     .slice()
     .sort((a, b) => a.volgorde - b.volgorde)
     .map((c) => {
       const aantal = geteld[c.waarde_cent] ?? 0
-      const blijft = Math.min(aantal, c.gewenst)
+      const overschot = Math.max(0, aantal - c.gewenst)
+      const rollen = c.rol ? Math.floor(overschot / c.rol) : 0
+      const eruit = c.rol ? rollen * c.rol : overschot
       return {
         waarde_cent: c.waarde_cent,
         soort: c.soort,
         geteld: aantal,
         gewenst: c.gewenst,
-        blijft,
-        eruit: aantal - blijft,
+        blijft: aantal - eruit,
+        eruit,
         tekort: Math.max(0, c.gewenst - aantal),
+        rollen,
       }
     })
 }
@@ -125,7 +139,7 @@ export function useCoupures() {
     queryFn: async (): Promise<Coupure[]> => {
       const { data, error } = await supabase
         .from('kas_coupures')
-        .select('waarde_cent,soort,gewenst,volgorde')
+        .select('waarde_cent,soort,gewenst,rol,volgorde')
         .order('volgorde', { ascending: true })
       if (error) throw new Error(error.message)
       return (data ?? []) as unknown as Coupure[]

@@ -30,8 +30,13 @@ export function KasInstellen() {
     <div className="flex flex-col gap-4">
       <p className="max-w-prose text-sm text-muted">
         Hoeveel je van elke munt en elk biljet wilt overhouden in de lade. Heb je er
-        meer, dan gaat het verschil naar de kluis. Heb je er minder, dan zegt de app
-        dat je wisselgeld tekort komt.
+        minder, dan zegt de app dat je wisselgeld tekort komt.
+      </p>
+      <p className="max-w-prose text-sm text-muted">
+        Heb je er meer, dan hangt het van de soort af. <span className="font-semibold text-text">Biljetten</span>{' '}
+        gaan er meteen uit — die moeten naar de bank. <span className="font-semibold text-text">Munten</span>{' '}
+        pas per hele rol: vier dubbeltjes te veel blijven liggen, veertig gaan als rol
+        naar de kluis.
       </p>
 
       {fout && (
