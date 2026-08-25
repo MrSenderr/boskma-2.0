@@ -74,9 +74,11 @@ export function useMetingBewaren() {
       actie?: string | null
       opmerking?: string | null
       doorNaam: string
-      doorGebruiker: string | undefined
     }) => {
       const nu = new Date()
+      // door_gebruiker is het account-id, geen mailadres. De mutatie haalt het
+      // zelf op, zodat een scherm er niet iets anders in kan stoppen.
+      const { data: gebruiker } = await supabase.auth.getUser()
       const { error } = await supabase.from('haccp_temps').insert({
         apparaat_id: m.apparaat.id,
         apparaat_naam: m.apparaat.naam,
@@ -88,7 +90,7 @@ export function useMetingBewaren() {
         actie: m.actie ?? null,
         opmerking: m.opmerking ?? null,
         door_naam: m.doorNaam,
-        door_gebruiker: m.doorGebruiker ?? null,
+        door_gebruiker: gebruiker.user?.id ?? null,
       })
       if (error) throw new Error(error.message)
     },

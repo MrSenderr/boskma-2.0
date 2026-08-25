@@ -40,13 +40,11 @@ function Regel({
   apparaat,
   meting,
   doorNaam,
-  doorGebruiker,
   meetmoment,
 }: {
   apparaat: Apparaat
   meting: Meting | undefined
   doorNaam: string
-  doorGebruiker: string | undefined
   meetmoment: string
 }) {
   const bewaar = useMetingBewaren()
@@ -97,7 +95,6 @@ function Regel({
         actie: afwijkt ? (actie ?? null) : null,
         opmerking: opmerking.trim() || null,
         doorNaam,
-        doorGebruiker,
       },
       { onError: (e) => setFout(e.message) },
     )
@@ -288,7 +285,6 @@ export function Ronde() {
             apparaat={a}
             meting={(metingen ?? []).find((m) => m.apparaat_id === a.id)}
             doorNaam={wie?.naam ?? email ?? 'onbekend'}
-            doorGebruiker={email ?? undefined}
             meetmoment={moment}
           />
         ))}
