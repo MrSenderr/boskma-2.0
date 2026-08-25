@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, FileText, MessageSquare, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
+import { DocumentLink } from '../components/DocumentLink'
 import { korteDatum } from '../lib/personeel'
 import {
-  documentOpenen,
   soortLabel,
   useDocumenten,
   useVerslagReageren,
@@ -51,7 +51,6 @@ function Reageren({ verslag }: { verslag: Verslag }) {
       {fout && (
         <p className="rounded-[4px] border border-bad bg-bad-soft px-3 py-2 text-sm text-bad">{fout}</p>
       )}
-
       {oneens ? (
         <>
           <div className="flex flex-col gap-1.5">
@@ -121,7 +120,6 @@ export function MijnDossier() {
   const { data: wie } = useWieBenIk()
   const { data: verslagen, isPending, error, refetch } = useVerslagen(wie?.medewerker_id)
   const { data: documenten } = useDocumenten(wie?.medewerker_id)
-  const [fout, setFout] = useState<string | null>(null)
   const gemeld = useRef<Set<number>>(new Set())
 
   // Openen telt als gelezen; dan hoeft Sander niet te gissen of het is
@@ -149,10 +147,6 @@ export function MijnDossier() {
           titel="Nog niets in je dossier"
           uitleg="Hier komen gespreksverslagen en documenten te staan, zoals je contract."
         />
-      )}
-
-      {fout && (
-        <p className="rounded-[4px] border border-bad bg-bad-soft px-3 py-2 text-sm text-bad">{fout}</p>
       )}
 
       {verslagen.length > 0 && (
@@ -187,12 +181,7 @@ export function MijnDossier() {
                   <span className="block truncate font-medium">{d.naam}</span>
                   <span className="block text-sm text-muted">{soortLabel(d.soort)}</span>
                 </span>
-                <Knop
-                  soort="rustig"
-                  onClick={() => documentOpenen(d.pad).catch((e) => setFout(e.message))}
-                >
-                  Openen
-                </Knop>
+                <DocumentLink pad={d.pad}>Openen</DocumentLink>
               </div>
             ))}
           </Kaart>

@@ -3,7 +3,6 @@ import { FileText, MessageSquare, Paperclip, Plus, Send, Trash2 } from 'lucide-r
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import {
   SOORTEN,
-  documentOpenen,
   soortLabel,
   useDocumentToevoegen,
   useDocumentWeggooien,
@@ -15,6 +14,7 @@ import {
   type Verslag,
 } from '../lib/dossier'
 import { korteDatum, type Persoon } from '../lib/personeel'
+import { DocumentLink } from './DocumentLink'
 
 /* Het dossier zoals Sander het ziet. Zie
    docs/modules/personeel/personeelsmodule.md. */
@@ -142,9 +142,7 @@ function Documenten({ persoon }: { persoon: Persoon }) {
                 {persoon.onboarding_ingevuld_op ? ` op ${korteDatum(persoon.onboarding_ingevuld_op)}` : ''}
               </span>
             </span>
-            <Knop soort="rustig" onClick={() => documentOpenen(verklaring).catch((e) => setFout(e.message))}>
-              Openen
-            </Knop>
+            <DocumentLink pad={verklaring}>Openen</DocumentLink>
           </div>
         </Kaart>
       )}
@@ -163,9 +161,7 @@ function Documenten({ persoon }: { persoon: Persoon }) {
                   {soortLabel(d.soort)} — {korteDatum(d.toegevoegd_op)}
                 </span>
               </span>
-              <Knop soort="rustig" onClick={() => documentOpenen(d.pad).catch((e) => setFout(e.message))}>
-                Openen
-              </Knop>
+              <DocumentLink pad={d.pad}>Openen</DocumentLink>
               <button
                 type="button"
                 onClick={() => weggooien.mutate(d, { onError: (e) => setFout(e.message) })}
