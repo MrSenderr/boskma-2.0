@@ -228,8 +228,7 @@ export function Schil() {
         <div className="border-t border-white/10 p-3">
           <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">
             {tablet ? `${TABLETMENU[tablet].naam}tablet` : wie?.naam || email}
-            {!tablet && isTablet && ' · tablet'}
-            {!isTablet && wie?.rol === 'beheerder' && ' · beheerder'}
+            {!tablet && wie?.rol === 'beheerder' && ' · beheerder'}
           </p>
           {tablet && (
             <button

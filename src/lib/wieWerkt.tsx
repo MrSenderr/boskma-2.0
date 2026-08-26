@@ -39,10 +39,11 @@ export function WieWerkt({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const wacht = useRef<((w: Werker | null) => void) | null>(null)
 
-  // Het adres bepaalt dit, niet het account: /keuken of /zaak zet het aan.
-  // Een apparaataccount telt ook mee, voor wie dat al ingericht heeft.
+  // Alleen het adres bepaalt dit: /keuken of /zaak zet het aan. Er was ook een
+  // vlag op het account, maar dat moest door drie lagen kloppen en liep steeds
+  // ergens anders vast. Eén weg is beter dan twee.
   const [tablet, setTablet] = useState<Tablet | null>(huidigeTablet)
-  const isTablet = tablet !== null || wie?.is_apparaat === true
+  const isTablet = tablet !== null
 
   // Open je /keuken terwijl je nog moet inloggen, dan komt de route er niet aan
   // toe. Daarom hier ook kijken, vóór het inlogscherm.

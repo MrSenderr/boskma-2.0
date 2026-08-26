@@ -10,8 +10,6 @@ export type WieBenIk = {
   rol: Rol
   naam: string
   medewerker_id: string | null
-  /** Een tablet aan de muur, geen mens. Dan kiest de app wie er werkt. */
-  is_apparaat: boolean
 }
 
 export function useWieBenIk() {
@@ -24,25 +22,10 @@ export function useWieBenIk() {
       const rij = Array.isArray(data) ? data[0] : data
       const medewerker_id = rij?.medewerker_id ?? null
 
-      // De API houdt de vorm van functies in het geheugen. Is die cache nog niet
-      // ververst na een wijziging, dan ontbreekt is_apparaat in het antwoord en
-      // zou een tablet zich als gewone medewerker gedragen. Dan kijken we het
-      // zelf na op de eigen rij — die mag je altijd lezen.
-      let is_apparaat = rij?.is_apparaat === true
-      if (rij?.is_apparaat === undefined && medewerker_id) {
-        const { data: eigen } = await supabase
-          .from('sollicitaties')
-          .select('is_apparaat')
-          .eq('id', medewerker_id)
-          .maybeSingle()
-        is_apparaat = (eigen as { is_apparaat?: boolean } | null)?.is_apparaat === true
-      }
-
       return {
         rol: (rij?.rol ?? 'medewerker') as Rol,
         naam: rij?.naam ?? '',
         medewerker_id,
-        is_apparaat,
       }
     },
   })
