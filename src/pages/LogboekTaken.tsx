@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { LIJSTEN, hoekLabel, type Lijst } from '../lib/taken'
+import { TaakStatistiek } from '../components/TaakStatistiek'
 
 /* Wat er is afgetekend, en vooral: wat niet. Dat laatste is waar je als
    eigenaar naar kijkt. */
@@ -101,6 +102,8 @@ export function LogboekTaken() {
           </button>
         ))}
       </div>
+
+      <TaakStatistiek dagen={dagen} />
 
       <div className="flex flex-col gap-4">
         {dagen_.map((datum) => {
