@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp, Plus, Search, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Laden, Leeg, Mislukt, Pil, Veld } from '../components/ui'
+import { useWerkwijzen, useWerkwijzeAanHaccpTaak } from '../lib/werkwijzen'
 import {
   LIJSTEN,
   RITMES,
@@ -189,6 +190,9 @@ function TaakRegel({
   onAanUit: () => void
   onVerwijder: () => void
 }) {
+  const { data: werkwijzen } = useWerkwijzen()
+  const koppel = useWerkwijzeAanHaccpTaak()
+
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
       <div className="min-w-0 flex-1">
@@ -199,6 +203,25 @@ function TaakRegel({
         </p>
         {taak.toelichting && <p className="text-sm text-muted">{taak.toelichting}</p>}
       </div>
+
+      <select
+        className="min-h-11 w-full rounded-[4px] border border-line-strong bg-bg px-2 text-sm sm:w-auto sm:max-w-[11rem]"
+        aria-label={`Werkwijze bij ${taak.naam}`}
+        value={taak.werkwijze_id ?? ''}
+        onChange={(e) =>
+          koppel.mutate({
+            taakId: taak.id,
+            werkwijzeId: e.target.value ? Number(e.target.value) : null,
+          })
+        }
+      >
+        <option value="">geen uitleg</option>
+        {(werkwijzen ?? []).map((w) => (
+          <option key={w.id} value={w.id}>
+            {w.naam}
+          </option>
+        ))}
+      </select>
 
       <div className="flex items-center gap-1">
         <button

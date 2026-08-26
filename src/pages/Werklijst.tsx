@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
+import { UitlegKnop } from '../components/UitlegKnop'
 import { LIJSTEN, type Lijst } from '../lib/taken'
 import { perHoek, useTaakZetten, useWerklijst } from '../lib/werklijst'
 
@@ -90,11 +91,14 @@ export function Werklijst() {
                     const vinkje = data.vandaag.find((g) => g.taak_id === t.id)
                     const gedaan = Boolean(vinkje)
                     return (
+                      /* De uitlegknop staat náást de aftikknop en niet erin: een
+                         link in een knop kun je niet aantikken zonder ook af te
+                         vinken. */
+                      <div key={t.id} className="flex items-start border-b border-line last:border-b-0">
                       <button
-                        key={t.id}
                         type="button"
                         onClick={() => zetten.mutate({ taakId: t.id, gedaan: !gedaan })}
-                        className="flex w-full items-start gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
+                        className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
                       >
                         <span
                           className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-[4px] border-2 ${
@@ -119,6 +123,12 @@ export function Werklijst() {
                           )}
                         </span>
                       </button>
+                      {t.werkwijze_id && (
+                        <span className="py-3 pr-3">
+                          <UitlegKnop werkwijzeId={t.werkwijze_id} wat={t.naam} />
+                        </span>
+                      )}
+                      </div>
                     )
                   })}
                 </div>

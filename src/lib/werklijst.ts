@@ -32,7 +32,7 @@ export function useWerklijst(lijst: Lijst) {
       const [takenRes, gedaanRes] = await Promise.all([
         supabase
           .from('haccp_taken')
-          .select('id,naam,lijst,hoek,toelichting,ritme,dagen,volgorde,actief')
+          .select('id,naam,lijst,hoek,toelichting,ritme,dagen,volgorde,actief,werkwijze_id')
           .eq('lijst', lijst)
           .eq('actief', true)
           .order('volgorde', { ascending: true }),

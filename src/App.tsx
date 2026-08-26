@@ -31,6 +31,8 @@ import { Werkkaarten } from './pages/Werkkaarten'
 import { WerkkaartCategorie } from './pages/WerkkaartCategorie'
 import { Werkkaart } from './pages/Werkkaart'
 import { WerkkaartBeheer } from './pages/WerkkaartBeheer'
+import { Werkwijzen } from './pages/Werkwijzen'
+import { Werkwijze } from './pages/Werkwijze'
 import { Recepten } from './pages/Recepten'
 import { Recept } from './pages/Recept'
 import { Mep } from './pages/Mep'
@@ -78,6 +80,8 @@ function Poort() {
         <Route path="werkkaarten/beheer" element={<WerkkaartBeheer />} />
         <Route path="werkkaarten/kaart/:id" element={<Werkkaart />} />
         <Route path="werkkaarten/:categorie" element={<WerkkaartCategorie />} />
+        <Route path="werkwijzen" element={<Werkwijzen />} />
+        <Route path="werkwijzen/:id" element={<Werkwijze />} />
         <Route path="recepten" element={<Recepten />} />
         <Route path="recepten/:id" element={<Recept />} />
         <Route path="mep" element={<Mep />}>

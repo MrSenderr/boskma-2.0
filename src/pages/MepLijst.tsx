@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useRecepten, useReceptAanTaak } from '../lib/recepten'
+import { useWerkwijzen, useWerkwijzeAanMepTaak } from '../lib/werkwijzen'
 import {
   ZONDER_GROEP,
   groepenVan,
@@ -126,6 +127,8 @@ export function MepLijst() {
   const weggooien = useMepTaakWeggooien()
   const { data: recepten } = useRecepten()
   const koppelen = useReceptAanTaak()
+  const { data: werkwijzen } = useWerkwijzen()
+  const koppelWerkwijze = useWerkwijzeAanMepTaak()
   const [concept, setConcept] = useState<Concept | null>(null)
   const [fout, setFout] = useState<string | null>(null)
   const [weg, setWeg] = useState<number | null>(null)
@@ -210,6 +213,25 @@ export function MepLijst() {
                         {(recepten ?? []).map((r) => (
                           <option key={r.id} value={r.id}>
                             {r.naam}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        className="min-h-11 w-full rounded-[4px] border border-line-strong bg-bg px-2 text-sm sm:w-auto sm:max-w-[11rem]"
+                        aria-label={`Werkwijze bij ${t.naam}`}
+                        value={t.werkwijze_id ?? ''}
+                        onChange={(e) =>
+                          koppelWerkwijze.mutate(
+                            { taakId: t.id, werkwijzeId: e.target.value ? Number(e.target.value) : null },
+                            { onError: (x) => setFout(x.message) },
+                          )
+                        }
+                      >
+                        <option value="">geen uitleg</option>
+                        {(werkwijzen ?? []).map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.naam}
                           </option>
                         ))}
                       </select>

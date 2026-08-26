@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Check, ChefHat, Clock } from 'lucide-react'
+import { BookOpen, Check, ChefHat, Clock, ListOrdered } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
@@ -56,7 +56,9 @@ export function MepVandaag() {
       <Kaart>
         {data.map((t) => {
           const laat = isBlijvenLiggen(t)
-          const recept = (taken ?? []).find((x) => x.id === t.sjabloon_id)?.recept_id ?? null
+          const sjabloon = (taken ?? []).find((x) => x.id === t.sjabloon_id)
+          const recept = sjabloon?.recept_id ?? null
+          const uitleg = sjabloon?.werkwijze_id ?? null
           return (
             <div key={t.id} className="border-b border-line last:border-b-0">
             <button
@@ -113,15 +115,29 @@ export function MepVandaag() {
               </span>
             </button>
 
-            {recept && !t.gedaan && (
-              <Link
-                to={`/recepten/${recept}`}
-                data-touch
-                className="mb-2 ml-12 inline-flex items-center gap-1.5 rounded-[4px] border border-line-strong px-3 py-2 text-sm font-semibold hover:bg-surface-2"
-              >
-                <BookOpen className="size-4" aria-hidden />
-                Recept
-              </Link>
+            {!t.gedaan && (recept || uitleg) && (
+              <span className="mb-2 ml-12 flex flex-wrap gap-2">
+                {recept && (
+                  <Link
+                    to={`/recepten/${recept}`}
+                    data-touch
+                    className="inline-flex items-center gap-1.5 rounded-[4px] border border-line-strong px-3 py-2 text-sm font-semibold hover:bg-surface-2"
+                  >
+                    <BookOpen className="size-4" aria-hidden />
+                    Recept
+                  </Link>
+                )}
+                {uitleg && (
+                  <Link
+                    to={`/werkwijzen/${uitleg}`}
+                    data-touch
+                    className="inline-flex items-center gap-1.5 rounded-[4px] border border-line-strong px-3 py-2 text-sm font-semibold hover:bg-surface-2"
+                  >
+                    <ListOrdered className="size-4" aria-hidden />
+                    Uitleg
+                  </Link>
+                )}
+              </span>
             )}
             </div>
           )

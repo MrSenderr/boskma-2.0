@@ -17,6 +17,7 @@ export type Taak = {
   dagen: number[] | null
   volgorde: number | null
   actief: boolean
+  werkwijze_id: number | null
 }
 
 export const LIJSTEN: { waarde: Lijst; label: string }[] = [
@@ -46,7 +47,7 @@ export function hoekLabel(hoek: string) {
   return hoek.charAt(0).toUpperCase() + hoek.slice(1)
 }
 
-const VELDEN = 'id,naam,lijst,hoek,toelichting,ritme,dagen,volgorde,actief'
+const VELDEN = 'id,naam,lijst,hoek,toelichting,ritme,dagen,volgorde,actief,werkwijze_id'
 
 export function useTaken() {
   return useQuery({
