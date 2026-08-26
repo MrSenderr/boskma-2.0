@@ -56,7 +56,7 @@ export function Melden() {
         apparaatId: apparaat?.id ?? null,
         apparaatNaam: apparaat?.naam ?? null,
         foto,
-        medewerkerId: w?.id ?? wie?.medewerker_id,
+        medewerkerId: w?.id || wie?.medewerker_id || null,
         doorNaam: w?.naam || wie?.naam || email || 'onbekend',
       },
       {

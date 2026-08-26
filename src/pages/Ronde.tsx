@@ -13,7 +13,7 @@ import {
 } from '../lib/metingen'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt } from '../lib/wieWerkt'
+import { useWieWerkt, type Werker } from '../lib/wieWerkt'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { sluitingsrondeVanaf, useRooster, vandaagStr } from '../lib/openingstijden'
 import type { Meetmoment } from '../lib/apparaten'
@@ -48,7 +48,7 @@ function Regel({
   meting: Meting | undefined
   doorNaam: string
   meetmoment: string
-  vraagWie: () => Promise<{ id: string; naam: string } | null>
+  vraagWie: () => Promise<Werker | null>
 }) {
   const bewaar = useMetingBewaren()
   const [waarde, setWaarde] = useState('')

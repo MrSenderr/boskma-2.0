@@ -114,7 +114,7 @@ export function Frituurvet() {
                   if (w === null) return
                   bewaar.mutate(
                     {
-                      medewerkerId: w?.id ?? wie?.medewerker_id,
+                      medewerkerId: w?.id || wie?.medewerker_id || null,
                       doorNaam: w?.naam || wie?.naam || email || 'onbekend',
                     },
                     {

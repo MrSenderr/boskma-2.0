@@ -16,7 +16,9 @@ import { huidigeTablet, isTabletSoort, zetTablet, type Tablet } from './tabletmo
    binnenkomst: dan komt het werk van je collega die er even bijkomt op jouw naam
    te staan. */
 
-export type Werker = { id: string; naam: string }
+/** id is leeg bij een beheerder: die staat niet in de personeelslijst.
+ *  Nooit een lege tekst gebruiken — die kolom verwacht een nummer. */
+export type Werker = { id: string | null; naam: string }
 
 type Doos = {
   /** Welke tablet dit is, of null voor een gewone telefoon. */
@@ -69,7 +71,7 @@ export function WieWerkt({ children }: { children: ReactNode }) {
       // Nooit stilzwijgend niets teruggeven: dan doet een tik helemaal niets en
       // sta je te kijken naar een scherm dat zwijgt. Zonder medewerkernummer
       // leggen we vast op naam, dat is beter dan niet vastleggen.
-      return Promise.resolve({ id: wie?.medewerker_id ?? '', naam: wie?.naam ?? '' })
+      return Promise.resolve({ id: wie?.medewerker_id ?? null, naam: wie?.naam ?? '' })
     }
     return new Promise((klaar) => {
       // Stond er al een vraag open, dan die eerst netjes afsluiten. Anders

@@ -72,7 +72,7 @@ export function MepVandaag() {
                   {
                     id: t.id,
                     gedaan: !t.gedaan,
-                    medewerkerId: w?.id ?? wie?.medewerker_id,
+                    medewerkerId: w?.id || wie?.medewerker_id || null,
                     doorNaam: w?.naam || wie?.naam || email || 'onbekend',
                   },
                   { onError: (e) => setFout(e.message) },

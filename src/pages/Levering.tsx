@@ -49,7 +49,7 @@ export function Levering() {
         temperatuur: getal,
         ok,
         opmerking: opmerking.trim() || null,
-        medewerkerId: w?.id ?? wie?.medewerker_id,
+        medewerkerId: w?.id || wie?.medewerker_id || null,
         doorNaam: w?.naam || wie?.naam || email || 'onbekend',
       },
       {
