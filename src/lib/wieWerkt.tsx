@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { useWieBenIk } from './wie'
+import { huidigeTablet, zetTablet, type Tablet } from './tabletmodus'
 
 /* Wie er op een gedeelde tablet aan het werk is. Zie docs/Modules/tablets.md.
 
@@ -18,6 +19,8 @@ import { useWieBenIk } from './wie'
 export type Werker = { id: string; naam: string }
 
 type Doos = {
+  /** Welke tablet dit is, of null voor een gewone telefoon. */
+  tablet: Tablet | null
   /** Is dit een tablet? Dan wordt er gevraagd en is alles groter. */
   isTablet: boolean
   /** Wie legt dit vast? Op een telefoon jijzelf, op een tablet wie er kiest.
@@ -36,7 +39,28 @@ export function WieWerkt({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const wacht = useRef<((w: Werker | null) => void) | null>(null)
 
-  const isTablet = wie?.is_apparaat === true
+  // Het adres bepaalt dit, niet het account: /keuken of /zaak zet het aan.
+  // Een apparaataccount telt ook mee, voor wie dat al ingericht heeft.
+  const [tablet, setTablet] = useState<Tablet | null>(huidigeTablet)
+  const isTablet = tablet !== null || wie?.is_apparaat === true
+
+  // Open je /keuken terwijl je nog moet inloggen, dan komt de route er niet aan
+  // toe. Daarom hier ook kijken, vóór het inlogscherm.
+  useEffect(() => {
+    const pad = window.location.pathname.replace(/^\/tablet\//, '/')
+    if (pad === '/keuken' || pad === '/zaak') {
+      zetTablet(pad.slice(1) as Tablet)
+      setTablet(pad.slice(1) as Tablet)
+    }
+  }, [])
+
+  // De vlag kan in een ander tabblad gezet zijn, of net door /keuken.
+  useEffect(() => {
+    const kijk = () => setTablet(huidigeTablet())
+    kijk()
+    window.addEventListener('storage', kijk)
+    return () => window.removeEventListener('storage', kijk)
+  })
 
   const vraagWie = useCallback((): Promise<Werker | null> => {
     if (!isTablet) {
@@ -68,7 +92,7 @@ export function WieWerkt({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <Context.Provider value={{ isTablet, vraagWie, vraag: { open, kies, annuleer }, fout: null }}>
+    <Context.Provider value={{ tablet, isTablet, vraagWie, vraag: { open, kies, annuleer }, fout: null }}>
       {children}
     </Context.Provider>
   )

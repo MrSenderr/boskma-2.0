@@ -48,6 +48,7 @@ import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
 import { Timers } from './lib/timers'
 import { WieWerkt } from './lib/wieWerkt'
+import { TabletStart, TabletStartUitPad } from './pages/TabletStart'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -71,6 +72,12 @@ function Poort() {
 
   return (
     <Routes>
+      {/* De tabletmodus hangt aan het adres, niet aan het account: één ding
+          om te controleren, en te proberen op elke telefoon. */}
+      <Route path="keuken" element={<TabletStart soort="keuken" />} />
+      <Route path="zaak" element={<TabletStart soort="zaak" />} />
+      <Route path="tablet/:soort" element={<TabletStartUitPad />} />
+
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
         <Route path="temperaturen" element={<Ronde />} />

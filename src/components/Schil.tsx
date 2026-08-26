@@ -10,6 +10,7 @@ import { useWieBenIk } from '../lib/wie'
 import { LIJSTEN } from '../lib/taken'
 import { magIk, useMijnRechten } from '../lib/rechten'
 import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
+import { TABLETMENU, stopTablet } from '../lib/tabletmodus'
 import { TimerBalk } from './TimerBalk'
 import { WieBenJij } from './WieBenJij'
 import { useWieWerkt } from '../lib/wieWerkt'
@@ -123,7 +124,7 @@ export function Schil() {
   const { data: wie } = useWieBenIk()
   const { data: rechten } = useMijnRechten()
   const { data: verborgen } = useMijnVerborgen()
-  const { isTablet } = useWieWerkt()
+  const { isTablet, tablet } = useWieWerkt()
   const navigeer = useNavigate()
   const locatie = useLocation()
 
@@ -133,9 +134,15 @@ export function Schil() {
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
   // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar. Staat
   // 'recepten' uit, dan werkt de knop 'Recept' bij een MEP-taak gewoon.
-  const zichtbaar = MENU.filter(
-    (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
-  )
+  const zichtbaar = tablet
+    ? // Op een tablet bepaalt het adres het menu. Kort houden: een tablet doet
+      // één ding, en hoe minder er staat hoe sneller je vindt wat je zoekt.
+      TABLETMENU[tablet].paden
+        .map((pad) => MENU.find((m) => m.pad === pad))
+        .filter((m): m is (typeof MENU)[number] => Boolean(m))
+    : MENU.filter(
+        (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
+      )
   // De kas hangt aan een eigen recht en staat dus niet in de vaste menulijst:
   // wie het niet mag, hoort de knop niet te zien staan.
   const magKassen = magIk(rechten, 'kas')
@@ -220,10 +227,22 @@ export function Schil() {
 
         <div className="border-t border-white/10 p-3">
           <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">
-            {wie?.naam || email}
-            {isTablet && ' · tablet'}
+            {tablet ? `${TABLETMENU[tablet].naam}tablet` : wie?.naam || email}
+            {!tablet && isTablet && ' · tablet'}
             {!isTablet && wie?.rol === 'beheerder' && ' · beheerder'}
           </p>
+          {tablet && (
+            <button
+              type="button"
+              onClick={() => {
+                stopTablet()
+                window.location.assign('/')
+              }}
+              className="mb-1 w-full rounded-[4px] px-3 py-2 text-left text-sm text-[#F0EBD5]/70 hover:bg-white/5"
+            >
+              Tabletmodus uitzetten
+            </button>
+          )}
           <button
             type="button"
             onClick={uitloggen}
