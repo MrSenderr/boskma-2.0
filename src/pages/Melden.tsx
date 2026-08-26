@@ -27,7 +27,7 @@ export function Melden() {
   const [zoek] = useSearchParams()
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { werker } = useWieWerkt()
+  const { vraagWie } = useWieWerkt()
   const { data: apparaten } = useApparaten()
   const { data: open, isPending } = useOpenMeldingen()
   const melden = useMelden()
@@ -44,8 +44,10 @@ export function Melden() {
   const [gelukt, setGelukt] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
 
-  function versturen() {
+  async function versturen() {
     if (!soort || !tekst.trim()) return
+    const w = await vraagWie()
+    if (w === null) return
     setFout(null)
     melden.mutate(
       {
@@ -54,8 +56,8 @@ export function Melden() {
         apparaatId: apparaat?.id ?? null,
         apparaatNaam: apparaat?.naam ?? null,
         foto,
-        medewerkerId: werker?.id ?? wie?.medewerker_id,
-        doorNaam: werker?.naam || wie?.naam || email || 'onbekend',
+        medewerkerId: w?.id ?? wie?.medewerker_id,
+        doorNaam: w?.naam || wie?.naam || email || 'onbekend',
       },
       {
         onSuccess: () => {

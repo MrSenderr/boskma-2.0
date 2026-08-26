@@ -16,7 +16,7 @@ const invoer =
 export function Levering() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { werker } = useWieWerkt()
+  const { vraagWie } = useWieWerkt()
   const { data: eerder } = useLeveranciers()
   const { data: vandaag } = useLeveringenVandaag()
   const bewaar = useLeveringBewaren()
@@ -38,8 +38,10 @@ export function Levering() {
     getal !== null &&
     (ok || opmerking.trim().length > 0)
 
-  function bewaren() {
+  async function bewaren() {
     if (getal === null) return
+    const w = await vraagWie()
+    if (w === null) return
     setFout(null)
     bewaar.mutate(
       {
@@ -47,8 +49,8 @@ export function Levering() {
         temperatuur: getal,
         ok,
         opmerking: opmerking.trim() || null,
-        medewerkerId: werker?.id ?? wie?.medewerker_id,
-        doorNaam: werker?.naam || wie?.naam || email || 'onbekend',
+        medewerkerId: w?.id ?? wie?.medewerker_id,
+        doorNaam: w?.naam || wie?.naam || email || 'onbekend',
       },
       {
         onSuccess: () => {

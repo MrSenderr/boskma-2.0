@@ -19,7 +19,7 @@ import {
 export function Frituurvet() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { werker } = useWieWerkt()
+  const { vraagWie } = useWieWerkt()
   const { data, isPending, error, refetch } = useDoorschuiven()
   const bewaar = useDoorschuiven_bewaren()
   const [bevestigen, setBevestigen] = useState(false)
@@ -109,18 +109,20 @@ export function Frituurvet() {
               <Knop
                 soort="primair"
                 bezig={bewaar.isPending}
-                onClick={() =>
+                onClick={async () => {
+                  const w = await vraagWie()
+                  if (w === null) return
                   bewaar.mutate(
                     {
-                      medewerkerId: werker?.id ?? wie?.medewerker_id,
-                      doorNaam: werker?.naam || wie?.naam || email || 'onbekend',
+                      medewerkerId: w?.id ?? wie?.medewerker_id,
+                      doorNaam: w?.naam || wie?.naam || email || 'onbekend',
                     },
                     {
                       onSuccess: () => setBevestigen(false),
                       onError: (e) => setFout(e.message),
                     },
                   )
-                }
+                }}
               >
                 Ja, doorgeschoven
               </Knop>

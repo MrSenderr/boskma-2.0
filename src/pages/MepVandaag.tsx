@@ -14,7 +14,7 @@ import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVand
 export function MepVandaag() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { werker } = useWieWerkt()
+  const { vraagWie } = useWieWerkt()
   const { data, isPending, error, refetch } = useMepVandaag()
   const { data: notitie } = useMepNotitie(vandaagStr())
   const { data: taken } = useMepTaken(true)
@@ -65,17 +65,19 @@ export function MepVandaag() {
             <div key={t.id} className="border-b border-line last:border-b-0">
             <button
               type="button"
-              onClick={() =>
+              onClick={async () => {
+                const w = await vraagWie()
+                if (w === null) return
                 aftikken.mutate(
                   {
                     id: t.id,
                     gedaan: !t.gedaan,
-                    medewerkerId: werker?.id ?? wie?.medewerker_id,
-                    doorNaam: werker?.naam || wie?.naam || email || 'onbekend',
+                    medewerkerId: w?.id ?? wie?.medewerker_id,
+                    doorNaam: w?.naam || wie?.naam || email || 'onbekend',
                   },
                   { onError: (e) => setFout(e.message) },
                 )
-              }
+              }}
               className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
             >
               <span

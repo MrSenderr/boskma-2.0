@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed, Wallet, ListOrdered } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
@@ -11,7 +11,7 @@ import { LIJSTEN } from '../lib/taken'
 import { magIk, useMijnRechten } from '../lib/rechten'
 import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
 import { TimerBalk } from './TimerBalk'
-import { WieBenJij, WieWerktBalk } from './WieBenJij'
+import { WieBenJij } from './WieBenJij'
 import { useWieWerkt } from '../lib/wieWerkt'
 
 const MENU: {
@@ -123,7 +123,8 @@ export function Schil() {
   const { data: wie } = useWieBenIk()
   const { data: rechten } = useMijnRechten()
   const { data: verborgen } = useMijnVerborgen()
-  const { kiezenNodig } = useWieWerkt()
+  const { isTablet } = useWieWerkt()
+  const navigeer = useNavigate()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
@@ -146,6 +147,28 @@ export function Schil() {
     MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
     EXTRA_TITELS.find((t) => locatie.pathname.startsWith(t.pad))?.label ??
     'Boskma'
+
+  // Een tablet is een ander apparaat: alles fors groter, en na een paar minuten
+  // stilte terug naar het beginscherm zodat de volgende schoon begint.
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-tablet', isTablet)
+  }, [isTablet])
+
+  useEffect(() => {
+    if (!isTablet) return
+    let klok: number
+    const opnieuw = () => {
+      window.clearTimeout(klok)
+      klok = window.setTimeout(() => navigeer('/'), 3 * 60 * 1000)
+    }
+    const gebeurtenissen = ['pointerdown', 'keydown', 'scroll'] as const
+    gebeurtenissen.forEach((g) => window.addEventListener(g, opnieuw, { passive: true }))
+    opnieuw()
+    return () => {
+      window.clearTimeout(klok)
+      gebeurtenissen.forEach((g) => window.removeEventListener(g, opnieuw))
+    }
+  }, [isTablet, navigeer])
 
   return (
     <div className="flex min-h-dvh">
@@ -226,17 +249,15 @@ export function Schil() {
             en mag de instelling niet eens lezen — die valt terug op de veilige
             aanname en zag daardoor de balk. In medewerkersweergave blijft hij
             ook weg, anders klopt je voorbeeld niet met wat zij zien. */}
-        {!kiezenNodig && <WieWerktBalk />}
-
         {isBeheerder && gezicht === 'beheer' && <TestBalk />}
 
         <TimerBalk />
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
-          {/* Op een tablet eerst kiezen wie er werkt. Anders komt er straks
-              "Keukentablet" onder een temperatuurronde te staan. */}
-          {kiezenNodig ? <WieBenJij /> : <Outlet />}
+          <Outlet />
         </main>
+
+        <WieBenJij />
       </div>
     </div>
   )

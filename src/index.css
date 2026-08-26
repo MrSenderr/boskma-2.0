@@ -113,7 +113,8 @@
   a[data-touch],
   input,
   select {
-    min-height: 44px;
+    /* 44px bij de gewone maat; op een tablet schaalt dit mee met de basis. */
+    min-height: 2.75rem;
   }
   :focus-visible {
     outline: 2px solid var(--accent);
@@ -182,4 +183,14 @@
   a[href]::after {
     content: none !important;
   }
+}
+
+/* Tabletmodus. Zie docs/Modules/tablets.md.
+
+   Een tablet aan de muur bekijk je van een meter afstand, met vette vingers.
+   Alles moet fors groter, en omdat de hele app in rem rekent is één regel
+   genoeg: de basisgrootte omhoog en de rest schaalt mee. Ook de aanraakvlakken,
+   want die staan hieronder in rem en niet in pixels. */
+:root[data-tablet] {
+  font-size: 21px;
 }

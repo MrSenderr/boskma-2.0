@@ -42,11 +42,13 @@ function Regel({
   meting,
   doorNaam,
   meetmoment,
+  vraagWie,
 }: {
   apparaat: Apparaat
   meting: Meting | undefined
   doorNaam: string
   meetmoment: string
+  vraagWie: () => Promise<{ id: string; naam: string } | null>
 }) {
   const bewaar = useMetingBewaren()
   const [waarde, setWaarde] = useState('')
@@ -85,8 +87,11 @@ function Regel({
   const afwijkt = geldig && isAfwijking(apparaat, getal)
   const signaal = geldig && isSignaal(apparaat, getal)
 
-  function bewaren() {
+  async function bewaren() {
     if (!geldig) return
+    // Op een tablet eerst vragen wie het deed; op een telefoon ben jij dat.
+    const w = await vraagWie()
+    if (w === null) return
     setFout(null)
     bewaar.mutate(
       {
@@ -218,7 +223,7 @@ export function Ronde() {
   const { data: metingen } = useMetingenVandaag(moment)
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { werker } = useWieWerkt()
+  const { vraagWie } = useWieWerkt()
 
   if (isPending) return <Laden tekst="Temperaturen laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -286,7 +291,8 @@ export function Ronde() {
             key={a.id}
             apparaat={a}
             meting={(metingen ?? []).find((m) => m.apparaat_id === a.id)}
-            doorNaam={werker?.naam || wie?.naam || email || 'onbekend'}
+            doorNaam={wie?.naam || email || 'onbekend'}
+            vraagWie={vraagWie}
             meetmoment={moment}
           />
         ))}

@@ -1,68 +1,61 @@
-import { UserRound } from 'lucide-react'
-import { Kaart, Kopje, Laden } from './ui'
+import { UserRound, X } from 'lucide-react'
+import { Laden } from './ui'
 import { useWieWerkt, useWieWerktErLijst } from '../lib/wieWerkt'
 
-/* Op een tablet: wie staat er nu achter het scherm? Grote knoppen, één tik, en
-   de keuze blijft een uur staan. Zie docs/Modules/tablets.md. */
+/* De naamvraag op een tablet. Komt tevoorschijn op het moment dat je iets
+   vastlegt, niet bij binnenkomst: dan komt het werk van een collega die er even
+   bijkomt op jouw naam te staan. Zie docs/Modules/tablets.md. */
 
 export function WieBenJij() {
-  const { kies } = useWieWerkt()
+  const { vraag } = useWieWerkt()
   const { data, isPending } = useWieWerktErLijst()
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Kopje>Wie ben jij?</Kopje>
-        <p className="mt-1 text-sm text-muted">
-          Wat je aftikt komt op jouw naam te staan. De keuze blijft een uur staan.
-        </p>
-      </div>
+  if (!vraag.open) return null
 
-      {isPending ? (
-        <Laden />
-      ) : (data ?? []).length === 0 ? (
-        <Kaart className="p-5">
-          <p className="text-sm text-muted">
-            Er staan geen medewerkers in de lijst. Voeg ze toe onder Personeel.
-          </p>
-        </Kaart>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {(data ?? []).map((w) => (
-            <button
-              key={w.id}
-              type="button"
-              onClick={() => kies(w)}
-              className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-card border-[1.5px] border-line-strong bg-surface px-3 py-4 text-center font-display text-lg hover:border-accent hover:bg-surface-2"
-            >
-              <UserRound className="size-5 text-muted" aria-hidden />
-              {w.naam}
-            </button>
-          ))}
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Wie legt dit vast?"
+    >
+      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-card bg-surface">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <span className="font-display text-2xl">Wie ben jij?</span>
+          <button
+            type="button"
+            onClick={vraag.annuleer}
+            aria-label="Annuleren"
+            className="flex size-12 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-text"
+          >
+            <X className="size-6" aria-hidden />
+          </button>
         </div>
-      )}
-    </div>
-  )
-}
 
-/** Een balkje met wie er nu werkt, en de mogelijkheid om te wisselen. */
-export function WieWerktBalk() {
-  const { werker, vergeet } = useWieWerkt()
-  if (!werker) return null
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 text-sm">
-      <UserRound className="size-4 shrink-0 text-muted" aria-hidden />
-      <span className="min-w-0 flex-1">
-        Je werkt als <span className="font-semibold">{werker.naam}</span>
-      </span>
-      <button
-        type="button"
-        onClick={vergeet}
-        className="min-h-11 rounded-[4px] px-3 font-semibold text-muted hover:bg-surface hover:text-text"
-      >
-        Iemand anders
-      </button>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {isPending ? (
+            <Laden />
+          ) : (data ?? []).length === 0 ? (
+            <p className="p-4 text-muted">
+              Er staan geen medewerkers in de lijst. Voeg ze toe onder Personeel.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {(data ?? []).map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => vraag.kies(w)}
+                  className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-card border-2 border-line-strong bg-surface px-3 py-5 text-center font-display text-xl hover:border-accent hover:bg-surface-2"
+                >
+                  <UserRound className="size-7 text-muted" aria-hidden />
+                  {w.naam}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
