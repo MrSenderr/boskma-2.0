@@ -9,22 +9,31 @@ import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
 import { LIJSTEN } from '../lib/taken'
 import { magIk, useMijnRechten } from '../lib/rechten'
+import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
 import { TimerBalk } from './TimerBalk'
 
-const MENU: { pad: string; label: string; icoon: typeof Users; exact: boolean; voor: Modus | 'beide' }[] = [
+const MENU: {
+  pad: string
+  label: string
+  icoon: typeof Users
+  exact: boolean
+  voor: Modus | 'beide'
+  /** Leeg = staat altijd in het menu. */
+  onderdeel?: Onderdeel
+}[] = [
   // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
-  { pad: '/mep', label: 'MEP', icoon: ChefHat, exact: false, voor: 'beide' },
-  { pad: '/werkkaarten', label: 'Werkkaarten', icoon: UtensilsCrossed, exact: false, voor: 'beide' },
-  { pad: '/recepten', label: 'Recepten', icoon: BookOpen, exact: false, voor: 'beide' },
-  { pad: '/werkwijzen', label: 'Werkwijzen', icoon: ListOrdered, exact: false, voor: 'beide' },
+  { pad: '/mep', label: 'MEP', icoon: ChefHat, exact: false, voor: 'beide', onderdeel: 'mep' },
+  { pad: '/werkkaarten', label: 'Werkkaarten', icoon: UtensilsCrossed, exact: false, voor: 'beide', onderdeel: 'werkkaarten' },
+  { pad: '/recepten', label: 'Recepten', icoon: BookOpen, exact: false, voor: 'beide', onderdeel: 'recepten' },
+  { pad: '/werkwijzen', label: 'Werkwijzen', icoon: ListOrdered, exact: false, voor: 'beide', onderdeel: 'werkwijzen' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
-  { pad: '/temperaturen', label: 'Temperaturen', icoon: Thermometer, exact: false, voor: 'medewerker' },
-  { pad: '/taken', label: 'Taken', icoon: ListChecks, exact: false, voor: 'medewerker' },
+  { pad: '/temperaturen', label: 'Temperaturen', icoon: Thermometer, exact: false, voor: 'medewerker', onderdeel: 'temperaturen' },
+  { pad: '/taken', label: 'Taken', icoon: ListChecks, exact: false, voor: 'medewerker', onderdeel: 'taken' },
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
 ]
@@ -111,13 +120,18 @@ export function Schil() {
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
   const { data: rechten } = useMijnRechten()
+  const { data: verborgen } = useMijnVerborgen()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
   // De echte grens ligt in de database; dit is alleen het scherm.
   const isBeheerder = wie?.rol === 'beheerder'
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
-  const zichtbaar = MENU.filter((m) => m.voor === gezicht || m.voor === 'beide')
+  // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar. Staat
+  // 'recepten' uit, dan werkt de knop 'Recept' bij een MEP-taak gewoon.
+  const zichtbaar = MENU.filter(
+    (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
+  )
   // De kas hangt aan een eigen recht en staat dus niet in de vaste menulijst:
   // wie het niet mag, hoort de knop niet te zien staan.
   const magKassen = magIk(rechten, 'kas')

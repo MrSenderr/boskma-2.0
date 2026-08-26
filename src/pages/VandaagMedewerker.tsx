@@ -9,6 +9,7 @@ import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/vandaag'
 import { MepBlok, PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
 import { useVerslagen } from '../lib/dossier'
+import { useMijnVerborgen, zieIk } from '../lib/zichtbaar'
 
 /* Het startscherm van een medewerker: wat er vandaag van hem verwacht wordt.
    Zie docs/modules/haccp/haccpmodule.md — "Schermen op de telefoon". */
@@ -29,6 +30,7 @@ export function VandaagMedewerker() {
   const { data: verjaardagen } = useVerjaardagen()
   const { data: verslagen } = useVerslagen(wie?.medewerker_id)
   const { data: rooster } = useRooster()
+  const { data: verborgen } = useMijnVerborgen()
 
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -95,7 +97,7 @@ export function VandaagMedewerker() {
         )
       })()}
 
-      {teDoenVandaag.length > 0 && (
+      {zieIk(verborgen, 'temperaturen') && teDoenVandaag.length > 0 && (
         <section className="flex flex-col gap-3">
           <Kopje>Wat er vandaag moet</Kopje>
           {teDoenVandaag.map((r) => (
@@ -123,11 +125,15 @@ export function VandaagMedewerker() {
 
       {open ? (
         <>
-          <MepBlok />
+          {zieIk(verborgen, 'mep') && <MepBlok />}
 
-          <Werklijsten />
+          {zieIk(verborgen, 'taken') && (
+            <>
+              <Werklijsten />
 
-          <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
+              <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
+            </>
+          )}
         </>
       ) : (
         <Kaart className="p-5">
@@ -142,9 +148,11 @@ export function VandaagMedewerker() {
       {/* Een levering komt op een willekeurig moment binnen en het vet schuift
           door wanneer het nodig is. Geen van beide is een taak die af moet, dus
           staan ze hier als knop en niet in een lijstje. */}
+      {(zieIk(verborgen, 'levering') || zieIk(verborgen, 'frituurvet') || zieIk(verborgen, 'melden')) && (
       <section className="flex flex-col gap-3">
         <Kopje>Tussendoor</Kopje>
         <div className="flex flex-col gap-2 sm:flex-row">
+          {zieIk(verborgen, 'levering') && (
           <Link
             to="/levering"
             data-touch
@@ -154,6 +162,8 @@ export function VandaagMedewerker() {
             <span className="flex-1 font-semibold">Levering aantekenen</span>
             <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
           </Link>
+          )}
+          {zieIk(verborgen, 'frituurvet') && (
           <Link
             to="/frituurvet"
             data-touch
@@ -163,6 +173,8 @@ export function VandaagMedewerker() {
             <span className="flex-1 font-semibold">Frituurvet</span>
             <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
           </Link>
+          )}
+          {zieIk(verborgen, 'melden') && (
           <Link
             to="/melden"
             data-touch
@@ -172,8 +184,10 @@ export function VandaagMedewerker() {
             <span className="flex-1 font-semibold">Iets melden</span>
             <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
           </Link>
+          )}
         </div>
       </section>
+      )}
 
       {verjaardagen && (() => {
         const { vandaag, komend } = jarigen(verjaardagen)
