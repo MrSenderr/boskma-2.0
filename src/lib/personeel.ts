@@ -129,6 +129,8 @@ export function usePersonen() {
       const { data, error } = await supabase
         .from('sollicitaties')
         .select(LIJST_VELDEN)
+        // Tablets loggen in als een medewerker maar zijn geen personeel.
+        .eq('is_apparaat', false)
         .order('aangemeld_op', { ascending: false })
       if (error) throw new Error(error.message)
       return (data ?? []) as unknown as Persoon[]

@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
+import { useWieWerkt } from '../lib/wieWerkt'
 import { useRooster, vandaagStr, volgendeOpendag } from '../lib/openingstijden'
 import {
   ZONDER_GROEP,
@@ -111,6 +112,7 @@ function Regel({
 export function MepKlaarzetten() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
+  const { werker } = useWieWerkt()
   const { data: rooster } = useRooster()
   const datum = volgendeOpendag(rooster, vandaagStr())
 
@@ -123,7 +125,7 @@ export function MepKlaarzetten() {
   if (isPending) return <Laden tekst="Lijst laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
-  const doorNaam = wie?.naam ?? email ?? 'onbekend'
+  const doorNaam = werker?.naam || wie?.naam || email || 'onbekend'
   const groepen = groepenVan(taken)
   const aangezet = dag ?? []
   const lang = new Date(datum + 'T12:00:00').toLocaleDateString('nl-NL', {

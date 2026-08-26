@@ -13,6 +13,7 @@ import {
 } from '../lib/metingen'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
+import { useWieWerkt } from '../lib/wieWerkt'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { sluitingsrondeVanaf, useRooster, vandaagStr } from '../lib/openingstijden'
 import type { Meetmoment } from '../lib/apparaten'
@@ -217,6 +218,7 @@ export function Ronde() {
   const { data: metingen } = useMetingenVandaag(moment)
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
+  const { werker } = useWieWerkt()
 
   if (isPending) return <Laden tekst="Temperaturen laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -284,7 +286,7 @@ export function Ronde() {
             key={a.id}
             apparaat={a}
             meting={(metingen ?? []).find((m) => m.apparaat_id === a.id)}
-            doorNaam={wie?.naam ?? email ?? 'onbekend'}
+            doorNaam={werker?.naam || wie?.naam || email || 'onbekend'}
             meetmoment={moment}
           />
         ))}

@@ -47,6 +47,7 @@ import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
 import { Timers } from './lib/timers'
+import { WieWerkt } from './lib/wieWerkt'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -130,11 +131,13 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Timers>
-          <BrowserRouter>
-            <Poort />
-          </BrowserRouter>
-        </Timers>
+        <WieWerkt>
+          <Timers>
+            <BrowserRouter>
+              <Poort />
+            </BrowserRouter>
+          </Timers>
+        </WieWerkt>
       </AuthProvider>
     </QueryClientProvider>
   )

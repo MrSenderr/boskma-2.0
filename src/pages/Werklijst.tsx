@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { UitlegKnop } from '../components/UitlegKnop'
+import { useWieWerkt } from '../lib/wieWerkt'
 import { LIJSTEN, type Lijst } from '../lib/taken'
 import { perHoek, useTaakZetten, useWerklijst } from '../lib/werklijst'
 
@@ -14,6 +15,7 @@ export function Werklijst() {
   const geldig = LIJSTEN.find((l) => l.waarde === lijst)
   const { data, isPending, error, refetch } = useWerklijst((geldig?.waarde ?? 'openen') as Lijst)
   const zetten = useTaakZetten()
+  const { werker } = useWieWerkt()
   const [open, setOpen] = useState<string | null>(null)
 
   if (!geldig) return <Mislukt tekst="Die lijst bestaat niet." />
@@ -97,7 +99,7 @@ export function Werklijst() {
                       <div key={t.id} className="flex items-start border-b border-line last:border-b-0">
                       <button
                         type="button"
-                        onClick={() => zetten.mutate({ taakId: t.id, gedaan: !gedaan })}
+                        onClick={() => zetten.mutate({ taakId: t.id, gedaan: !gedaan, door: werker?.naam })}
                         className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
                       >
                         <span

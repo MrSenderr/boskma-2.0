@@ -11,6 +11,8 @@ import { LIJSTEN } from '../lib/taken'
 import { magIk, useMijnRechten } from '../lib/rechten'
 import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
 import { TimerBalk } from './TimerBalk'
+import { WieBenJij, WieWerktBalk } from './WieBenJij'
+import { useWieWerkt } from '../lib/wieWerkt'
 
 const MENU: {
   pad: string
@@ -121,6 +123,7 @@ export function Schil() {
   const { data: wie } = useWieBenIk()
   const { data: rechten } = useMijnRechten()
   const { data: verborgen } = useMijnVerborgen()
+  const { kiezenNodig } = useWieWerkt()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
@@ -223,12 +226,16 @@ export function Schil() {
             en mag de instelling niet eens lezen — die valt terug op de veilige
             aanname en zag daardoor de balk. In medewerkersweergave blijft hij
             ook weg, anders klopt je voorbeeld niet met wat zij zien. */}
+        {!kiezenNodig && <WieWerktBalk />}
+
         {isBeheerder && gezicht === 'beheer' && <TestBalk />}
 
         <TimerBalk />
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
-          <Outlet />
+          {/* Op een tablet eerst kiezen wie er werkt. Anders komt er straks
+              "Keukentablet" onder een temperatuurronde te staan. */}
+          {kiezenNodig ? <WieBenJij /> : <Outlet />}
         </main>
       </div>
     </div>

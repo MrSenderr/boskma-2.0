@@ -94,8 +94,10 @@ export function perHoek(taken: Taak[], gedaanVandaag: Gedaan[]): HoekStand[] {
 export function useTaakZetten() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ taakId, gedaan }: { taakId: number; gedaan: boolean }) => {
-      const { error } = await supabase.rpc('taak_zetten', { taak: taakId, gedaan })
+    mutationFn: async ({ taakId, gedaan, door }: { taakId: number; gedaan: boolean; door?: string }) => {
+      // De naam gaat mee, want op een tablet is de ingelogde gebruiker het
+      // apparaat en niet degene die het deed.
+      const { error } = await supabase.rpc('taak_zetten', { taak: taakId, gedaan, door: door ?? null })
       if (error) throw new Error(error.message)
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ['werklijst'] }),

@@ -10,6 +10,8 @@ export type WieBenIk = {
   rol: Rol
   naam: string
   medewerker_id: string | null
+  /** Een tablet aan de muur, geen mens. Dan kiest de app wie er werkt. */
+  is_apparaat: boolean
 }
 
 export function useWieBenIk() {
@@ -24,6 +26,7 @@ export function useWieBenIk() {
         rol: (rij?.rol ?? 'medewerker') as Rol,
         naam: rij?.naam ?? '',
         medewerker_id: rij?.medewerker_id ?? null,
+        is_apparaat: rij?.is_apparaat === true,
       }
     },
   })

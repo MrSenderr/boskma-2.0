@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
+import { useWieWerkt } from '../lib/wieWerkt'
 import { korteDatum, toonNaam } from '../lib/personeel'
 import { vandaagStr } from '../lib/openingstijden'
 import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVandaag } from '../lib/mep'
@@ -13,6 +14,7 @@ import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVand
 export function MepVandaag() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
+  const { werker } = useWieWerkt()
   const { data, isPending, error, refetch } = useMepVandaag()
   const { data: notitie } = useMepNotitie(vandaagStr())
   const { data: taken } = useMepTaken(true)
@@ -68,8 +70,8 @@ export function MepVandaag() {
                   {
                     id: t.id,
                     gedaan: !t.gedaan,
-                    medewerkerId: wie?.medewerker_id,
-                    doorNaam: wie?.naam ?? email ?? 'onbekend',
+                    medewerkerId: werker?.id ?? wie?.medewerker_id,
+                    doorNaam: werker?.naam || wie?.naam || email || 'onbekend',
                   },
                   { onError: (e) => setFout(e.message) },
                 )
