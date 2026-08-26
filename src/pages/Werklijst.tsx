@@ -16,6 +16,7 @@ export function Werklijst() {
   const { data, isPending, error, refetch } = useWerklijst((geldig?.waarde ?? 'openen') as Lijst)
   const zetten = useTaakZetten()
   const { vraagWie } = useWieWerkt()
+  const [fout, setFout] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
 
   if (!geldig) return <Mislukt tekst="Die lijst bestaat niet." />
@@ -45,6 +46,12 @@ export function Werklijst() {
           <ArrowLeft className="size-4" aria-hidden />
           Terug
         </Link>
+
+        {fout && (
+          <p className="rounded-[4px] border border-bad bg-bad-soft px-3 py-2 text-sm text-bad">
+            Dit ging mis: {fout}
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <Kopje>{geldig.label}</Kopje>
@@ -102,7 +109,13 @@ export function Werklijst() {
                         onClick={async () => {
                           const w = await vraagWie()
                           if (w === null) return
-                          zetten.mutate({ taakId: t.id, gedaan: !gedaan, door: w.naam })
+                          setFout(null)
+                          zetten.mutate(
+                            { taakId: t.id, gedaan: !gedaan, door: w.naam },
+                            // Zonder dit mislukte een aftik in stilte, en dan
+                            // sta je te tikken zonder dat er iets gebeurt.
+                            { onError: (e) => setFout(e.message) },
+                          )
                         }}
                         className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
                       >
