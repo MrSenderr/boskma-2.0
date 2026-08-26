@@ -40,9 +40,10 @@ export function WieWerkt({ children }: { children: ReactNode }) {
 
   const vraagWie = useCallback((): Promise<Werker | null> => {
     if (!isTablet) {
-      return Promise.resolve(
-        wie?.medewerker_id ? { id: wie.medewerker_id, naam: wie.naam ?? '' } : null,
-      )
+      // Nooit stilzwijgend niets teruggeven: dan doet een tik helemaal niets en
+      // sta je te kijken naar een scherm dat zwijgt. Zonder medewerkernummer
+      // leggen we vast op naam, dat is beter dan niet vastleggen.
+      return Promise.resolve({ id: wie?.medewerker_id ?? '', naam: wie?.naam ?? '' })
     }
     return new Promise((klaar) => {
       // Stond er al een vraag open, dan die eerst netjes afsluiten. Anders

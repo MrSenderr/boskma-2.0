@@ -219,7 +219,11 @@ export function Schil() {
         {isBeheerder && <ModusSchakelaar modus={modus} zet={zetModusState} />}
 
         <div className="border-t border-white/10 p-3">
-          <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">{wie?.naam || email}</p>
+          <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">
+            {wie?.naam || email}
+            {isTablet && ' · tablet'}
+            {!isTablet && wie?.rol === 'beheerder' && ' · beheerder'}
+          </p>
           <button
             type="button"
             onClick={uitloggen}
