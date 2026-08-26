@@ -25,6 +25,8 @@ type Doos = {
   vraagWie: () => Promise<Werker | null>
   /** Voor de overlay; niet zelf gebruiken. */
   vraag: { open: boolean; kies: (w: Werker) => void; annuleer: () => void }
+  /** Wat er misging bij het vragen. */
+  fout: string | null
 }
 
 const Context = createContext<Doos | null>(null)
@@ -43,6 +45,10 @@ export function WieWerkt({ children }: { children: ReactNode }) {
       )
     }
     return new Promise((klaar) => {
+      // Stond er al een vraag open, dan die eerst netjes afsluiten. Anders
+      // blijft de vorige belofte voor eeuwig hangen en lijkt het alsof de app
+      // niets doet.
+      wacht.current?.(null)
       wacht.current = klaar
       setOpen(true)
     })
@@ -61,7 +67,7 @@ export function WieWerkt({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <Context.Provider value={{ isTablet, vraagWie, vraag: { open, kies, annuleer } }}>
+    <Context.Provider value={{ isTablet, vraagWie, vraag: { open, kies, annuleer }, fout: null }}>
       {children}
     </Context.Provider>
   )

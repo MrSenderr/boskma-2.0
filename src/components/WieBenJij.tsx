@@ -8,7 +8,7 @@ import { useWieWerkt, useWieWerktErLijst } from '../lib/wieWerkt'
 
 export function WieBenJij() {
   const { vraag } = useWieWerkt()
-  const { data, isPending } = useWieWerktErLijst()
+  const { data, isPending, error } = useWieWerktErLijst()
 
   if (!vraag.open) return null
 
@@ -35,6 +35,10 @@ export function WieBenJij() {
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {isPending ? (
             <Laden />
+          ) : error ? (
+            <p className="rounded-[4px] border border-bad bg-bad-soft p-4 text-bad">
+              De namenlijst kon niet geladen worden: {error.message}
+            </p>
           ) : (data ?? []).length === 0 ? (
             <p className="p-4 text-muted">
               Er staan geen medewerkers in de lijst. Voeg ze toe onder Personeel.
