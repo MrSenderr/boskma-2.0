@@ -242,14 +242,19 @@ export function Schil() {
               Tabletmodus uitzetten
             </button>
           )}
-          <button
-            type="button"
-            onClick={uitloggen}
-            className="flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm text-[#F0EBD5]/70 hover:bg-white/5"
-          >
-            <LogOut className="size-5 shrink-0" aria-hidden />
-            Uitloggen
-          </button>
+          {/* Geen uitlogknop op een gedeelde tablet: één misklik en er kan
+              niemand meer bij tot iemand de inlogcode ophaalt. Uitloggen doe je
+              door eerst de tabletmodus uit te zetten. */}
+          {!tablet && (
+            <button
+              type="button"
+              onClick={uitloggen}
+              className="flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm text-[#F0EBD5]/70 hover:bg-white/5"
+            >
+              <LogOut className="size-5 shrink-0" aria-hidden />
+              Uitloggen
+            </button>
+          )}
         </div>
       </aside>
 

@@ -74,6 +74,7 @@ function Poort() {
     <Routes>
       {/* De tabletmodus hangt aan het adres, niet aan het account: één ding
           om te controleren, en te proberen op elke telefoon. */}
+      <Route path="tablet" element={<TabletStart soort="algemeen" />} />
       <Route path="keuken" element={<TabletStart soort="keuken" />} />
       <Route path="zaak" element={<TabletStart soort="zaak" />} />
       <Route path="tablet/:soort" element={<TabletStartUitPad />} />

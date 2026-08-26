@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { useWieBenIk } from './wie'
-import { huidigeTablet, zetTablet, type Tablet } from './tabletmodus'
+import { huidigeTablet, isTabletSoort, zetTablet, type Tablet } from './tabletmodus'
 
 /* Wie er op een gedeelde tablet aan het werk is. Zie docs/Modules/tablets.md.
 
@@ -49,9 +49,10 @@ export function WieWerkt({ children }: { children: ReactNode }) {
   // toe. Daarom hier ook kijken, vóór het inlogscherm.
   useEffect(() => {
     const pad = window.location.pathname.replace(/^\/tablet\//, '/')
-    if (pad === '/keuken' || pad === '/zaak') {
-      zetTablet(pad.slice(1) as Tablet)
-      setTablet(pad.slice(1) as Tablet)
+    const soort = pad === '/tablet' ? 'algemeen' : pad.slice(1)
+    if (isTabletSoort(soort)) {
+      zetTablet(soort)
+      setTablet(soort)
     }
   }, [])
 

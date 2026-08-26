@@ -6,13 +6,19 @@
    Eén ding om te controleren als er iets niet klopt, en te testen op elke
    telefoon met welk account dan ook. */
 
-export type Tablet = 'keuken' | 'zaak'
+export type Tablet = 'algemeen' | 'keuken' | 'zaak'
 
 const SLEUTEL = 'boskma.tablet'
 
+const SOORTEN: Tablet[] = ['algemeen', 'keuken', 'zaak']
+
+export function isTabletSoort(w: unknown): w is Tablet {
+  return typeof w === 'string' && (SOORTEN as string[]).includes(w)
+}
+
 export function huidigeTablet(): Tablet | null {
   const w = localStorage.getItem(SLEUTEL)
-  return w === 'keuken' || w === 'zaak' ? w : null
+  return isTabletSoort(w) ? w : null
 }
 
 export function zetTablet(soort: Tablet) {
@@ -26,6 +32,22 @@ export function stopTablet() {
 /** Wat er op welke tablet in het menu staat. Kort houden: een tablet doet één
  *  ding, en hoe minder er staat hoe sneller je vindt wat je zoekt. */
 export const TABLETMENU: Record<Tablet, { naam: string; paden: string[] }> = {
+  // De tablet in de zaak die iedereen gebruikt: alles wat een medewerker doet.
+  algemeen: {
+    naam: 'Zaak',
+    paden: [
+      '/',
+      '/temperaturen',
+      '/taken',
+      '/mep',
+      '/werkkaarten',
+      '/recepten',
+      '/werkwijzen',
+      '/melden',
+      '/levering',
+      '/frituurvet',
+    ],
+  },
   keuken: {
     naam: 'Keuken',
     paden: ['/', '/mep', '/werkkaarten', '/recepten', '/werkwijzen'],
