@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { LIJSTEN, hoekLabel, type Lijst } from '../lib/taken'
+import { toonNaam } from '../lib/personeel'
 import { TaakStatistiek } from '../components/TaakStatistiek'
 
 /* Wat er is afgetekend, en vooral: wat niet. Dat laatste is waar je als
@@ -16,7 +17,28 @@ type Vinkje = {
   door_naam: string | null
 }
 
-type TaakInfo = { id: number; naam: string; lijst: Lijst | null; hoek: string | null; ritme: string }
+type TaakInfo = {
+  id: number
+  naam: string
+  lijst: Lijst | null
+  hoek: string | null
+  ritme: string
+  volgorde: number | null
+}
+
+/** De hoeken die in deze lijst voorkomen, in de volgorde van de taken zelf.
+ *  Een eigen versie omdat het logboek maar een paar velden per taak ophaalt. */
+function hoekenHier(taken: TaakInfo[]) {
+  const gezien: string[] = []
+  taken
+    .slice()
+    .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0))
+    .forEach((t) => {
+      const h = t.hoek ?? 'overig'
+      if (!gezien.includes(h)) gezien.push(h)
+    })
+  return gezien
+}
 
 function vanafDatum(dagen: number) {
   const d = new Date()
@@ -48,7 +70,7 @@ function useTakenLogboek(dagen: number) {
           .order('datum', { ascending: false }),
         supabase
           .from('haccp_taken')
-          .select('id,naam,lijst,hoek,ritme')
+          .select('id,naam,lijst,hoek,ritme,volgorde')
           .eq('actief', true)
           .not('lijst', 'is', null),
       ])
@@ -159,39 +181,75 @@ export function LogboekTaken() {
 
                       {uit && (
                         <div className="border-t border-line">
-                          {gemist.length > 0 && (
-                            <div className="px-4 py-3">
-                              <p className="mb-1 text-sm font-semibold text-warn">Niet afgetekend</p>
-                              <ul className="flex flex-col gap-0.5 text-sm text-muted">
-                                {gemist.map((t) => (
-                                  <li key={t.id}>
-                                    {t.naam} <span className="opacity-60">· {hoekLabel(t.hoek ?? 'overig')}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          <div className="border-t border-line px-4 py-3">
-                            <p className="mb-1 text-sm font-semibold">Wel afgetekend</p>
-                            <ul className="flex flex-col gap-0.5 text-sm text-muted">
-                              {gedaan.map((t) => {
-                                const v = vanDag.find((x) => x.taak_id === t.id)
-                                return (
-                                  <li key={t.id}>
-                                    {t.naam}
-                                    <span className="opacity-60">
-                                      {' · '}
-                                      {hoekLabel(t.hoek ?? 'overig')}
-                                      {v?.door_naam ? ` · ${v.door_naam}` : ''}
-                                      {v?.gedaan_op
-                                        ? ` · ${new Date(v.gedaan_op).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}`
-                                        : ''}
-                                    </span>
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          </div>
+                          {/* Per hoek, zoals op de werklijst zelf. Twee platte
+                              lijsten van tachtig taken zoek je met je ogen; per
+                              hoek weet je meteen waar je moet kijken. */}
+                          {hoekenHier(vanLijst).map((hoek) => {
+                            const inHoek = vanLijst
+                              .filter((t) => (t.hoek ?? 'overig') === hoek)
+                              .filter((t) => t.ritme !== 'wekelijks' || gedaanIds.has(t.id))
+                              .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0))
+                            if (inHoek.length === 0) return null
+                            const afHoek = inHoek.filter((t) => gedaanIds.has(t.id)).length
+
+                            return (
+                              <div key={hoek} className="border-b border-line last:border-b-0">
+                                <p className="flex flex-wrap items-baseline justify-between gap-2 bg-surface-2 px-4 py-1.5">
+                                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                                    {hoekLabel(hoek)}
+                                  </span>
+                                  <span
+                                    className={`text-sm tabular-nums ${
+                                      afHoek === inHoek.length ? 'text-good' : 'text-warn'
+                                    }`}
+                                  >
+                                    {afHoek} van {inHoek.length}
+                                  </span>
+                                </p>
+
+                                <ul className="flex flex-col">
+                                  {inHoek.map((t) => {
+                                    const v = vanDag.find((x) => x.taak_id === t.id)
+                                    const af = Boolean(v)
+                                    return (
+                                      <li
+                                        key={t.id}
+                                        className="flex items-start gap-2 px-4 py-1.5 text-sm"
+                                      >
+                                        {af ? (
+                                          <Check className="mt-0.5 size-4 shrink-0 text-good" aria-hidden />
+                                        ) : (
+                                          <span
+                                            className="mt-1 size-3 shrink-0 rounded-full border-[1.5px] border-warn"
+                                            aria-hidden
+                                          />
+                                        )}
+                                        <span className={`min-w-0 flex-1 ${af ? '' : 'font-medium text-warn'}`}>
+                                          {t.naam}
+                                          {af && (v?.door_naam || v?.gedaan_op) && (
+                                            <span className="text-muted">
+                                              {' · '}
+                                              {[
+                                                v?.door_naam ? toonNaam(v.door_naam) : null,
+                                                v?.gedaan_op
+                                                  ? new Date(v.gedaan_op).toLocaleTimeString('nl-NL', {
+                                                      hour: '2-digit',
+                                                      minute: '2-digit',
+                                                    })
+                                                  : null,
+                                              ]
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </li>
+                                    )
+                                  })}
+                                </ul>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </Kaart>
