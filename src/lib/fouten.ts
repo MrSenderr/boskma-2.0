@@ -1,17 +1,18 @@
 /* Technische foutmeldingen omzetten naar iets waar je wat aan hebt.
 
-   De database en de inlogdienst praten Engels en in hun eigen termen. "JWT
-   issued at future" zegt niets over wat je moet doen — dat de klok van je
-   apparaat voorloopt wél. */
+   De database en de inlogdienst praten Engels en in hun eigen termen. Dat zegt
+   niets over wat je eraan kunt doen; deze vertalingen wel. */
 
 type Vertaling = { herken: RegExp; tekst: string; uitloggen?: boolean }
 
 const VERTALINGEN: Vertaling[] = [
   {
+    /* De database weigert een inlogbewijs dat volgens háár klok nog moet
+       ingaan. Dat ligt aan de server, niet aan het apparaat van de gebruiker —
+       uitloggen helpt dan juist niet, wachten wel. */
     herken: /issued at future|iat.*future/i,
     tekst:
-      'De klok van dit apparaat loopt vóór op die van de server. Zet de tijd op automatisch (Systeeminstellingen → Datum en tijd) en log daarna opnieuw in.',
-    uitloggen: true,
+      'De server loopt even achter op zichzelf en accepteert je inlog daardoor nog niet. Wacht een halve minuut en laad de pagina opnieuw. Blijft het staan, zeg het dan tegen Sander.',
   },
   {
     herken: /jwt expired|token is expired|invalid refresh token|refresh_token_not_found/i,
@@ -51,4 +52,11 @@ export function leesbareFout(bericht: string): { tekst: string; uitloggen: boole
  *  token is kapot, en verversen lukt daar juist niet mee. */
 export function isSessiefout(bericht: string) {
   return VERTALINGEN.some((v) => v.uitloggen && v.herken.test(bericht))
+}
+
+/* Een inlogbewijs dat volgens de database "nog moet ingaan" wordt na een paar
+   seconden vanzelf geldig. Daarom bij deze ene fout blijven proberen in plaats
+   van meteen een rood scherm tonen. */
+export function isTijdelijkeKlokfout(bericht: string) {
+  return /issued at future|iat.*future/i.test(bericht)
 }

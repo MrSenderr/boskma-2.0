@@ -47,9 +47,21 @@ import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
 import { Timers } from './lib/timers'
+import { isTijdelijkeKlokfout } from './lib/fouten'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      /* Normaal één herkansing. Alleen als de server je inlogbewijs "nog te
+         vroeg" vindt langer doorproberen: dat trekt vanzelf bij. */
+      retry: (poging, fout) =>
+        isTijdelijkeKlokfout(fout instanceof Error ? fout.message : String(fout))
+          ? poging < 5
+          : poging < 1,
+      retryDelay: (poging) => Math.min(1000 * 2 ** poging, 15_000),
+    },
+  },
 })
 
 
