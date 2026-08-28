@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { supabase } from './lib/supabase'
+import { isSessiefout } from './lib/fouten'
 import { AuthProvider, useAuth } from './lib/auth'
 import { Schil } from './components/Schil'
 import { Inloggen } from './pages/Inloggen'
@@ -51,7 +53,32 @@ import { WieWerkt } from './lib/wieWerkt'
 import { TabletStart, TabletStartUitPad } from './pages/TabletStart'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      // Een kapotte sessie wordt niet beter van opnieuw proberen: die geeft elke
+      // keer dezelfde fout. Al het andere mag één herkansing.
+      retry: (poging, fout) =>
+        poging < 1 && !isSessiefout(fout instanceof Error ? fout.message : String(fout)),
+    },
+  },
+})
+
+/* Een sessie die niet meer klopt kan de app niet zelf herstellen: verversen lukt
+   niet met een kapot token. Dan is uitloggen het enige zinnige, en dat hoort de
+   app te doen zonder dat iemand een knop moet zoeken — zeker op een tablet in de
+   keuken.
+
+   Eén keer per keer dat de app draait, anders kom je in een kringetje van
+   uitloggen en opnieuw proberen. */
+let alUitgelogd = false
+queryClient.getQueryCache().subscribe((gebeurtenis) => {
+  if (gebeurtenis.type !== 'updated' || gebeurtenis.action.type !== 'error') return
+  const bericht = (gebeurtenis.action.error as Error | undefined)?.message ?? ''
+  if (alUitgelogd || !isSessiefout(bericht)) return
+
+  alUitgelogd = true
+  void supabase.auth.signOut().finally(() => window.location.assign('/'))
 })
 
 /* Wat je op het startscherm ziet hangt af van wie je bent, niet van een

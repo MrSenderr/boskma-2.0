@@ -46,3 +46,9 @@ export function leesbareFout(bericht: string): { tekst: string; uitloggen: boole
     ruw: bericht,
   }
 }
+
+/** Een sessie die niet meer klopt. Daar helpt opnieuw proberen niet tegen: het
+ *  token is kapot, en verversen lukt daar juist niet mee. */
+export function isSessiefout(bericht: string) {
+  return VERTALINGEN.some((v) => v.uitloggen && v.herken.test(bericht))
+}
