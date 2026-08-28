@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react'
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
+import { leesbareFout } from '../lib/fouten'
+import { supabase } from '../lib/supabase'
 
 /* ---------------------------------------------------------------- Knop --- */
 
@@ -138,14 +140,35 @@ export function Leeg({
 }
 
 export function Mislukt({ tekst, opnieuw }: { tekst: string; opnieuw?: () => void }) {
+  // Meldingen van de server zijn Engels en in hun eigen termen. Hier wordt er
+  // iets van gemaakt waar je wat aan hebt — en waar nodig een uitlogknop, want
+  // bij een kapotte sessie helpt opnieuw proberen niet.
+  const fout = leesbareFout(tekst)
+
   return (
     <Kaart className="flex flex-col items-center gap-3 border-bad p-12 text-center">
       <p className="font-display text-lg text-bad">Dit ging mis</p>
-      <p className="max-w-sm text-sm text-muted">{tekst}</p>
-      {opnieuw && (
-        <Knop soort="rustig" onClick={opnieuw}>
-          Opnieuw proberen
-        </Knop>
+      <p className="max-w-sm text-sm text-muted">{fout.tekst}</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {opnieuw && !fout.uitloggen && (
+          <Knop soort="rustig" onClick={opnieuw}>
+            Opnieuw proberen
+          </Knop>
+        )}
+        {fout.uitloggen && (
+          <Knop
+            soort="primair"
+            onClick={async () => {
+              await supabase.auth.signOut()
+              window.location.assign('/')
+            }}
+          >
+            Uitloggen en opnieuw inloggen
+          </Knop>
+        )}
+      </div>
+      {fout.tekst !== fout.ruw && (
+        <p className="max-w-sm text-xs text-muted opacity-70">{fout.ruw}</p>
       )}
     </Kaart>
   )
