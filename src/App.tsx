@@ -49,8 +49,6 @@ import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
 import { Timers } from './lib/timers'
-import { WieWerkt } from './lib/wieWerkt'
-import { TabletStart, TabletStartUitPad } from './pages/TabletStart'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,8 +64,7 @@ const queryClient = new QueryClient({
 
 /* Een sessie die niet meer klopt kan de app niet zelf herstellen: verversen lukt
    niet met een kapot token. Dan is uitloggen het enige zinnige, en dat hoort de
-   app te doen zonder dat iemand een knop moet zoeken — zeker op een tablet in de
-   keuken.
+   app te doen zonder dat iemand een knop moet zoeken.
 
    Eén keer per keer dat de app draait, anders kom je in een kringetje van
    uitloggen en opnieuw proberen. */
@@ -99,13 +96,6 @@ function Poort() {
 
   return (
     <Routes>
-      {/* De tabletmodus hangt aan het adres, niet aan het account: één ding
-          om te controleren, en te proberen op elke telefoon. */}
-      <Route path="tablet" element={<TabletStart soort="algemeen" />} />
-      <Route path="keuken" element={<TabletStart soort="keuken" />} />
-      <Route path="zaak" element={<TabletStart soort="zaak" />} />
-      <Route path="tablet/:soort" element={<TabletStartUitPad />} />
-
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
         <Route path="temperaturen" element={<Ronde />} />
@@ -166,13 +156,11 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <WieWerkt>
-          <Timers>
-            <BrowserRouter>
-              <Poort />
-            </BrowserRouter>
-          </Timers>
-        </WieWerkt>
+        <Timers>
+          <BrowserRouter>
+            <Poort />
+          </BrowserRouter>
+        </Timers>
       </AuthProvider>
     </QueryClientProvider>
   )

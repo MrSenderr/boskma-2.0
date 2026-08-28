@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed, Wallet, ListOrdered } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
@@ -10,10 +10,7 @@ import { useWieBenIk } from '../lib/wie'
 import { LIJSTEN } from '../lib/taken'
 import { magIk, useMijnRechten } from '../lib/rechten'
 import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
-import { TABLETMENU, stopTablet } from '../lib/tabletmodus'
 import { TimerBalk } from './TimerBalk'
-import { WieBenJij } from './WieBenJij'
-import { useWieWerkt } from '../lib/wieWerkt'
 
 const MENU: {
   pad: string
@@ -124,8 +121,6 @@ export function Schil() {
   const { data: wie } = useWieBenIk()
   const { data: rechten } = useMijnRechten()
   const { data: verborgen } = useMijnVerborgen()
-  const { isTablet, tablet } = useWieWerkt()
-  const navigeer = useNavigate()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
@@ -134,15 +129,9 @@ export function Schil() {
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
   // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar. Staat
   // 'recepten' uit, dan werkt de knop 'Recept' bij een MEP-taak gewoon.
-  const zichtbaar = tablet
-    ? // Op een tablet bepaalt het adres het menu. Kort houden: een tablet doet
-      // één ding, en hoe minder er staat hoe sneller je vindt wat je zoekt.
-      TABLETMENU[tablet].paden
-        .map((pad) => MENU.find((m) => m.pad === pad))
-        .filter((m): m is (typeof MENU)[number] => Boolean(m))
-    : MENU.filter(
-        (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
-      )
+  const zichtbaar = MENU.filter(
+    (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
+  )
   // De kas hangt aan een eigen recht en staat dus niet in de vaste menulijst:
   // wie het niet mag, hoort de knop niet te zien staan.
   const magKassen = magIk(rechten, 'kas')
@@ -155,27 +144,6 @@ export function Schil() {
     EXTRA_TITELS.find((t) => locatie.pathname.startsWith(t.pad))?.label ??
     'Boskma'
 
-  // Een tablet is een ander apparaat: alles fors groter, en na een paar minuten
-  // stilte terug naar het beginscherm zodat de volgende schoon begint.
-  useEffect(() => {
-    document.documentElement.toggleAttribute('data-tablet', isTablet)
-  }, [isTablet])
-
-  useEffect(() => {
-    if (!isTablet) return
-    let klok: number
-    const opnieuw = () => {
-      window.clearTimeout(klok)
-      klok = window.setTimeout(() => navigeer('/'), 3 * 60 * 1000)
-    }
-    const gebeurtenissen = ['pointerdown', 'keydown', 'scroll'] as const
-    gebeurtenissen.forEach((g) => window.addEventListener(g, opnieuw, { passive: true }))
-    opnieuw()
-    return () => {
-      window.clearTimeout(klok)
-      gebeurtenissen.forEach((g) => window.removeEventListener(g, opnieuw))
-    }
-  }, [isTablet, navigeer])
 
   return (
     <div className="flex min-h-dvh">
@@ -227,34 +195,17 @@ export function Schil() {
 
         <div className="border-t border-white/10 p-3">
           <p className="truncate px-3 pb-2 text-xs text-[#F0EBD5]/50">
-            {tablet ? `${TABLETMENU[tablet].naam}tablet` : wie?.naam || email}
-            {!tablet && wie?.rol === 'beheerder' && ' · beheerder'}
+            {wie?.naam || email}
+            {wie?.rol === 'beheerder' && ' · beheerder'}
           </p>
-          {tablet && (
-            <button
-              type="button"
-              onClick={() => {
-                stopTablet()
-                window.location.assign('/')
-              }}
-              className="mb-1 w-full rounded-[4px] px-3 py-2 text-left text-sm text-[#F0EBD5]/70 hover:bg-white/5"
-            >
-              Tabletmodus uitzetten
-            </button>
-          )}
-          {/* Geen uitlogknop op een gedeelde tablet: één misklik en er kan
-              niemand meer bij tot iemand de inlogcode ophaalt. Uitloggen doe je
-              door eerst de tabletmodus uit te zetten. */}
-          {!tablet && (
-            <button
-              type="button"
-              onClick={uitloggen}
-              className="flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm text-[#F0EBD5]/70 hover:bg-white/5"
-            >
-              <LogOut className="size-5 shrink-0" aria-hidden />
-              Uitloggen
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={uitloggen}
+            className="flex w-full items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm text-[#F0EBD5]/70 hover:bg-white/5"
+          >
+            <LogOut className="size-5 shrink-0" aria-hidden />
+            Uitloggen
+          </button>
         </div>
       </aside>
 
@@ -284,7 +235,6 @@ export function Schil() {
           <Outlet />
         </main>
 
-        <WieBenJij />
       </div>
     </div>
   )

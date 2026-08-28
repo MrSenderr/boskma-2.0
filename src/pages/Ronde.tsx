@@ -13,7 +13,6 @@ import {
 } from '../lib/metingen'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt, type Werker } from '../lib/wieWerkt'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { sluitingsrondeVanaf, useRooster, vandaagStr } from '../lib/openingstijden'
 import type { Meetmoment } from '../lib/apparaten'
@@ -42,13 +41,11 @@ function Regel({
   meting,
   doorNaam,
   meetmoment,
-  vraagWie,
 }: {
   apparaat: Apparaat
   meting: Meting | undefined
   doorNaam: string
   meetmoment: string
-  vraagWie: () => Promise<Werker | null>
 }) {
   const bewaar = useMetingBewaren()
   const [waarde, setWaarde] = useState('')
@@ -87,11 +84,8 @@ function Regel({
   const afwijkt = geldig && isAfwijking(apparaat, getal)
   const signaal = geldig && isSignaal(apparaat, getal)
 
-  async function bewaren() {
+  function bewaren() {
     if (!geldig) return
-    // Op een tablet eerst vragen wie het deed; op een telefoon ben jij dat.
-    const w = await vraagWie()
-    if (w === null) return
     setFout(null)
     bewaar.mutate(
       {
@@ -223,7 +217,6 @@ export function Ronde() {
   const { data: metingen } = useMetingenVandaag(moment)
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { vraagWie } = useWieWerkt()
 
   if (isPending) return <Laden tekst="Temperaturen laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
@@ -292,7 +285,6 @@ export function Ronde() {
             apparaat={a}
             meting={(metingen ?? []).find((m) => m.apparaat_id === a.id)}
             doorNaam={wie?.naam || email || 'onbekend'}
-            vraagWie={vraagWie}
             meetmoment={moment}
           />
         ))}

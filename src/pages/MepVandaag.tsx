@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom'
 import { Kaart, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt } from '../lib/wieWerkt'
 import { korteDatum, toonNaam } from '../lib/personeel'
 import { vandaagStr } from '../lib/openingstijden'
 import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVandaag } from '../lib/mep'
@@ -14,7 +13,6 @@ import { isBlijvenLiggen, useMepAftikken, useMepNotitie, useMepTaken, useMepVand
 export function MepVandaag() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { vraagWie } = useWieWerkt()
   const { data, isPending, error, refetch } = useMepVandaag()
   const { data: notitie } = useMepNotitie(vandaagStr())
   const { data: taken } = useMepTaken(true)
@@ -65,19 +63,17 @@ export function MepVandaag() {
             <div key={t.id} className="border-b border-line last:border-b-0">
             <button
               type="button"
-              onClick={async () => {
-                const w = await vraagWie()
-                if (w === null) return
+              onClick={() =>
                 aftikken.mutate(
                   {
                     id: t.id,
                     gedaan: !t.gedaan,
-                    medewerkerId: w?.id || wie?.medewerker_id || null,
-                    doorNaam: w?.naam || wie?.naam || email || 'onbekend',
+                    medewerkerId: wie?.medewerker_id ?? null,
+                    doorNaam: wie?.naam || email || 'onbekend',
                   },
                   { onError: (e) => setFout(e.message) },
                 )
-              }}
+              }
               className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-2"
             >
               <span

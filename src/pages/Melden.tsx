@@ -4,7 +4,6 @@ import { Camera, Check, MessageSquareWarning, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt } from '../lib/wieWerkt'
 import { toonNaam } from '../lib/personeel'
 import { useApparaten } from '../lib/apparaten'
 import { SOORTEN, soortLabel, useMelden, useOpenMeldingen, type Soort } from '../lib/meldingen'
@@ -27,7 +26,6 @@ export function Melden() {
   const [zoek] = useSearchParams()
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { vraagWie } = useWieWerkt()
   const { data: apparaten } = useApparaten()
   const { data: open, isPending } = useOpenMeldingen()
   const melden = useMelden()
@@ -44,10 +42,8 @@ export function Melden() {
   const [gelukt, setGelukt] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
 
-  async function versturen() {
+  function versturen() {
     if (!soort || !tekst.trim()) return
-    const w = await vraagWie()
-    if (w === null) return
     setFout(null)
     melden.mutate(
       {
@@ -56,8 +52,8 @@ export function Melden() {
         apparaatId: apparaat?.id ?? null,
         apparaatNaam: apparaat?.naam ?? null,
         foto,
-        medewerkerId: w?.id || wie?.medewerker_id || null,
-        doorNaam: w?.naam || wie?.naam || email || 'onbekend',
+        medewerkerId: wie?.medewerker_id ?? null,
+        doorNaam: wie?.naam || email || 'onbekend',
       },
       {
         onSuccess: () => {

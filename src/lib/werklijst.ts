@@ -95,8 +95,9 @@ export function useTaakZetten() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: async ({ taakId, gedaan, door }: { taakId: number; gedaan: boolean; door?: string }) => {
-      // De naam gaat mee, want op een tablet is de ingelogde gebruiker het
-      // apparaat en niet degene die het deed.
+      // 'door' is optioneel: leeg laten betekent dat de database de naam van de
+      // ingelogde gebruiker pakt. Dat is precies wat we willen zolang iedereen
+      // op zijn eigen account werkt.
       const { error } = await supabase.rpc('taak_zetten', { taak: taakId, gedaan, door: door ?? null })
       if (error) throw new Error(error.message)
     },

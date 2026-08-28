@@ -3,7 +3,6 @@ import { ArrowDown, Droplet } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt } from '../lib/wieWerkt'
 import { korteDatum, toonNaam } from '../lib/personeel'
 import {
   AANTAL_PANNEN,
@@ -19,7 +18,6 @@ import {
 export function Frituurvet() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { vraagWie } = useWieWerkt()
   const { data, isPending, error, refetch } = useDoorschuiven()
   const bewaar = useDoorschuiven_bewaren()
   const [bevestigen, setBevestigen] = useState(false)
@@ -109,20 +107,18 @@ export function Frituurvet() {
               <Knop
                 soort="primair"
                 bezig={bewaar.isPending}
-                onClick={async () => {
-                  const w = await vraagWie()
-                  if (w === null) return
+                onClick={() =>
                   bewaar.mutate(
                     {
-                      medewerkerId: w?.id || wie?.medewerker_id || null,
-                      doorNaam: w?.naam || wie?.naam || email || 'onbekend',
+                      medewerkerId: wie?.medewerker_id ?? null,
+                      doorNaam: wie?.naam || email || 'onbekend',
                     },
                     {
                       onSuccess: () => setBevestigen(false),
                       onError: (e) => setFout(e.message),
                     },
                   )
-                }}
+                }
               >
                 Ja, doorgeschoven
               </Knop>

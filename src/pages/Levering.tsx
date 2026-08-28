@@ -3,7 +3,6 @@ import { Check, Truck, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { useWieBenIk } from '../lib/wie'
-import { useWieWerkt } from '../lib/wieWerkt'
 import { useLeveranciers, useLeveringBewaren, useLeveringenVandaag } from '../lib/leveringen'
 
 /* Een levering aftekenen. Komt op een willekeurig moment binnen, dus dit is geen
@@ -16,7 +15,6 @@ const invoer =
 export function Levering() {
   const { email } = useAuth()
   const { data: wie } = useWieBenIk()
-  const { vraagWie } = useWieWerkt()
   const { data: eerder } = useLeveranciers()
   const { data: vandaag } = useLeveringenVandaag()
   const bewaar = useLeveringBewaren()
@@ -38,10 +36,8 @@ export function Levering() {
     getal !== null &&
     (ok || opmerking.trim().length > 0)
 
-  async function bewaren() {
+  function bewaren() {
     if (getal === null) return
-    const w = await vraagWie()
-    if (w === null) return
     setFout(null)
     bewaar.mutate(
       {
@@ -49,8 +45,8 @@ export function Levering() {
         temperatuur: getal,
         ok,
         opmerking: opmerking.trim() || null,
-        medewerkerId: w?.id || wie?.medewerker_id || null,
-        doorNaam: w?.naam || wie?.naam || email || 'onbekend',
+        medewerkerId: wie?.medewerker_id ?? null,
+        doorNaam: wie?.naam || email || 'onbekend',
       },
       {
         onSuccess: () => {

@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { UitlegKnop } from '../components/UitlegKnop'
-import { useWieWerkt } from '../lib/wieWerkt'
 import { LIJSTEN, type Lijst } from '../lib/taken'
 import { perHoek, useTaakZetten, useWerklijst } from '../lib/werklijst'
 
@@ -15,7 +14,6 @@ export function Werklijst() {
   const geldig = LIJSTEN.find((l) => l.waarde === lijst)
   const { data, isPending, error, refetch } = useWerklijst((geldig?.waarde ?? 'openen') as Lijst)
   const zetten = useTaakZetten()
-  const { vraagWie } = useWieWerkt()
   const [fout, setFout] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
 
@@ -106,12 +104,10 @@ export function Werklijst() {
                       <div key={t.id} className="flex items-start border-b border-line last:border-b-0">
                       <button
                         type="button"
-                        onClick={async () => {
-                          const w = await vraagWie()
-                          if (w === null) return
+                        onClick={() => {
                           setFout(null)
                           zetten.mutate(
-                            { taakId: t.id, gedaan: !gedaan, door: w.naam },
+                            { taakId: t.id, gedaan: !gedaan },
                             // Zonder dit mislukte een aftik in stilte, en dan
                             // sta je te tikken zonder dat er iets gebeurt.
                             { onError: (e) => setFout(e.message) },

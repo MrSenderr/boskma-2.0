@@ -129,7 +129,8 @@ export function usePersonen() {
       const { data, error } = await supabase
         .from('sollicitaties')
         .select(LIJST_VELDEN)
-        // Tablets loggen in als een medewerker maar zijn geen personeel.
+        // Apparaataccounts zijn geen personeel. Ze zijn er nu niet, maar het
+        // filter kost niets en voorkomt een verrassing als er ooit een komt.
         .eq('is_apparaat', false)
         .order('aangemeld_op', { ascending: false })
       if (error) throw new Error(error.message)
