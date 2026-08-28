@@ -58,13 +58,13 @@ export function WieWerkt({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // De vlag kan in een ander tabblad gezet zijn, of net door /keuken.
+  // De vlag kan in een ander tabblad gezet zijn. Eén keer registreren, niet bij
+  // elke render opnieuw.
   useEffect(() => {
     const kijk = () => setTablet(huidigeTablet())
-    kijk()
     window.addEventListener('storage', kijk)
     return () => window.removeEventListener('storage', kijk)
-  })
+  }, [])
 
   const vraagWie = useCallback((): Promise<Werker | null> => {
     if (!isTablet) {

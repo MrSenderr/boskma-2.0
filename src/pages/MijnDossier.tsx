@@ -6,6 +6,7 @@ import { DocumentLink } from '../components/DocumentLink'
 import { korteDatum } from '../lib/personeel'
 import {
   soortLabel,
+  splitsDocumenten,
   useDocumenten,
   useVerslagReageren,
   useVerslagen,
@@ -119,7 +120,10 @@ function Reageren({ verslag }: { verslag: Verslag }) {
 export function MijnDossier() {
   const { data: wie } = useWieBenIk()
   const { data: verslagen, isPending, error, refetch } = useVerslagen(wie?.medewerker_id)
-  const { data: documenten } = useDocumenten(wie?.medewerker_id)
+  const { data: alleDocumenten } = useDocumenten(wie?.medewerker_id)
+  // Een medewerker ziet wat er nu geldt. Vervallen papieren zijn geen dossier
+  // voor hem maar geschiedenis, en die hoort aan de beheerkant.
+  const documenten = splitsDocumenten(alleDocumenten).actueel
   const gemeld = useRef<Set<number>>(new Set())
 
   // Openen telt als gelezen; dan hoeft Sander niet te gissen of het is
@@ -136,7 +140,7 @@ export function MijnDossier() {
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
-  const leeg = verslagen.length === 0 && (documenten ?? []).length === 0
+  const leeg = verslagen.length === 0 && documenten.length === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -167,11 +171,11 @@ export function MijnDossier() {
         </section>
       )}
 
-      {(documenten ?? []).length > 0 && (
+      {documenten.length > 0 && (
         <section className="flex flex-col gap-3">
           <Kopje>Documenten</Kopje>
           <Kaart>
-            {(documenten ?? []).map((d) => (
+            {documenten.map((d) => (
               <div
                 key={d.id}
                 className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0"

@@ -2,6 +2,7 @@
 // Regel: staat er een kleur of maat rechtstreeks in een scherm, dan ontbreekt
 // hier een component. Zo blijft alles vanzelf hetzelfde.
 
+import { useEffect, useState } from 'react'
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 
@@ -88,11 +89,32 @@ export function Veld({ label, fout, id, className = '', ...rest }: VeldProps) {
 
 /* ------------------------------------------------------------ Toestanden --- */
 
+/** Duurt het langer dan een paar tellen, dan is er meestal iets mis en wil je
+ *  een uitweg in plaats van een molentje dat eeuwig doordraait. */
 export function Laden({ tekst = 'Bezig met laden…' }: { tekst?: string }) {
+  const [lang, setLang] = useState(false)
+  useEffect(() => {
+    const klok = setTimeout(() => setLang(true), 8000)
+    return () => clearTimeout(klok)
+  }, [])
+
   return (
-    <div className="flex items-center justify-center gap-3 p-12 text-muted">
-      <Loader2 className="size-5 animate-spin" aria-hidden />
-      <span>{tekst}</span>
+    <div className="flex flex-col items-center justify-center gap-3 p-12 text-center text-muted">
+      <span className="flex items-center gap-3">
+        <Loader2 className="size-5 animate-spin" aria-hidden />
+        <span>{tekst}</span>
+      </span>
+      {lang && (
+        <>
+          <p className="max-w-sm text-sm">
+            Dit duurt langer dan normaal. Meestal helpt opnieuw laden; blijft het
+            hangen, dan is er geen verbinding met de server.
+          </p>
+          <Knop soort="rustig" onClick={() => window.location.reload()}>
+            Opnieuw laden
+          </Knop>
+        </>
+      )}
     </div>
   )
 }

@@ -1,16 +1,20 @@
 import { useRef, useState } from 'react'
-import { FileText, MessageSquare, Paperclip, Plus, Send, Trash2 } from 'lucide-react'
+import { Archive, FileText, MessageSquare, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import {
   SOORTEN,
+  leesbareGrootte,
   soortLabel,
+  splitsDocumenten,
+  useDocumentLatenVervallen,
+  useDocumentTerughalen,
   useDocumentToevoegen,
-  useDocumentWeggooien,
   useDocumenten,
   useVerslagDelen,
   useVerslagSchrijven,
   useVerslagWeggooien,
   useVerslagen,
+  type Document,
   type Verslag,
 } from '../lib/dossier'
 import { korteDatum, type Persoon } from '../lib/personeel'
@@ -115,16 +119,49 @@ function Schrijven({ persoon, sluiten }: { persoon: Persoon; sluiten: () => void
   )
 }
 
+function Regel({
+  doc,
+  vervallen,
+  actie,
+}: {
+  doc: Document
+  vervallen?: boolean
+  actie: React.ReactNode
+}) {
+  const grootte = leesbareGrootte(doc.bytes)
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0">
+      <FileText className={`size-5 shrink-0 ${vervallen ? 'text-muted/60' : 'text-muted'}`} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate font-medium ${vervallen ? 'text-muted line-through' : ''}`}>
+          {doc.naam}
+        </span>
+        <span className="block text-sm text-muted">
+          {soortLabel(doc.soort)} — {korteDatum(doc.toegevoegd_op)}
+          {grootte ? ` — ${grootte}` : ''}
+          {vervallen && doc.vervallen_op ? ` — vervallen op ${korteDatum(doc.vervallen_op)}` : ''}
+        </span>
+        {doc.notitie && <span className="block text-sm text-muted">{doc.notitie}</span>}
+      </span>
+      <DocumentLink pad={doc.pad}>Openen</DocumentLink>
+      {actie}
+    </div>
+  )
+}
+
 function Documenten({ persoon }: { persoon: Persoon }) {
   const { data } = useDocumenten(persoon.id)
   // De loonheffingsverklaring komt uit het invulformulier en staat in
   // onboarding_data. Hem hier tonen in plaats van kopiëren naar de
   // dossiertabel: dan is er één waarheid en kan het niet uit elkaar lopen.
   const verklaring = (persoon.onboarding_data as Record<string, unknown> | null)?.loonheffing_pdf
+  const { actueel, vervallen } = splitsDocumenten(data)
   const toevoegen = useDocumentToevoegen(persoon.id)
-  const weggooien = useDocumentWeggooien()
+  const latenVervallen = useDocumentLatenVervallen()
+  const terughalen = useDocumentTerughalen()
   const invoerRef = useRef<HTMLInputElement>(null)
   const [soort, setSoort] = useState('contract')
+  const [toonVervallen, setToonVervallen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
 
   return (
@@ -147,30 +184,26 @@ function Documenten({ persoon }: { persoon: Persoon }) {
         </Kaart>
       )}
 
-      {(data ?? []).length > 0 && (
+      {actueel.length > 0 && (
         <Kaart>
-          {(data ?? []).map((d) => (
-            <div
+          {actueel.map((d) => (
+            <Regel
               key={d.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0"
-            >
-              <FileText className="size-5 shrink-0 text-muted" aria-hidden />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{d.naam}</span>
-                <span className="block text-sm text-muted">
-                  {soortLabel(d.soort)} — {korteDatum(d.toegevoegd_op)}
-                </span>
-              </span>
-              <DocumentLink pad={d.pad}>Openen</DocumentLink>
-              <button
-                type="button"
-                onClick={() => weggooien.mutate(d, { onError: (e) => setFout(e.message) })}
-                aria-label={`${d.naam} weggooien`}
-                className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-bad-soft hover:text-bad"
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </button>
-            </div>
+              doc={d}
+              actie={
+                <button
+                  type="button"
+                  onClick={() =>
+                    latenVervallen.mutate({ doc: d }, { onError: (e) => setFout(e.message) })
+                  }
+                  aria-label={`${d.naam} laten vervallen`}
+                  title="Laten vervallen — het bestand blijft bewaard"
+                  className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
+                >
+                  <Archive className="size-4" aria-hidden />
+                </button>
+              }
+            />
           ))}
         </Kaart>
       )}
@@ -201,6 +234,7 @@ function Documenten({ persoon }: { persoon: Persoon }) {
           ref={invoerRef}
           type="file"
           className="hidden"
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
           onChange={(e) => {
             const bestand = e.target.files?.[0]
             if (!bestand) return
@@ -217,6 +251,43 @@ function Documenten({ persoon }: { persoon: Persoon }) {
           Bestand kiezen
         </Knop>
       </Kaart>
+
+      {vervallen.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            data-touch
+            onClick={() => setToonVervallen((aan) => !aan)}
+            className="flex min-h-11 items-center gap-2 self-start text-sm font-semibold text-muted hover:text-fg"
+          >
+            <Archive className="size-4" aria-hidden />
+            {toonVervallen ? 'Vervallen documenten verbergen' : `Vervallen documenten (${vervallen.length})`}
+          </button>
+
+          {toonVervallen && (
+            <Kaart>
+              {vervallen.map((d) => (
+                <Regel
+                  key={d.id}
+                  doc={d}
+                  vervallen
+                  actie={
+                    <button
+                      type="button"
+                      onClick={() => terughalen.mutate(d, { onError: (e) => setFout(e.message) })}
+                      aria-label={`${d.naam} terughalen`}
+                      title="Weer als actueel aanmerken"
+                      className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2"
+                    >
+                      <RotateCcw className="size-4" aria-hidden />
+                    </button>
+                  }
+                />
+              ))}
+            </Kaart>
+          )}
+        </div>
+      )}
     </section>
   )
 }
