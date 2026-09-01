@@ -217,3 +217,59 @@ export function leeftijd(geboortedatum: string | null | undefined): number | nul
   if (maanden < 0 || (maanden === 0 && nu.getDate() < g.getDate())) jaren--
   return jaren >= 0 && jaren < 130 ? jaren : null
 }
+
+/* ------------------------------------------------------------ toevoegen --- */
+
+export type NieuwPersoon = {
+  voornaam: string
+  achternaam: string
+  email: string
+  fase: Fase
+}
+
+/** Iemand met de hand in de lijst zetten, voor wie niet via het formulier
+ *  binnenkomt. Alleen naam en mailadres: de rest vult de persoon zelf in via de
+ *  invullink, zodat BSN en rekeningnummer niet door Sander getypt worden. */
+export function usePersoonToevoegen() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (nieuw: NieuwPersoon): Promise<string> => {
+      const email = nieuw.email.trim().toLowerCase()
+
+      // Het mailadres is de sleutel waarmee iemand inlogt. Twee kaarten met
+      // hetzelfde adres betekent dat niet vaststaat wie je binnenlaat.
+      const { data: bestaat, error: zoekfout } = await supabase
+        .from('sollicitaties')
+        .select('voornaam,achternaam')
+        .ilike('email', email)
+        .limit(1)
+      if (zoekfout) throw new Error(zoekfout.message)
+      if (bestaat?.length) {
+        const naam = [bestaat[0].voornaam, bestaat[0].achternaam].filter(Boolean).join(' ')
+        throw new Error(`${naam || 'Iemand'} staat al in de lijst met dit mailadres.`)
+      }
+
+      const nuTijd = nu()
+      const { data, error } = await supabase
+        .from('sollicitaties')
+        .insert({
+          voornaam: nieuw.voornaam.trim(),
+          achternaam: nieuw.achternaam.trim(),
+          email,
+          fase: nieuw.fase,
+          is_apparaat: false,
+          aangemeld_op: nuTijd,
+          // Een medewerker begint op hetzelfde punt als een net aangenomen
+          // sollicitant: de invullink moet nog de deur uit.
+          ...(nieuw.fase === 'medewerker'
+            ? { status: 'aangenomen', aangenomen_op: nuTijd }
+            : { status: 'nieuw' }),
+        })
+        .select('id')
+        .single()
+      if (error) throw new Error(error.message)
+      return data.id as string
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['personen'] }),
+  })
+}

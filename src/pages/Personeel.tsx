@@ -1,8 +1,117 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ChevronRight, UserPlus, Users } from 'lucide-react'
-import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
-import { inArchief, naamVan, sinds, toestandVan, usePersonen, type Persoon } from '../lib/personeel'
+import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
+import {
+  inArchief,
+  naamVan,
+  sinds,
+  toestandVan,
+  usePersonen,
+  usePersoonToevoegen,
+  type Fase,
+  type Persoon,
+} from '../lib/personeel'
+
+/* Iemand met de hand toevoegen: voor wie niet via werkenbij binnenkomt maar
+   bijvoorbeeld gewoon aan de deur staat. Zie
+   docs/modules/personeel/personeelsmodule.md. */
+function Toevoegen({ sluit }: { sluit: () => void }) {
+  const navigeer = useNavigate()
+  const toevoegen = usePersoonToevoegen()
+  const [voornaam, setVoornaam] = useState('')
+  const [achternaam, setAchternaam] = useState('')
+  const [email, setEmail] = useState('')
+  const [fase, setFase] = useState<Fase>('medewerker')
+  const [fout, setFout] = useState<string | null>(null)
+
+  async function bewaren(e: React.FormEvent) {
+    e.preventDefault()
+    setFout(null)
+    if (!voornaam.trim() || !achternaam.trim()) {
+      setFout('Vul een voor- en achternaam in.')
+      return
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setFout('Vul een geldig mailadres in. Daarmee logt hij later in.')
+      return
+    }
+    try {
+      const id = await toevoegen.mutateAsync({ voornaam, achternaam, email, fase })
+      navigeer(`/personeel/${id}`)
+    } catch (e) {
+      setFout(e instanceof Error ? e.message : 'Toevoegen lukte niet.')
+    }
+  }
+
+  const keuze = (waarde: Fase, label: string, uitleg: string) => (
+    <button
+      key={waarde}
+      type="button"
+      onClick={() => setFase(waarde)}
+      aria-pressed={fase === waarde}
+      className={`flex-1 rounded-[4px] border-[1.5px] px-3 py-2.5 text-left transition-colors ${
+        fase === waarde ? 'border-accent bg-surface-2' : 'border-line-strong hover:bg-surface-2'
+      }`}
+    >
+      <span className="block text-sm font-semibold">{label}</span>
+      <span className="block text-sm text-muted">{uitleg}</span>
+    </button>
+  )
+
+  return (
+    <Kaart className="p-5">
+      <form onSubmit={bewaren} className="flex flex-col gap-4">
+        <Kopje>Iemand toevoegen</Kopje>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Veld
+            label="Voornaam"
+            value={voornaam}
+            autoFocus
+            onChange={(e) => setVoornaam(e.target.value)}
+          />
+          <Veld
+            label="Achternaam"
+            value={achternaam}
+            onChange={(e) => setAchternaam(e.target.value)}
+          />
+        </div>
+
+        <Veld
+          label="Mailadres"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-muted">Waar zet ik hem neer?</span>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {keuze('medewerker', 'Medewerker', 'Aangenomen, invullink moet nog weg')}
+            {keuze('sollicitant', 'Sollicitant', 'Eerst nog een gesprek')}
+          </div>
+        </div>
+
+        {fout && <p className="text-sm text-bad">{fout}</p>}
+
+        <p className="text-sm text-muted">
+          Meer hoef je niet te weten. De rest — adres, rekeningnummer, BSN — vult
+          hij zelf in via de invullink, die je hierna op zijn kaart verstuurt.
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          <Knop soort="primair" type="submit" bezig={toevoegen.isPending}>
+            Toevoegen
+          </Knop>
+          <Knop soort="rustig" type="button" onClick={sluit}>
+            Annuleren
+          </Knop>
+        </div>
+      </form>
+    </Kaart>
+  )
+}
 
 function Regel({ p }: { p: Persoon }) {
   const toestand = toestandVan(p)
@@ -55,17 +164,10 @@ function Groep({
 export function Personeel() {
   const { data, isPending, error, refetch } = usePersonen()
   const [toonArchief, setToonArchief] = useState(false)
+  const [toevoegen, setToevoegen] = useState(false)
 
   if (isPending) return <Laden tekst="Personeel laden…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
-  if (!data.length) {
-    return (
-      <Leeg
-        titel="Nog niemand in de lijst"
-        uitleg="Zodra iemand het formulier op werkenbij.snackerietzonnetje.nl invult, verschijnt die hier vanzelf als sollicitant."
-      />
-    )
-  }
 
   const lopend = data.filter((p) => !inArchief(p))
   const sollicitanten = lopend.filter((p) => p.fase === 'sollicitant')
@@ -74,6 +176,17 @@ export function Personeel() {
 
   return (
     <div className="flex flex-col gap-8">
+      {toevoegen ? (
+        <Toevoegen sluit={() => setToevoegen(false)} />
+      ) : (
+        <div>
+          <Knop soort="rustig" onClick={() => setToevoegen(true)}>
+            <UserPlus className="size-4" aria-hidden />
+            Iemand toevoegen
+          </Knop>
+        </div>
+      )}
+
       <Groep
         titel="Sollicitanten"
         aantal={sollicitanten.length}
@@ -85,7 +198,7 @@ export function Personeel() {
         titel="Medewerkers"
         aantal={medewerkers.length}
         mensen={medewerkers}
-        leeg="Nog geen medewerkers. Neem een sollicitant aan, of voeg iemand rechtstreeks toe."
+        leeg="Nog geen medewerkers. Neem een sollicitant aan, of voeg iemand toe."
       />
 
       {archief.length > 0 && (
@@ -108,12 +221,6 @@ export function Personeel() {
           )}
         </section>
       )}
-
-      <p className="flex items-center gap-2 text-sm text-muted">
-        <UserPlus className="size-4 shrink-0" aria-hidden />
-        Iemand rechtstreeks als medewerker toevoegen kan nog niet — dat komt in
-        de volgende stap. De invullink zit inmiddels wel op elke medewerkerskaart.
-      </p>
     </div>
   )
 }
