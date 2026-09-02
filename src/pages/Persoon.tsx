@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
@@ -9,6 +9,7 @@ import { TaakGeven } from '../components/TaakGeven'
 import { Dossier } from '../components/Dossier'
 import { Rechten } from '../components/Rechten'
 import { Zichtbaar } from '../components/Zichtbaar'
+import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
 import {
   aannemen,
   afwijzen,
@@ -21,21 +22,6 @@ import {
   usePersoonWijzigen,
   type Persoon as PersoonType,
 } from '../lib/personeel'
-
-/* Wat de medewerker via de link invult. BSN en IBAN staan er bewust afgeschermd
-   in: ze zijn nodig, maar hoeven niet open en bloot op je scherm te staan. */
-const INGEVULD: { sleutel: string; label: string; gevoelig?: boolean }[] = [
-  { sleutel: 'straat', label: 'Straat' },
-  { sleutel: 'huisnummer', label: 'Huisnummer' },
-  { sleutel: 'postcode', label: 'Postcode' },
-  { sleutel: 'woonplaats', label: 'Woonplaats' },
-  { sleutel: 'bsn', label: 'BSN', gevoelig: true },
-  { sleutel: 'iban', label: 'IBAN', gevoelig: true },
-  { sleutel: 'noodcontact_naam', label: 'Noodcontact' },
-  { sleutel: 'noodcontact_tel', label: 'Noodcontact telefoon' },
-  { sleutel: 'loonheffingskorting', label: 'Loonheffingskorting' },
-  { sleutel: 'tshirt_maat', label: 'T-shirtmaat' },
-]
 
 function Rij({ label, waarde }: { label: string; waarde: React.ReactNode }) {
   return (
@@ -81,7 +67,6 @@ export function Persoon() {
   const { id } = useParams()
   const { data: p, isPending, error, refetch } = usePersoon(id)
   const wijzig = usePersoonWijzigen(id ?? '')
-  const [toonGevoelig, setToonGevoelig] = useState(false)
   const [afwijzenBevestigen, setAfwijzenBevestigen] = useState(false)
 
   if (isPending) return <Laden />
@@ -221,35 +206,9 @@ export function Persoon() {
         )}
       </section>
 
-      {/* ------------------------------------------------- ingevulde gegevens --- */}
-      {ingevuld && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Kopje>Zelf ingevuld</Kopje>
-            <button
-              type="button"
-              onClick={() => setToonGevoelig((v) => !v)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-text"
-            >
-              {toonGevoelig ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
-              {toonGevoelig ? 'BSN en IBAN verbergen' : 'BSN en IBAN tonen'}
-            </button>
-          </div>
-          <Kaart>
-            {INGEVULD.map(({ sleutel, label, gevoelig }) => {
-              const waarde = ingevuld[sleutel]
-              if (waarde === undefined) return null
-              return (
-                <Rij
-                  key={sleutel}
-                  label={label}
-                  waarde={gevoelig && !toonGevoelig ? '••••••••' : toonWaarde(waarde)}
-                />
-              )
-            })}
-          </Kaart>
-        </section>
-      )}
+      {/* Bij een medewerker altijd, ook als er nog niets is ingevuld: anders is
+          er geen plek om het alsnog te doen. */}
+      {(ingevuld || p.fase === 'medewerker') && <IngevuldeGegevens persoon={p} />}
 
       {lopend && (
         <>

@@ -279,3 +279,23 @@ export function usePersoonToevoegen() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['personen'] }),
   })
 }
+
+/** Wat de medewerker via de invullink heeft opgestuurd, rechtgezet door Sander.
+ *  Het staat als één blok json in de kolom, dus we schrijven het hele blok
+ *  terug met dat ene veld vervangen. */
+export function useIngevuldWijzigen(id: string, huidig: Record<string, unknown> | null | undefined) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ veld, waarde }: { veld: string; waarde: unknown }) => {
+      const { error } = await supabase
+        .from('sollicitaties')
+        .update({ onboarding_data: { ...(huidig ?? {}), [veld]: waarde } })
+        .eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['personen'] })
+      client.invalidateQueries({ queryKey: ['persoon', id] })
+    },
+  })
+}
