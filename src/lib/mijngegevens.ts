@@ -34,6 +34,7 @@ export const VELDNAMEN: Record<string, string> = {
   telefoonnummer: 'Telefoonnummer',
   straat: 'Straat',
   huisnummer: 'Huisnummer',
+  toevoeging: 'Toevoeging',
   postcode: 'Postcode',
   woonplaats: 'Woonplaats',
   noodcontact_naam: 'Noodcontact',
@@ -44,7 +45,7 @@ export const VELDNAMEN: Record<string, string> = {
 }
 
 /** Wat het loonbureau moet weten als het verandert. */
-export const NAAR_LOONBUREAU = ['straat', 'huisnummer', 'postcode', 'woonplaats', 'iban']
+export const NAAR_LOONBUREAU = ['straat', 'huisnummer', 'toevoeging', 'postcode', 'woonplaats', 'iban']
 
 export function useMijnGegevens(medewerkerId: string | null | undefined) {
   return useQuery({

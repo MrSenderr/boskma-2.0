@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronRight, UserPlus, Users } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
+import { ExportVerzekering } from '../components/ExportVerzekering'
 import {
   inArchief,
   naamVan,
@@ -221,6 +222,8 @@ export function Personeel() {
           )}
         </section>
       )}
+
+      <ExportVerzekering />
     </div>
   )
 }

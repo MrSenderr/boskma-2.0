@@ -21,6 +21,7 @@ const ZELF: { veld: string; type?: string }[] = [
   { veld: 'telefoonnummer', type: 'tel' },
   { veld: 'straat' },
   { veld: 'huisnummer' },
+  { veld: 'toevoeging' },
   { veld: 'postcode' },
   { veld: 'woonplaats' },
   { veld: 'noodcontact_naam' },

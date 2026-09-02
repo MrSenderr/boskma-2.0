@@ -11,7 +11,8 @@ const LIJST_VELDEN =
 const KAART_VELDEN =
   LIJST_VELDEN +
   ',geboortedatum,telefoonnummer,email,motivatie,onboarding_data,' +
-  'contracttype,contractduur,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
+  'voorletters,tussenvoegsel,' +
+  'contracttype,contractduur,contracturen,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
 
 export type Fase = 'sollicitant' | 'medewerker'
 
@@ -34,12 +35,17 @@ export type Persoon = {
   email?: string | null
   motivatie?: string | null
   onboarding_data?: Record<string, unknown> | null
+  /* Voor de export naar Verzekeringsinzicht. Leeg betekent: afleiden uit
+     voornaam en achternaam. Zie lib/verzekeringsinzicht.ts. */
+  voorletters?: string | null
+  tussenvoegsel?: string | null
   // vult Sander zelf in, voor het mutatieformulier
   contracttype?: string | null
   contractduur?: 'bepaalde' | 'onbepaalde' | null
   functie?: string | null
   ingangsdatum?: string | null
   einddatum?: string | null
+  contracturen?: number | null
   uurloon?: number | null
   proefperiode?: boolean | null
   contract_door_loonbureau?: boolean | null

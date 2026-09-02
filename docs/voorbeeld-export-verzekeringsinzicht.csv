@@ -1,0 +1,9 @@
+﻿SEP=;
+voorletters;tussenvoegsel;achternaam;geboorte_datum;geslacht;dga;email;telefoon;werknemernummer;straat;huisnummer;toevoeging;postcode;plaats;land;Begindatum;Contract;DienstverbandSoort;Einddatum;Afdeling;Functieomschrijving;Werkzaamheden;Dienstverband;ParttimePercentage;Contracturen
+J.;;Oostwoud;20-04-2006;M;N;;;JD;Dorpsstraat;56;;1697AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;01-07-2027;;;;PT;0.00;0.00
+T.;;Bakker;10-11-2008;M;N;;;TB;Dorpsstraat;54;;1695AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;31-12-2026;;;;PT;0.00;0.00
+L.;;Deen;24-11-2007;V;N;;;LD;Dorpsstraat;55;;1696AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;31-12-2026;;;;PT;0.00;0.00
+D.;;Raven;09-08-2009;M;N;;;DR;Dorpsstraat;53;;1694AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;01-07-2027;;;;PT;0.00;0.00
+B.;;Geusebroek;27-06-2009;M;N;;;BG;Dorpsstraat;52;;1693AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;31-12-2026;;;;PT;0.00;0.00
+D.;;Verhulst;16-06-1997;M;N;;;DV;Dorpsstraat;57;;1698AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;28-03-2027;;;;PT;80.00;32.00
+I.;;Swagerman;03-01-1985;V;N;;;IS;Dorpsstraat;58;;1699AH;WERVERSHOOF;NL;01-07-2026;BEP;regulier;01-07-2027;;;;PT;0.00;0.00
