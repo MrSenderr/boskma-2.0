@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zonnetje Signage</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font-family:'Outfit',sans-serif}
+#img-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#img-wrap img{width:100%;height:100%;object-fit:contain;transition:opacity .6s}
+#img-wrap img.hidden{opacity:0}
+#page-frame{position:fixed;inset:0;width:100%;height:100%;border:none;background:#000;display:none}
+#status{position:fixed;top:1rem;right:1rem;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.4rem .75rem;font-size:.75rem;color:rgba(255,255,255,.55);backdrop-filter:blur(6px);transition:opacity .5s;pointer-events:none;z-index:10}
+#status.hide{opacity:0}
+#no-image{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;background:#0a0a0a}
+#no-image svg{opacity:.2;width:80px;height:80px}
+#no-image p{opacity:.3;font-size:1.1rem;letter-spacing:.05em}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="img-wrap">
+  <img id="screen-img" alt="" class="hidden">
+</div>
+<iframe id="page-frame" title="pagina"></iframe>
+<div id="no-image" style="display:none">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+  <p>Geen afbeelding ingesteld</p>
+</div>
+<div id="status"></div>
+
+<script>
+const SB_URL = 'https://xukzumqddeateztmjpzf.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1a3p1bXFkZGVhdGV6dG1qcHpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NjMzOTIsImV4cCI6MjA5NTIzOTM5Mn0.7VJ4jf9SVg30SKbFJH94Nj2YsCcf9jEbToCeALAT72Y';
+const H = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+
+const params = new URLSearchParams(location.search);
+const SCREEN_ID = parseInt(params.get('screen_id') || '0');
+
+let currentUrl = null;
+let statusTimer = null;
+let lastCommandId = 0;
+let rotatie = [];
+let rotatieIdx = 0;
+let rotatieTimer = null;
+let paginaLaatsteLeven = 0;
+let paginaPogingen = 0;
+
+// Pagina's die we in het iframe tonen melden zich elke 10 seconden. Blijft dat
+// signaal weg, dan staat er iets anders dan onze pagina — bijvoorbeeld een
+// foutpagina van de server tijdens een update. Die blijft zonder ingrijpen
+// eindeloos staan, dus halen we de pagina opnieuw op.
+window.addEventListener('message', e => {
+  if (e.data && e.data.boskma === 'leeft') {
+    paginaLaatsteLeven = Date.now();
+    paginaPogingen = 0;
+  }
+});
+
+function controleerPagina() {
+  const frame = document.getElementById('page-frame');
+  if (frame.style.display !== 'block' || !frame.dataset.url) return;
+  if (Date.now() - paginaLaatsteLeven < 45000) return;
+  // Een pagina die zich helemaal niet meldt niet eindeloos blijven herladen.
+  if (paginaPogingen >= 3) return;
+  paginaPogingen++;
+  paginaLaatsteLeven = Date.now();
+  setStatus('Pagina herladen…');
+  frame.src = frame.dataset.url;
+}
+setInterval(controleerPagina, 15000);
+
+function setStatus(txt) {
+  const el = document.getElementById('status');
+  el.textContent = txt;
+  el.classList.remove('hide');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => el.classList.add('hide'), 4000);
+}
+
+// Datum van vandaag als JJJJ-MM-DD in de eigen tijdzone. Via toISOString zou
+// de datum 's avonds al een dag opschuiven.
+function localeDatum() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function nowTime() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':00';
+}
+
+// Afbeeldings-URL's tonen we als <img>; al het andere (bijv. f1.html) fullscreen in een iframe.
+function isImageUrl(url) {
+  return /\.(png|jpe?g|gif|webp|svg|avif)(\?|#|$)/i.test(url);
+}
+
+function showImage(url) {
+  const img = document.getElementById('screen-img');
+  const frame = document.getElementById('page-frame');
+  const noImg = document.getElementById('no-image');
+  if (!url) {
+    img.classList.add('hidden');
+    frame.style.display = 'none';
+    frame.removeAttribute('src');
+    frame.dataset.url = '';
+    noImg.style.display = 'flex';
+    currentUrl = null;
+    return;
+  }
+  if (url === currentUrl) return;
+  noImg.style.display = 'none';
+  if (!isImageUrl(url)) {
+    img.classList.add('hidden');
+    // In een rotatie blijft de pagina geladen, zodat hij niet elke ronde
+    // opnieuw opstart en zijn eigen verversing kan blijven doen.
+    if (frame.dataset.url !== url) {
+      frame.src = url;
+      frame.dataset.url = url;
+      // Vanaf nu verwachten we een levenssignaal van de pagina.
+      paginaLaatsteLeven = Date.now();
+      paginaPogingen = 0;
+    }
+    frame.style.display = 'block';
+    currentUrl = url;
+    return;
+  }
+  // Laat staan wat er nu is tot de nieuwe afbeelding klaar is: anders staat het
+  // scherm zwart zolang een grote afbeelding nog laadt.
+  currentUrl = url;
+  const tmp = new Image();
+  tmp.onload = () => {
+    if (currentUrl !== url) return; // rotatie is intussen verder gegaan
+    frame.style.display = 'none';
+    img.src = url;
+    img.classList.remove('hidden');
+  };
+  tmp.onerror = () => {
+    if (currentUrl !== url) return;
+    img.classList.add('hidden');
+    frame.style.display = 'none';
+    noImg.style.display = 'flex';
+    currentUrl = null; // volgende poll probeert opnieuw
+  };
+  tmp.src = url;
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: H };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(SB_URL + '/rest/v1/' + path, opts);
+  if (!r.ok) return null;
+  const text = await r.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// Rotatie: meerdere bronnen na elkaar, elk met een eigen duur.
+// Leeg = oud gedrag (vast beeld of tijdslot).
+function planRotatie(stappen) {
+  const zelfde = JSON.stringify(stappen) === JSON.stringify(rotatie);
+  if (zelfde) {
+    // De cyclus hoort te lopen maar doet dat niet meer (bijv. na een
+    // onderbroken timer) — weer op gang helpen.
+    if (rotatie.length && !rotatieTimer) toonRotatieStap();
+    return;
+  }
+  rotatie = stappen;
+  rotatieIdx = 0;
+  clearTimeout(rotatieTimer);
+  rotatieTimer = null;
+  if (stappen.length) toonRotatieStap();
+}
+
+function toonRotatieStap() {
+  if (!rotatie.length) return;
+  const stap = rotatie[rotatieIdx % rotatie.length];
+  showImage(stap.url);
+  rotatieIdx = (rotatieIdx + 1) % rotatie.length;
+  const ms = Math.max(3, stap.seconden || 20) * 1000;
+  clearTimeout(rotatieTimer);
+  rotatieTimer = setTimeout(toonRotatieStap, ms);
+}
+
+async function poll() {
+  if (!SCREEN_ID) return;
+  try {
+    const [screen, schedules, cmds, rot] = await Promise.all([
+      api('GET', `screens?id=eq.${SCREEN_ID}&select=actieve_afbeelding_url,naam`),
+      api('GET', `screen_schedules?screen_id=eq.${SCREEN_ID}&order=van_tijd`),
+      api('GET', `screen_commands?screen_id=eq.${SCREEN_ID}&order=id.asc`),
+      api('GET', `screen_rotatie?screen_id=eq.${SCREEN_ID}&order=volgorde,id&select=url,seconden,van,tot,actief`)
+    ]);
+
+    // Heartbeat
+    await api('PATCH', `screens?id=eq.${SCREEN_ID}`, {
+      last_seen: new Date().toISOString()
+    });
+
+    // Bij een mislukt verzoek (rot === null) laten we de lopende rotatie met
+    // rust; alleen een échte lege lijst zet hem stop.
+    // Regels met een looptijd doen alleen mee binnen die periode, zodat een
+    // diashow voor een evenement vanzelf begint en weer stopt.
+    const vandaag = localeDatum();
+    const stappen = Array.isArray(rot)
+      ? rot.filter(s => s.actief !== false && (!s.van || s.van <= vandaag) && (!s.tot || s.tot >= vandaag))
+      : rotatie;
+    planRotatie(stappen);
+
+    // Zonder rotatie: tijdslot heeft voorrang, anders de vaste afbeelding
+    if (!stappen.length && screen && screen.length) {
+      const sc = screen[0];
+      const nowT = nowTime();
+      const activeSlot = (schedules || []).find(s => s.van_tijd <= nowT && s.tot_tijd > nowT);
+      const url = activeSlot?.afbeelding_url || sc.actieve_afbeelding_url || null;
+      showImage(url);
+    }
+
+    // Process commands (only new ones since last poll)
+    for (const cmd of (cmds || [])) {
+      if (cmd.id <= lastCommandId) continue;
+      lastCommandId = cmd.id;
+      if (cmd.command === 'refresh') {
+        setStatus('Vernieuwen…');
+        await api('DELETE', `screen_commands?id=eq.${cmd.id}`);
+        setTimeout(() => location.reload(), 600);
+        return;
+      }
+      // Other commands (reboot, screen_on, screen_off) handled by Pi daemon
+      // Delete them so daemon can also see them, but don't execute here
+    }
+  } catch(e) {
+    console.warn('[signage] poll error', e);
+  }
+}
+
+if (!SCREEN_ID) {
+  document.getElementById('no-image').style.display = 'flex';
+  document.querySelector('#no-image p').textContent = 'Stel screen_id in via de URL: ?screen_id=1';
+} else {
+  setStatus('Scherm ' + SCREEN_ID + ' wordt geladen…');
+  poll();
+  setInterval(poll, 30000);
+}
+</script>
+</body>
+</html>
