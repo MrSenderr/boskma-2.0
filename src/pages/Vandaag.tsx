@@ -1,10 +1,68 @@
 import { Link } from 'react-router-dom'
-import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
+import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
+import { useApparaatstand, vraagtAandacht } from '../lib/apparaatstand'
+import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
+import { dagnaam, getal } from '../lib/opmaak'
 
-export function Vandaag() {
+/* Het startscherm van Sander.
+ *
+ * Stond tot september 2026 vol met personeel: meldingen, taken en een lijst met
+ * ontbrekende contracten. Dat is precies het onderwerp dat geparkeerd is, en het
+ * was het eerste wat je zag bij het openen van de app.
+ *
+ * Nu de volgorde van wat aandacht vraagt: eerst wat iemand van je wil, dan je
+ * apparatuur, dan wat er bij jou ligt, en onderaan de reeks die stilletjes
+ * doorloopt. Geld en inkoop horen hier ook, maar die staan nog in een andere
+ * database — zodra Mplus gekoppeld is komen ze bovenaan. */
+
+function Apparaten() {
+  const { lijst, isPending, error, refetch } = useApparaatstand()
+
+  if (isPending) return <Laden />
+  if (error) return <Mislukt tekst={error.message} opnieuw={refetch} />
+  if (lijst.length === 0) return null
+
+  const aandacht = vraagtAandacht(lijst)
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Kopje>Apparatuur</Kopje>
+      {aandacht.length === 0 ? (
+        <Kaart className="p-6">
+          <p className="font-display text-lg">Alles binnen de grenzen.</p>
+          <p className="mt-1 text-sm text-muted">
+            {lijst.length} apparaten, allemaal recent gemeten.
+          </p>
+        </Kaart>
+      ) : (
+        <Kaart>
+          {aandacht.map((s) => (
+            <Link
+              key={s.apparaat.id}
+              to="/apparaten"
+              data-touch
+              className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{s.apparaat.naam}</span>
+                <span className="block truncate text-sm text-muted">
+                  {s.toelichting}
+                  {s.laatste && ` · ${getal(s.laatste.temperatuur, '°C')} ${dagnaam(s.laatste.datum)}`}
+                </span>
+              </span>
+              <Pil soort={s.soort}>{s.soort === 'fout' ? 'Afwijking' : 'Let op'}</Pil>
+            </Link>
+          ))}
+        </Kaart>
+      )}
+    </section>
+  )
+}
+
+function OpJou() {
   const { data, isPending, error, refetch } = usePersonen()
 
   if (isPending) return <Laden />
@@ -18,36 +76,30 @@ export function Vandaag() {
     .sort((a, b) => (a.toestand.soort === 'fout' ? -1 : 1) - (b.toestand.soort === 'fout' ? -1 : 1))
 
   return (
-    <div className="flex flex-col gap-6">
-      <Wijzigingen />
-
-      <Reacties />
-
-      <section className="flex flex-col gap-3">
-        <Kopje>Wat er op jou wacht</Kopje>
-        {opJou.length === 0 ? (
-          <Kaart className="p-6">
-            <p className="font-display text-lg">Niets dat op jou wacht.</p>
-            <p className="mt-1 text-sm text-muted">
-              Alles in de personeelslijst ligt bij iemand anders.
-            </p>
-          </Kaart>
-        ) : (
-          <Kaart>
-            {opJou.map(({ p, toestand }) => (
-              <Link
-                key={p.id}
-                to={`/personeel/${p.id}`}
-                data-touch
-                className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
-              >
-                <span className="min-w-0 flex-1 truncate font-semibold">{naamVan(p)}</span>
-                <Pil soort={toestand.soort}>{toestand.label}</Pil>
-              </Link>
-            ))}
-          </Kaart>
-        )}
-      </section>
+    <section className="flex flex-col gap-3">
+      <Kopje>Wat er op jou wacht</Kopje>
+      {opJou.length === 0 ? (
+        <Kaart className="p-6">
+          <p className="font-display text-lg">Niets dat op jou wacht.</p>
+          <p className="mt-1 text-sm text-muted">
+            Alles in de personeelslijst ligt bij iemand anders.
+          </p>
+        </Kaart>
+      ) : (
+        <Kaart>
+          {opJou.map(({ p, toestand }) => (
+            <Link
+              key={p.id}
+              to={`/personeel/${p.id}`}
+              data-touch
+              className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
+            >
+              <span className="min-w-0 flex-1 truncate font-semibold">{naamVan(p)}</span>
+              <Pil soort={toestand.soort}>{toestand.label}</Pil>
+            </Link>
+          ))}
+        </Kaart>
+      )}
 
       <Link
         to="/personeel"
@@ -56,6 +108,74 @@ export function Vandaag() {
       >
         Naar de hele lijst
       </Link>
+    </section>
+  )
+}
+
+function Weerreeks() {
+  const { data, isPending, error, refetch } = useWeerreeks(7)
+  const { data: stand } = useReeksStand()
+
+  if (isPending) return <Laden />
+  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
+  if (!data || data.length === 0) {
+    return (
+      <section className="flex flex-col gap-3">
+        <Kopje>Het weer</Kopje>
+        <Leeg titel="Nog geen dagen verzameld." uitleg="De verzamelaar draait elke ochtend om half zes." />
+      </section>
+    )
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Kopje>Het weer</Kopje>
+      <Kaart>
+        {data.map((d) => (
+          <div
+            key={d.datum}
+            className="grid grid-cols-[6.5rem_1fr_auto] items-baseline gap-3 border-b border-line px-4 py-3 last:border-b-0"
+          >
+            <span className="font-semibold">{dagnaam(d.datum)}</span>
+            <span className="truncate text-sm text-muted">
+              {d.weerstype ?? '—'}
+              {d.neerslag_mm ? ` · ${getal(d.neerslag_mm, 'mm')}` : ''}
+            </span>
+            <span className="tabular-nums text-sm">
+              {getal(d.temp_max, '°C', 0)}
+              <span className="text-muted"> / {getal(d.temp_min, '°C', 0)}</span>
+            </span>
+          </div>
+        ))}
+      </Kaart>
+      {stand && (
+        <p className="text-sm text-muted">
+          {stand.dagen} dagen verzameld sinds{' '}
+          {new Date(`${stand.eerste}T00:00:00`).toLocaleDateString('nl-NL', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
+          {stand.gaten === 0 ? ', zonder gaten.' : `, met ${stand.gaten} ontbrekende dagen.`} Straks
+          ligt je omzet hiernaast.
+        </p>
+      )}
+    </section>
+  )
+}
+
+export function Vandaag() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Wijzigingen />
+
+      <Reacties />
+
+      <Apparaten />
+
+      <OpJou />
+
+      <Weerreeks />
     </div>
   )
 }
