@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Cake, ChevronRight, Droplet, MessageSquare, MessageSquareWarning, Thermometer, Truck } from 'lucide-react'
+import { Cake, ChevronRight, MessageSquare, Thermometer } from 'lucide-react'
 import { Kaart, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { useApparaten } from '../lib/apparaten'
 import { useMetingenVandaag } from '../lib/metingen'
 import { RONDES, apparatenVoor, rondeVanNu, standVan } from '../lib/rondes'
 import { isOpen, sluitingsrondeVanaf, standVanDeDag, useRooster, vandaagStr } from '../lib/openingstijden'
 import { useWieBenIk } from '../lib/wie'
-import { jarigen, useVerjaardagen } from '../lib/vandaag'
-import { MepBlok, PersoonlijkeTaken, Werklijsten } from '../components/Taakblokken'
+import { jarigen, useVerjaardagen } from '../lib/verjaardagen'
 import { useVerslagen } from '../lib/dossier'
 import { useMijnVerborgen, zieIk } from '../lib/zichtbaar'
 
@@ -123,70 +122,13 @@ export function VandaagMedewerker() {
         </section>
       )}
 
-      {open ? (
-        <>
-          {zieIk(verborgen, 'mep') && <MepBlok />}
-
-          {zieIk(verborgen, 'taken') && (
-            <>
-              <Werklijsten />
-
-              <PersoonlijkeTaken medewerkerId={wie?.medewerker_id} />
-            </>
-          )}
-        </>
-      ) : (
+      {!open && (
         <Kaart className="p-5">
           <p className="font-display text-lg">Vandaag is de zaak dicht.</p>
           <p className="mt-1 text-sm text-muted">
-            {standVanDeDag(rooster, vandaag).reden ??
-              'Er staan vandaag geen rondes of werklijsten klaar.'}
+            {standVanDeDag(rooster, vandaag).reden ?? 'Er staan vandaag geen rondes klaar.'}
           </p>
         </Kaart>
-      )}
-
-      {/* Een levering komt op een willekeurig moment binnen en het vet schuift
-          door wanneer het nodig is. Geen van beide is een taak die af moet, dus
-          staan ze hier als knop en niet in een lijstje. */}
-      {(zieIk(verborgen, 'levering') || zieIk(verborgen, 'frituurvet') || zieIk(verborgen, 'melden')) && (
-      <section className="flex flex-col gap-3">
-        <Kopje>Tussendoor</Kopje>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {zieIk(verborgen, 'levering') && (
-          <Link
-            to="/levering"
-            data-touch
-            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
-          >
-            <Truck className="size-5 shrink-0 text-muted" aria-hidden />
-            <span className="flex-1 font-semibold">Levering aantekenen</span>
-            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
-          </Link>
-          )}
-          {zieIk(verborgen, 'frituurvet') && (
-          <Link
-            to="/frituurvet"
-            data-touch
-            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
-          >
-            <Droplet className="size-5 shrink-0 text-muted" aria-hidden />
-            <span className="flex-1 font-semibold">Frituurvet</span>
-            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
-          </Link>
-          )}
-          {zieIk(verborgen, 'melden') && (
-          <Link
-            to="/melden"
-            data-touch
-            className="flex flex-1 items-center gap-3 rounded-card border border-line bg-surface p-4 hover:bg-surface-2"
-          >
-            <MessageSquareWarning className="size-5 shrink-0 text-muted" aria-hidden />
-            <span className="flex-1 font-semibold">Iets melden</span>
-            <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
-          </Link>
-          )}
-        </div>
-      </section>
       )}
 
       {verjaardagen && (() => {

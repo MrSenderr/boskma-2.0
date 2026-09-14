@@ -7,38 +7,10 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Persoon } from './pages/Persoon'
 import { Instellingen } from './pages/Instellingen'
-import { Haccp } from './pages/Haccp'
 import { Apparaten } from './pages/Apparaten'
-import { Taken } from './pages/Taken'
-import { Logboek } from './pages/Logboek'
 import { Ronde } from './pages/Ronde'
-import { Werklijst } from './pages/Werklijst'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
-import { MijnTaken } from './pages/MijnTaken'
-import { Levering } from './pages/Levering'
-import { Melden } from './pages/Melden'
-import { Kas } from './pages/Kas'
-import { KasTellen } from './pages/KasTellen'
-import { KasKluis } from './pages/KasKluis'
-import { KasNaslag } from './pages/KasNaslag'
-import { KasInstellen } from './pages/KasInstellen'
-import { Frituurvet } from './pages/Frituurvet'
-import { Leveringen } from './pages/Leveringen'
-import { Week } from './pages/Week'
-import { Uitdraai } from './pages/Uitdraai'
-import { Werkkaarten } from './pages/Werkkaarten'
-import { WerkkaartCategorie } from './pages/WerkkaartCategorie'
-import { Werkkaart } from './pages/Werkkaart'
-import { WerkkaartBeheer } from './pages/WerkkaartBeheer'
-import { Werkwijzen } from './pages/Werkwijzen'
-import { Werkwijze } from './pages/Werkwijze'
-import { Recepten } from './pages/Recepten'
-import { Recept } from './pages/Recept'
-import { Mep } from './pages/Mep'
-import { MepVandaag } from './pages/MepVandaag'
-import { MepKlaarzetten } from './pages/MepKlaarzetten'
-import { MepLijst } from './pages/MepLijst'
 import { Schermen } from './pages/Schermen'
 import { SchermenLijst } from './pages/SchermenLijst'
 import { SchermAfbeeldingen } from './pages/SchermAfbeeldingen'
@@ -46,7 +18,6 @@ import { useWieBenIk } from './lib/wie'
 import { VandaagMedewerker } from './pages/VandaagMedewerker'
 import { Laden } from './components/ui'
 import { useModus } from './lib/modus'
-import { Timers } from './lib/timers'
 import { isTijdelijkeKlokfout } from './lib/fouten'
 
 const queryClient = new QueryClient({
@@ -86,47 +57,14 @@ function Poort() {
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
         <Route path="temperaturen" element={<Ronde />} />
-        {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
+        {/* Oude adressen; blijven werken voor wie ze had opgeslagen. */}
         <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
-        <Route path="taken" element={<MijnTaken />} />
-        <Route path="werkkaarten" element={<Werkkaarten />} />
-        <Route path="werkkaarten/beheer" element={<WerkkaartBeheer />} />
-        <Route path="werkkaarten/kaart/:id" element={<Werkkaart />} />
-        <Route path="werkkaarten/:categorie" element={<WerkkaartCategorie />} />
-        <Route path="werkwijzen" element={<Werkwijzen />} />
-        <Route path="werkwijzen/:id" element={<Werkwijze />} />
-        <Route path="recepten" element={<Recepten />} />
-        <Route path="recepten/:id" element={<Recept />} />
-        <Route path="mep" element={<Mep />}>
-          <Route index element={<Navigate to="vandaag" replace />} />
-          <Route path="vandaag" element={<MepVandaag />} />
-          <Route path="klaarzetten" element={<MepKlaarzetten />} />
-          <Route path="lijst" element={<MepLijst />} />
-        </Route>
-        <Route path="levering" element={<Levering />} />
-        <Route path="melden" element={<Melden />} />
-        <Route path="kas" element={<Kas />}>
-          <Route index element={<Navigate to="tellen" replace />} />
-          <Route path="tellen" element={<KasTellen />} />
-          <Route path="kluis" element={<KasKluis />} />
-          <Route path="naslag" element={<KasNaslag />} />
-          <Route path="instellen" element={<KasInstellen />} />
-        </Route>
-        <Route path="frituurvet" element={<Frituurvet />} />
-        <Route path="lijst/:lijst" element={<Werklijst />} />
+        <Route path="haccp/apparaten" element={<Navigate to="/apparaten" replace />} />
+        <Route path="apparaten" element={<Apparaten />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
-        <Route path="haccp" element={<Haccp />}>
-          <Route index element={<Navigate to="apparaten" replace />} />
-          <Route path="apparaten" element={<Apparaten />} />
-          <Route path="taken" element={<Taken />} />
-          <Route path="logboek" element={<Logboek />} />
-          <Route path="leveringen" element={<Leveringen />} />
-          <Route path="week" element={<Week />} />
-          <Route path="uitdraai" element={<Uitdraai />} />
-        </Route>
         <Route path="schermen" element={<Schermen />}>
           <Route index element={<Navigate to="lijst" replace />} />
           <Route path="lijst" element={<SchermenLijst />} />
@@ -143,11 +81,9 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Timers>
-          <BrowserRouter>
-            <Poort />
-          </BrowserRouter>
-        </Timers>
+        <BrowserRouter>
+          <Poort />
+        </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
   )

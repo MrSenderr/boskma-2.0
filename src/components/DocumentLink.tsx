@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { fotoUrl } from '../lib/meldingen'
+import { documentUrl } from '../lib/opslag'
 
 /* Een document openen uit de beveiligde opslag.
 
@@ -25,7 +25,7 @@ export function DocumentLink({
     let nog = true
     setUrl(null)
     setFout(false)
-    fotoUrl(pad)
+    documentUrl(pad)
       .then((u) => nog && setUrl(u))
       .catch(() => nog && setFout(true))
     return () => {

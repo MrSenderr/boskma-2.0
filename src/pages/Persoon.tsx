@@ -5,9 +5,7 @@ import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
-import { TaakGeven } from '../components/TaakGeven'
 import { Dossier } from '../components/Dossier'
-import { Rechten } from '../components/Rechten'
 import { Zichtbaar } from '../components/Zichtbaar'
 import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
 import {
@@ -174,7 +172,6 @@ export function Persoon() {
         </>
       )}
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <TaakGeven persoon={p} />}
 
       {p.fase === 'medewerker' && (
         <section className="flex flex-col gap-4">
@@ -219,7 +216,6 @@ export function Persoon() {
 
       <Tijdlijn p={p} />
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Rechten persoon={p} />}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Zichtbaar persoon={p} />}
 

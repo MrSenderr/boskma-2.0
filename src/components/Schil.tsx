@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, ClipboardCheck, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, ListChecks, MonitorPlay, ChefHat, BookOpen, UtensilsCrossed, Wallet, ListOrdered } from 'lucide-react'
+import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, MonitorPlay, Refrigerator } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
-import { LIJSTEN } from '../lib/taken'
-import { magIk, useMijnRechten } from '../lib/rechten'
 import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
-import { TimerBalk } from './TimerBalk'
 
 const MENU: {
   pad: string
@@ -23,32 +20,14 @@ const MENU: {
 }[] = [
   // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
+  { pad: '/apparaten', label: 'Apparaten', icoon: Refrigerator, exact: false, voor: 'beheer' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
-  { pad: '/haccp', label: 'HACCP', icoon: ClipboardCheck, exact: false, voor: 'beheer' },
-  { pad: '/mep', label: 'MEP', icoon: ChefHat, exact: false, voor: 'beide', onderdeel: 'mep' },
-  { pad: '/werkkaarten', label: 'Werkkaarten', icoon: UtensilsCrossed, exact: false, voor: 'beide', onderdeel: 'werkkaarten' },
-  { pad: '/recepten', label: 'Recepten', icoon: BookOpen, exact: false, voor: 'beide', onderdeel: 'recepten' },
-  { pad: '/werkwijzen', label: 'Werkwijzen', icoon: ListOrdered, exact: false, voor: 'beide', onderdeel: 'werkwijzen' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
   { pad: '/temperaturen', label: 'Temperaturen', icoon: Thermometer, exact: false, voor: 'medewerker', onderdeel: 'temperaturen' },
-  { pad: '/taken', label: 'Taken', icoon: ListChecks, exact: false, voor: 'medewerker', onderdeel: 'taken' },
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
-]
-
-/* Schermen die geen menu-item hebben maar wel een naam in de kop verdienen.
-   Zonder dit staat er "Boskma" boven een levering, het frituurvet, een melding
-   of een werklijst — en dan weet je niet waar je bent. */
-const EXTRA_TITELS: { pad: string; label: string }[] = [
-  // De kas hangt aan een recht en staat daarom niet in MENU; de kop moet hem
-  // wél kennen.
-  { pad: '/kas', label: 'Kas' },
-  { pad: '/levering', label: 'Levering' },
-  { pad: '/frituurvet', label: 'Frituurvet' },
-  { pad: '/melden', label: 'Melden' },
-  ...LIJSTEN.map((l) => ({ pad: `/lijst/${l.waarde}`, label: l.label })),
 ]
 
 function ThemaKnop() {
@@ -119,7 +98,6 @@ export function Schil() {
   const { email, uitloggen } = useAuth()
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
-  const { data: rechten } = useMijnRechten()
   const { data: verborgen } = useMijnVerborgen()
   const locatie = useLocation()
 
@@ -127,21 +105,16 @@ export function Schil() {
   // De echte grens ligt in de database; dit is alleen het scherm.
   const isBeheerder = wie?.rol === 'beheerder'
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
-  // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar. Staat
-  // 'recepten' uit, dan werkt de knop 'Recept' bij een MEP-taak gewoon.
+  // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar voor wie
+  // het adres intikt of er vanaf een andere plek naartoe klikt.
   const zichtbaar = MENU.filter(
     (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
   )
-  // De kas hangt aan een eigen recht en staat dus niet in de vaste menulijst:
-  // wie het niet mag, hoort de knop niet te zien staan.
-  const magKassen = magIk(rechten, 'kas')
-
   useEffect(() => {
     if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')
   }, [wie, isBeheerder, modus])
   const titel =
     MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
-    EXTRA_TITELS.find((t) => locatie.pathname.startsWith(t.pad))?.label ??
     'Boskma'
 
 
@@ -168,12 +141,7 @@ export function Schil() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {[
-            ...zichtbaar,
-            ...(magKassen
-              ? [{ pad: '/kas', label: 'Kas', icoon: Wallet, exact: false, voor: gezicht }]
-              : []),
-          ].map(({ pad, label, icoon: Icoon, exact }) => (
+          {zichtbaar.map(({ pad, label, icoon: Icoon, exact }) => (
             <NavLink
               key={pad}
               to={pad}
@@ -228,8 +196,6 @@ export function Schil() {
             aanname en zag daardoor de balk. In medewerkersweergave blijft hij
             ook weg, anders klopt je voorbeeld niet met wat zij zien. */}
         {isBeheerder && gezicht === 'beheer' && <TestBalk />}
-
-        <TimerBalk />
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
           <Outlet />

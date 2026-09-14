@@ -2,38 +2,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { useWieBenIk } from './wie'
 
-/* Wat een medewerker in zijn menu ziet. Zie docs/Modules/rechten.md.
+/* Wat een medewerker in zijn menu ziet.
 
-   Dit gaat over overzicht, niet over veiligheid. Staat 'recepten' uit, dan is
-   het menu-item weg — maar de knop 'Recept' bij een MEP-taak werkt gewoon, en
-   wie het adres intikt komt er ook. Dat is de bedoeling: je ruimt een menu op,
-   je sluit niets af. De echte grenzen staan in de database.
+   Dit gaat over overzicht, niet over veiligheid. Staat een onderdeel uit, dan
+   is het menu-item weg — maar wie het adres intikt komt er gewoon. Dat is de
+   bedoeling: je ruimt een menu op, je sluit niets af. De echte grenzen staan
+   in de database.
+
+   Er is er nog maar één over. De lijst blijft een lijst omdat het mechanisme
+   klopt en er straks weer onderdelen bij komen.
 
    De tabel bewaart wat er WEG moet, niet wat er mag. Daarmee ziet een nieuwe
    medewerker vanzelf alles, en is dit een uitzondering die je bewust maakt in
    plaats van een lijst die je bij iedere nieuwe medewerker moet aanvinken. */
 
-export type Onderdeel =
-  | 'temperaturen'
-  | 'taken'
-  | 'mep'
-  | 'werkkaarten'
-  | 'recepten'
-  | 'werkwijzen'
-  | 'levering'
-  | 'frituurvet'
-  | 'melden'
+export type Onderdeel = 'temperaturen'
 
 export const ONDERDELEN: { waarde: Onderdeel; label: string; uitleg: string }[] = [
   { waarde: 'temperaturen', label: 'Temperaturen', uitleg: 'De openings- en sluitingsronde langs de koelingen.' },
-  { waarde: 'taken', label: 'Taken', uitleg: 'De werklijsten en de klussen die jij persoonlijk geeft.' },
-  { waarde: 'mep', label: 'MEP', uitleg: 'De voorbereidingslijst voor de keuken.' },
-  { waarde: 'werkkaarten', label: 'Werkkaarten', uitleg: 'Hoe je een gerecht opbouwt, met de timers.' },
-  { waarde: 'recepten', label: 'Recepten', uitleg: 'Ingrediënten en bereiding.' },
-  { waarde: 'werkwijzen', label: 'Werkwijzen', uitleg: 'Uitleg met stappen en foto’s.' },
-  { waarde: 'levering', label: 'Levering aantekenen', uitleg: 'Knop onder Tussendoor op zijn startscherm.' },
-  { waarde: 'frituurvet', label: 'Frituurvet', uitleg: 'Knop onder Tussendoor op zijn startscherm.' },
-  { waarde: 'melden', label: 'Iets melden', uitleg: 'Knop onder Tussendoor op zijn startscherm.' },
 ]
 
 /** Wat er voor mij verborgen is. Beheerders zien altijd alles. */
