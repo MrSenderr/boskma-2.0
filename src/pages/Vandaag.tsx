@@ -3,7 +3,6 @@ import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
-import { useApparaatstand, vraagtAandacht } from '../lib/apparaatstand'
 import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
 import { dagnaam, getal } from '../lib/opmaak'
 
@@ -13,54 +12,10 @@ import { dagnaam, getal } from '../lib/opmaak'
  * ontbrekende contracten. Dat is precies het onderwerp dat geparkeerd is, en het
  * was het eerste wat je zag bij het openen van de app.
  *
- * Nu de volgorde van wat aandacht vraagt: eerst wat iemand van je wil, dan je
- * apparatuur, dan wat er bij jou ligt, en onderaan de reeks die stilletjes
- * doorloopt. Geld en inkoop horen hier ook, maar die staan nog in een andere
- * database — zodra Mplus gekoppeld is komen ze bovenaan. */
-
-function Apparaten() {
-  const { lijst, isPending, error, refetch } = useApparaatstand()
-
-  if (isPending) return <Laden />
-  if (error) return <Mislukt tekst={error.message} opnieuw={refetch} />
-  if (lijst.length === 0) return null
-
-  const aandacht = vraagtAandacht(lijst)
-
-  return (
-    <section className="flex flex-col gap-3">
-      <Kopje>Apparatuur</Kopje>
-      {aandacht.length === 0 ? (
-        <Kaart className="p-6">
-          <p className="font-display text-lg">Alles binnen de grenzen.</p>
-          <p className="mt-1 text-sm text-muted">
-            {lijst.length} apparaten, allemaal recent gemeten.
-          </p>
-        </Kaart>
-      ) : (
-        <Kaart>
-          {aandacht.map((s) => (
-            <Link
-              key={s.apparaat.id}
-              to="/apparaten"
-              data-touch
-              className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{s.apparaat.naam}</span>
-                <span className="block truncate text-sm text-muted">
-                  {s.toelichting}
-                  {s.laatste && ` · ${getal(s.laatste.temperatuur, '°C')} ${dagnaam(s.laatste.datum)}`}
-                </span>
-              </span>
-              <Pil soort={s.soort}>{s.soort === 'fout' ? 'Afwijking' : 'Let op'}</Pil>
-            </Link>
-          ))}
-        </Kaart>
-      )}
-    </section>
-  )
-}
+ * Nu de volgorde van wat aandacht vraagt: eerst wat iemand van je wil, dan wat
+ * er bij jou ligt, en onderaan de reeks die stilletjes doorloopt. Geld en inkoop
+ * horen hier ook, maar die staan nog in een andere database — zodra Mplus
+ * gekoppeld is komen ze bovenaan. */
 
 function OpJou() {
   const { data, isPending, error, refetch } = usePersonen()
@@ -170,8 +125,6 @@ export function Vandaag() {
       <Wijzigingen />
 
       <Reacties />
-
-      <Apparaten />
 
       <OpJou />
 
