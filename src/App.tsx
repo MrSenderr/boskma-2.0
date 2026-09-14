@@ -7,8 +7,6 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Persoon } from './pages/Persoon'
 import { Instellingen } from './pages/Instellingen'
-import { Apparaten } from './pages/Apparaten'
-import { Ronde } from './pages/Ronde'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
 import { Schermen } from './pages/Schermen'
@@ -56,11 +54,6 @@ function Poort() {
     <Routes>
       <Route element={<Schil />}>
         <Route index element={<Startscherm />} />
-        <Route path="temperaturen" element={<Ronde />} />
-        {/* Oude adressen; blijven werken voor wie ze had opgeslagen. */}
-        <Route path="ronde" element={<Navigate to="/temperaturen" replace />} />
-        <Route path="haccp/apparaten" element={<Navigate to="/apparaten" replace />} />
-        <Route path="apparaten" element={<Apparaten />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
         <Route path="personeel" element={<Personeel />} />

@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, Thermometer, UserCircle, FolderOpen, MonitorPlay, Refrigerator } from 'lucide-react'
+import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { useWieBenIk } from '../lib/wie'
-import { useMijnVerborgen, zieIk, type Onderdeel } from '../lib/zichtbaar'
 
 const MENU: {
   pad: string
@@ -15,17 +14,13 @@ const MENU: {
   icoon: typeof Users
   exact: boolean
   voor: Modus | 'beide'
-  /** Leeg = staat altijd in het menu. */
-  onderdeel?: Onderdeel
 }[] = [
   // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
-  { pad: '/apparaten', label: 'Apparaten', icoon: Refrigerator, exact: false, voor: 'beheer' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
   { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
-  { pad: '/temperaturen', label: 'Temperaturen', icoon: Thermometer, exact: false, voor: 'medewerker', onderdeel: 'temperaturen' },
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
 ]
@@ -98,18 +93,13 @@ export function Schil() {
   const { email, uitloggen } = useAuth()
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
-  const { data: verborgen } = useMijnVerborgen()
   const locatie = useLocation()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
   // De echte grens ligt in de database; dit is alleen het scherm.
   const isBeheerder = wie?.rol === 'beheerder'
   const gezicht: Modus = isBeheerder ? modus : 'medewerker'
-  // Alleen het menu wordt opgeruimd; de schermen blijven bereikbaar voor wie
-  // het adres intikt of er vanaf een andere plek naartoe klikt.
-  const zichtbaar = MENU.filter(
-    (m) => (m.voor === gezicht || m.voor === 'beide') && (!m.onderdeel || zieIk(verborgen, m.onderdeel)),
-  )
+  const zichtbaar = MENU.filter((m) => m.voor === gezicht || m.voor === 'beide')
   useEffect(() => {
     if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')
   }, [wie, isBeheerder, modus])

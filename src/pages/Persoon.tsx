@@ -6,7 +6,6 @@ import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
 import { Dossier } from '../components/Dossier'
-import { Zichtbaar } from '../components/Zichtbaar'
 import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
 import {
   aannemen,
@@ -217,7 +216,6 @@ export function Persoon() {
       <Tijdlijn p={p} />
 
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Zichtbaar persoon={p} />}
 
       {p.fase === 'medewerker' && <UitDienst persoon={p} />}
 
