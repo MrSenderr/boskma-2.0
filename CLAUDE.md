@@ -10,8 +10,12 @@ scherm opnieuw opbouwt, met alle gegevens in één JSON-blob in de database. Van
 de vijftien modules waren er twee daadwerkelijk in gebruik. Daarom geen
 verbouwing maar een nieuwe start, met alleen wat gebruikt wordt.
 
-De volledige analyse staat in `../boskma-app/docs/stijlboek.html` (huisstijl) en
-`../boskma-app/docs/modules/haccp/haccpmodule.md` (eerste grote module).
+De volledige analyse staat in `docs/stijlboek.html` (huisstijl) en
+`docs/Modules/haccp/haccpmodule.md` (eerste grote module).
+
+De CAO, het functiehandboek en de loontabel staan niet hier maar in Google Drive,
+onder `Boskma Foodservice / 05 Personeel`. Dat zijn documenten van derden die
+periodiek vervangen worden; die horen niet in een repo.
 
 ## Stack
 
@@ -52,8 +56,20 @@ account aanmaken onder Authentication → Users.
 De publieke sleutel mag in de bundel staan; die geeft in zijn eentje nergens
 meer toegang toe.
 
-Nieuwe tabellen komen als migratie in `../boskma-app/supabase/migrations` totdat
-die map hierheen verhuist.
+Nieuwe tabellen komen als migratie in `supabase/migrations`. Die map is op
+14 september 2026 vanuit `../boskma-app` hierheen verhuisd, samen met de twintig
+edge functions in `supabase/functions`.
+
+## Verzamelaars
+
+Een browser-app verzamelt alleen als er een scherm openstaat. Dat is hoe de
+weerreeks in `dagboek_dagen` op 24 augustus 2026 stilviel: de oude app vulde
+hem, en die werd niet meer geopend. Twintig dagen weg voordat het opviel.
+
+Wat op een schema moet draaien hoort daarom in een edge function met een
+cronjob, niet in een scherm. `weer-verzamelen` is het voorbeeld: hij kijkt elke
+ronde de hele reeks na in plaats van alleen de laatste dag, zodat een gat zich
+de volgende ochtend vanzelf dicht.
 
 ## Wat er nog niet in zit
 
