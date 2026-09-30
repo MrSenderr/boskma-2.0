@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay, CalendarClock } from 'lucide-react'
+import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay, CalendarClock, MessageCircleQuestion } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -17,6 +17,7 @@ const MENU: {
 }[] = [
   // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
   { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
+  { pad: '/kim', label: 'Kim', icoon: MessageCircleQuestion, exact: false, voor: 'beheer' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/rooster', label: 'Rooster', icoon: CalendarClock, exact: false, voor: 'beheer' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },

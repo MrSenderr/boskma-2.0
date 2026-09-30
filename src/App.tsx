@@ -5,6 +5,7 @@ import { Schil } from './components/Schil'
 import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
+import { Kim } from './pages/Kim'
 import { Rooster } from './pages/Rooster'
 import { RoosterWeek } from './pages/RoosterWeek'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
@@ -60,6 +61,7 @@ function Poort() {
         <Route index element={<Startscherm />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
+        <Route path="kim" element={<Kim />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="rooster" element={<Rooster />}>
