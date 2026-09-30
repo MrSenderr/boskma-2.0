@@ -3,7 +3,7 @@
 // hier een component. Zo blijft alles vanzelf hetzelfde.
 
 import { useEffect, useState } from 'react'
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { leesbareFout } from '../lib/fouten'
 import { supabase } from '../lib/supabase'
@@ -39,9 +39,13 @@ export function Knop({ soort = 'primair', bezig, breed, children, className = ''
 
 /* --------------------------------------------------------------- Kaart --- */
 
-export function Kaart({ children, className = '' }: { children: ReactNode; className?: string }) {
+type KaartProps = HTMLAttributes<HTMLDivElement> & { children: ReactNode }
+
+export function Kaart({ children, className = '', ...rest }: KaartProps) {
   return (
-    <div className={`rounded-card border border-line bg-surface ${className}`}>{children}</div>
+    <div {...rest} className={`rounded-card border border-line bg-surface ${className}`}>
+      {children}
+    </div>
   )
 }
 

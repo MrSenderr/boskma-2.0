@@ -5,6 +5,10 @@ import { Schil } from './components/Schil'
 import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
+import { Rooster } from './pages/Rooster'
+import { RoosterWeek } from './pages/RoosterWeek'
+import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
+import { RoosterImporteren } from './pages/RoosterImporteren'
 import { Persoon } from './pages/Persoon'
 import { Instellingen } from './pages/Instellingen'
 import { MijnGegevens } from './pages/MijnGegevens'
@@ -58,6 +62,12 @@ function Poort() {
         <Route path="mijn-dossier" element={<MijnDossier />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
+        <Route path="rooster" element={<Rooster />}>
+          <Route index element={<Navigate to="week" replace />} />
+          <Route path="week" element={<RoosterWeek />} />
+          <Route path="medewerkers" element={<RoosterMedewerkers />} />
+          <Route path="importeren" element={<RoosterImporteren />} />
+        </Route>
         <Route path="schermen" element={<Schermen />}>
           <Route index element={<Navigate to="lijst" replace />} />
           <Route path="lijst" element={<SchermenLijst />} />
