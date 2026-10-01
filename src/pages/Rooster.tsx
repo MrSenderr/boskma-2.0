@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { Kopje } from '../components/ui'
 
 const TABS = [
-  { pad: 'week', label: 'Week' },
+  { pad: 'dag', label: 'Dag' },
   { pad: 'medewerkers', label: 'Per medewerker' },
   { pad: 'importeren', label: 'Importeren' },
 ]

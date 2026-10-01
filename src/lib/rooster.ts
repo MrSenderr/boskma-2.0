@@ -364,7 +364,7 @@ export type Statistiek = {
   langste: number
 }
 
-function naamUit(rij: Shift) {
+export function naamUit(rij: Shift) {
   return [rij.voornaam, rij.achternaam].filter(Boolean).join(' ') || 'Open dienst'
 }
 

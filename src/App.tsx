@@ -7,7 +7,7 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Kim } from './pages/Kim'
 import { Rooster } from './pages/Rooster'
-import { RoosterWeek } from './pages/RoosterWeek'
+import { RoosterDag } from './pages/RoosterDag'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
 import { RoosterImporteren } from './pages/RoosterImporteren'
 import { Persoon } from './pages/Persoon'
@@ -65,8 +65,10 @@ function Poort() {
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="rooster" element={<Rooster />}>
-          <Route index element={<Navigate to="week" replace />} />
-          <Route path="week" element={<RoosterWeek />} />
+          <Route index element={<Navigate to="dag" replace />} />
+          <Route path="dag" element={<RoosterDag />} />
+          {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
+          <Route path="week" element={<Navigate to="/rooster/dag" replace />} />
           <Route path="medewerkers" element={<RoosterMedewerkers />} />
           <Route path="importeren" element={<RoosterImporteren />} />
         </Route>
