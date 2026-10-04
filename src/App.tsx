@@ -6,6 +6,7 @@ import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Kim } from './pages/Kim'
+import { Kas } from './pages/Kas'
 import { Rooster } from './pages/Rooster'
 import { RoosterDag } from './pages/RoosterDag'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
@@ -62,6 +63,7 @@ function Poort() {
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
         <Route path="kim" element={<Kim />} />
+        <Route path="kas" element={<Kas />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="rooster" element={<Rooster />}>
