@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eraser } from 'lucide-react'
 import { Kaart, Knop, Kopje } from '../components/ui'
 import {
@@ -10,9 +10,14 @@ import {
   ergensTeveel,
   euro,
   inLade,
+  bewaarTelling,
+  isVanVandaag,
+  leesTelling,
   teveelNaarKluis,
+  tijdstip,
   totalen,
   vandaagInWoorden,
+  wisTelling,
   type Aantallen,
   type Soort,
 } from '../lib/kas'
@@ -58,8 +63,13 @@ function Subtotaal({ label, geteld, kluis }: { label: string; geteld: Aantallen;
 }
 
 export function Kas() {
-  const [geteld, setGeteld] = useState<Aantallen>(LEEG)
-  const [kluis, setKluis] = useState<Aantallen>(LEEG)
+  // Wat er nog op dit toestel stond: je telt in kantoor en maakt bij de kassa
+  // je telefoon weer open.
+  const [bewaard] = useState(() => leesTelling())
+  const [geteld, setGeteld] = useState<Aantallen>(() => bewaard?.geteld ?? LEEG)
+  const [kluis, setKluis] = useState<Aantallen>(() => bewaard?.kluis ?? LEEG)
+  const [bewaardOp, setBewaardOp] = useState(() => bewaard?.bewaardOp ?? '')
+  const [kanBewaren, setKanBewaren] = useState(true)
   const [wissenBevestigen, setWissenBevestigen] = useState(false)
 
   const geteldVelden = useRef<(HTMLInputElement | null)[]>([])
@@ -67,6 +77,26 @@ export function Kas() {
 
   const t = totalen(geteld, kluis)
   const fout = ergensTeveel(geteld, kluis)
+  const leeg = t.geteld === 0 && t.kluis === 0
+  const vanEerder = Boolean(bewaardOp) && !isVanVandaag(bewaardOp)
+
+  /* Na elke wijziging opslaan. Een lege telling hoeft niet bewaard: dan hoort
+     het scherm bij de volgende keer gewoon leeg te zijn.
+
+     Niet bij het openen van het scherm: dan zou een telling van gisteren
+     meteen het stempel van vandaag krijgen en verdween de waarschuwing
+     voordat je hem gelezen had. */
+  const eersteKeer = useRef(true)
+  useEffect(() => {
+    if (eersteKeer.current) {
+      eersteKeer.current = false
+      return
+    }
+    if (leeg) return
+    const gelukt = bewaarTelling(geteld, kluis)
+    setKanBewaren(gelukt)
+    if (gelukt) setBewaardOp(new Date().toISOString())
+  }, [geteld, kluis, leeg])
 
   function zet(welke: 'geteld' | 'kluis', centen: number, waarde: string) {
     // Alleen hele getallen vanaf nul; een lege invoer is gewoon nul.
@@ -94,6 +124,8 @@ export function Kas() {
   function wis() {
     setGeteld(LEEG)
     setKluis(LEEG)
+    setBewaardOp('')
+    wisTelling()
     setWissenBevestigen(false)
     geteldVelden.current[0]?.focus()
   }
@@ -103,6 +135,22 @@ export function Kas() {
       <div>
         <Kopje>Kas tellen</Kopje>
         <p className="mt-1 text-sm text-muted">{vandaagInWoorden()}</p>
+
+        {vanEerder && (
+          <p className="mt-2 text-sm text-warn">
+            Dit is een telling van eerder, bewaard om {tijdstip(bewaardOp)}. Wis hem als je
+            opnieuw begint.
+          </p>
+        )}
+        {!vanEerder && bewaardOp && (
+          <p className="mt-1 text-sm text-muted">Bewaard om {tijdstip(bewaardOp)}.</p>
+        )}
+        {!kanBewaren && (
+          <p className="mt-2 text-sm text-bad">
+            Dit apparaat bewaart de telling niet. Loop je weg, dan is hij weg — neem de
+            bedragen over voordat je het scherm sluit.
+          </p>
+        )}
       </div>
 
       <Kaart className="flex flex-col py-2">

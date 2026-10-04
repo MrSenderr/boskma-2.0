@@ -12,7 +12,11 @@ import {
   inLade,
   telOp,
   teveelNaarKluis,
+  isVanVandaag,
+  naarOpslag,
+  tijdstip,
   totalen,
+  uitOpslag,
   vandaagInWoorden,
   type Aantallen,
 } from './kas'
@@ -135,5 +139,52 @@ describe('een echte telling', () => {
 describe('de datum bovenaan', () => {
   it('schrijft hem voluit in het Nederlands', () => {
     expect(vandaagInWoorden(new Date('2026-10-04T12:00:00'))).toBe('zondag 4 oktober 2026')
+  })
+})
+
+describe('de telling bewaren', () => {
+  const telling = {
+    geteld: { ...LEEG, 5000: 3, 2000: 7 },
+    kluis: { ...LEEG, 5000: 3 },
+    bewaardOp: '2026-10-04T18:30:00.000Z',
+  }
+
+  it('komt er net zo uit als hij erin ging', () => {
+    expect(uitOpslag(naarOpslag(telling))).toEqual(telling)
+  })
+
+  it('geeft niets terug als er niets staat', () => {
+    expect(uitOpslag(null)).toBeNull()
+    expect(uitOpslag('')).toBeNull()
+  })
+
+  it('struikelt niet over rommel in de opslag', () => {
+    expect(uitOpslag('dit is geen json')).toBeNull()
+    expect(uitOpslag('{"geteld":{}}')).toBeNull()
+    expect(uitOpslag('{"bewaardOp":"geen datum"}')).toBeNull()
+  })
+
+  it('negeert aantallen die geen aantal zijn', () => {
+    const uit = uitOpslag('{"bewaardOp":"2026-10-04T18:30:00.000Z","geteld":{"5000":"veel","2000":-3,"1000":2.7}}')
+    expect(uit?.geteld[5000]).toBe(0)
+    expect(uit?.geteld[2000]).toBe(0)
+    expect(uit?.geteld[1000]).toBe(2)
+  })
+
+  it('laat coupures die wij niet kennen buiten de telling', () => {
+    const uit = uitOpslag('{"bewaardOp":"2026-10-04T18:30:00.000Z","geteld":{"10000":5}}')
+    expect(telOp(uit!.geteld)).toBe(0)
+  })
+
+  it('weet of een telling van vandaag is', () => {
+    const nu = new Date('2026-10-04T20:00:00')
+    expect(isVanVandaag(new Date('2026-10-04T14:00:00').toISOString(), nu)).toBe(true)
+    expect(isVanVandaag(new Date('2026-10-03T23:00:00').toISOString(), nu)).toBe(false)
+    expect(isVanVandaag('geen datum', nu)).toBe(false)
+  })
+
+  it('noemt het tijdstip waarop hij bewaard is', () => {
+    expect(tijdstip(new Date('2026-10-04T18:05:00').toISOString())).toBe('18:05')
+    expect(tijdstip('geen datum')).toBe('')
   })
 })

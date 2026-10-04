@@ -89,3 +89,94 @@ export function vandaagInWoorden(datum = new Date()): string {
     year: 'numeric',
   })
 }
+
+/* ------------------------------------------------------------- bewaren --- */
+
+/* De telling blijft op dit apparaat staan, zodat je in kantoor kunt tellen en
+   bij de kassa je telefoon weer openmaakt. Niet in de database: deze telling is
+   van jou en van dit toestel, en hoort nergens anders thuis. */
+
+const SLEUTEL = 'zonnetje-kastelling'
+
+export type BewaardeTelling = { geteld: Aantallen; kluis: Aantallen; bewaardOp: string }
+
+/** Alleen de coupures die we kennen, en alleen hele getallen vanaf nul. Wat er
+ *  in de opslag staat is oud of aangepast tot het tegendeel blijkt. */
+function schoonAantallen(ruw: unknown): Aantallen {
+  const uit: Aantallen = { ...LEEG }
+  if (!ruw || typeof ruw !== 'object') return uit
+  for (const c of COUPURES) {
+    const n = Number((ruw as Record<string, unknown>)[String(c.centen)])
+    uit[c.centen] = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+  }
+  return uit
+}
+
+/** Wat er uit de opslag komt omzetten naar een telling, of niets. */
+export function uitOpslag(tekst: string | null): BewaardeTelling | null {
+  if (!tekst) return null
+  try {
+    const ruw = JSON.parse(tekst) as Record<string, unknown>
+    const bewaardOp = typeof ruw.bewaardOp === 'string' ? ruw.bewaardOp : ''
+    if (!bewaardOp || Number.isNaN(new Date(bewaardOp).getTime())) return null
+    return {
+      geteld: schoonAantallen(ruw.geteld),
+      kluis: schoonAantallen(ruw.kluis),
+      bewaardOp,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function naarOpslag(t: BewaardeTelling): string {
+  return JSON.stringify(t)
+}
+
+/** Is deze telling van vandaag? Zo niet, dan hoort hij niet stilletjes terug te
+ *  komen alsof je net geteld hebt. */
+export function isVanVandaag(bewaardOp: string, nu = new Date()): boolean {
+  const d = new Date(bewaardOp)
+  if (Number.isNaN(d.getTime())) return false
+  return d.toLocaleDateString('sv-SE') === nu.toLocaleDateString('sv-SE')
+}
+
+export function tijdstip(bewaardOp: string): string {
+  const d = new Date(bewaardOp)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+}
+
+/* De browser mag opslag weigeren — een privévenster, of site-gegevens die
+   geblokkeerd zijn. Dan werkt het scherm gewoon door, maar bewaart het niets,
+   en dat moet je weten in plaats van je telling kwijtraken. */
+
+export function leesTelling(): BewaardeTelling | null {
+  try {
+    return uitOpslag(window.localStorage.getItem(SLEUTEL))
+  } catch {
+    return null
+  }
+}
+
+/** Geeft false als bewaren niet lukte. */
+export function bewaarTelling(geteld: Aantallen, kluis: Aantallen): boolean {
+  try {
+    window.localStorage.setItem(
+      SLEUTEL,
+      naarOpslag({ geteld, kluis, bewaardOp: new Date().toISOString() }),
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function wisTelling(): void {
+  try {
+    window.localStorage.removeItem(SLEUTEL)
+  } catch {
+    // Niets te doen: als je het er niet in krijgt, staat het er ook niet in.
+  }
+}
