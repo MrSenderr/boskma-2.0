@@ -12,7 +12,7 @@ const KAART_VELDEN =
   LIJST_VELDEN +
   ',geboortedatum,telefoonnummer,email,motivatie,onboarding_data,' +
   'voorletters,tussenvoegsel,' +
-  'contracttype,contractduur,contracturen,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
+  'contracttype,contractduur,contracturen,uren_min,uren_max,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
 
 export type Fase = 'sollicitant' | 'medewerker'
 
@@ -35,8 +35,8 @@ export type Persoon = {
   email?: string | null
   motivatie?: string | null
   onboarding_data?: Record<string, unknown> | null
-  /* Voor de export naar Verzekeringsinzicht. Leeg betekent: afleiden uit
-     voornaam en achternaam. Zie lib/verzekeringsinzicht.ts. */
+  /* Blijven staan voor de export naar de verzekeraar, die later opnieuw
+     gebouwd wordt. Er is nu geen scherm waar je ze invult. */
   voorletters?: string | null
   tussenvoegsel?: string | null
   // vult Sander zelf in, voor het mutatieformulier
@@ -46,12 +46,30 @@ export type Persoon = {
   ingangsdatum?: string | null
   einddatum?: string | null
   contracturen?: number | null
+  /** Alleen bij een min-max-overeenkomst: de onder- en bovengrens per week. */
+  uren_min?: number | null
+  uren_max?: number | null
   uurloon?: number | null
   proefperiode?: boolean | null
   contract_door_loonbureau?: boolean | null
 }
 
-export const CONTRACTTYPES = ['Nuluren-overeenkomst (oproep)', 'Vaste uren'] as const
+export const CONTRACTTYPES = [
+  'Nuluren-overeenkomst (oproep)',
+  'Min-max-overeenkomst',
+  'Vaste uren',
+] as const
+
+/* Welke urenvelden bij welk contract horen. Op één plek, want het scherm, het
+   mutatieformulier en de export naar de verzekeraar moeten het eens zijn. */
+export type Urensoort = 'geen' | 'vast' | 'bandbreedte'
+
+export function urensoortVan(contracttype: string | null | undefined): Urensoort {
+  const t = (contracttype ?? '').toLowerCase()
+  if (t.includes('nuluren')) return 'geen'
+  if (t.includes('min-max') || t.includes('min/max')) return 'bandbreedte'
+  return 'vast'
+}
 
 export const FUNCTIES = [
   { naam: 'Medewerker fastservice I', groep: 2 },
@@ -69,6 +87,27 @@ export function ontbrekendeContractvelden(p: Persoon): string[] {
   if (p.uurloon === null || p.uurloon === undefined) mist.push('uurloon')
   if (p.proefperiode === null || p.proefperiode === undefined) mist.push('proefperiode')
   return mist
+}
+
+/** De urenafspraak in één zin, zoals het loonbureau hem moet lezen. */
+export function urenInWoorden(p: Persoon): string {
+  const getal = (n: number | null | undefined) =>
+    n === null || n === undefined ? null : String(n).replace(/\.0$/, '').replace('.', ',')
+
+  switch (urensoortVan(p.contracttype)) {
+    case 'geen':
+      return 'Geen vaste uren (oproep)'
+    case 'bandbreedte': {
+      const min = getal(p.uren_min)
+      const max = getal(p.uren_max)
+      if (min === null && max === null) return 'Nog niet ingevuld'
+      return `Minimaal ${min ?? '—'}, maximaal ${max ?? '—'} uur per week`
+    }
+    default: {
+      const uren = getal(p.contracturen)
+      return uren === null ? 'Nog niet ingevuld' : `${uren} uur per week`
+    }
+  }
 }
 
 export function naamVan(p: Persoon) {

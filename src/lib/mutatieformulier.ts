@@ -1,4 +1,4 @@
-import type { Persoon } from './personeel'
+import { urenInWoorden, type Persoon } from './personeel'
 
 /* Het mutatieformulier zoals het loonbureau het gewend is. De indeling volgt
    het bestaande voorbeeld: kop, contractgegevens, medewerkergegevens, voet.
@@ -58,6 +58,9 @@ export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'):
   const contract = [
     rij('Medewerker', veilig(naam)),
     rij('Contracttype', veilig(p.contracttype)),
+    // Het loonbureau kreeg tot nu toe geen urenaantal te zien, ook niet bij
+    // vaste uren. Bij een min-max staan hier de onder- en bovengrens.
+    rij('Uren', veilig(urenInWoorden(p))),
     rij('Functie', veilig(p.functie)),
     rij('Ingangsdatum', datum(p.ingangsdatum)),
     // Einddatum staat er alleen bij een contract voor bepaalde tijd

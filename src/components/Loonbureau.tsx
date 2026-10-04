@@ -8,11 +8,12 @@ import {
   korteDatum,
   naamVan,
   ontbrekendeContractvelden,
+  urenInWoorden,
+  urensoortVan,
   usePersoonWijzigen,
   type Persoon,
 } from '../lib/personeel'
 import { bijlagenStand, bijlagenVan, bouwMutatieformulier } from '../lib/mutatieformulier'
-import { afgeleideVoorletters, splitsAchternaam } from '../lib/verzekeringsinzicht'
 import { useTestmodus } from '../lib/instellingen'
 import { supabase } from '../lib/supabase'
 
@@ -93,8 +94,9 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
   // Zolang het nog niet weg is, vul je in. Daarna is het vastgelegd en lees je
   // het — wijzigen kan, maar dan is het een handeling en geen ongelukje.
   const toonVelden = !alVerstuurd || bewerken
-  // Een oproepkracht heeft geen vaste uren; de export vult daar zelf een 1 in.
-  const oproepcontract = (p.contracttype ?? '').toLowerCase().includes('nuluren')
+  // Welke urenvelden erbij horen hangt aan het contracttype; die regel staat
+  // in personeel.ts zodat het scherm en de uitdraaien hetzelfde zeggen.
+  const urensoort = urensoortVan(p.contracttype)
 
   async function verstuur() {
     setBezig(true)
@@ -202,7 +204,7 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
               if (v !== p.uurloon) wijzig.mutate({ uurloon: v })
             }}
           />
-          {!oproepcontract && (
+          {urensoort === 'vast' && (
             <Veld
               label="Uren per week"
               type="number"
@@ -216,6 +218,36 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
                 if (v !== p.contracturen) wijzig.mutate({ contracturen: v })
               }}
             />
+          )}
+          {urensoort === 'bandbreedte' && (
+            <>
+              <Veld
+                label="Minimaal uren per week"
+                type="number"
+                step="0.5"
+                min="1"
+                max="60"
+                inputMode="decimal"
+                defaultValue={p.uren_min ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value === '' ? null : Number(e.target.value)
+                  if (v !== p.uren_min) wijzig.mutate({ uren_min: v })
+                }}
+              />
+              <Veld
+                label="Maximaal uren per week"
+                type="number"
+                step="0.5"
+                min="1"
+                max="60"
+                inputMode="decimal"
+                defaultValue={p.uren_max ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value === '' ? null : Number(e.target.value)
+                  if (v !== p.uren_max) wijzig.mutate({ uren_max: v })
+                }}
+              />
+            </>
           )}
           <Veld
             label="Ingangsdatum"
@@ -263,33 +295,6 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
           />
         </div>
 
-            <div className="flex flex-col gap-3 border-t border-line pt-4">
-              <p className="text-sm text-muted">
-                Voor de export naar de verzekeraar. Laat je ze leeg, dan rekenen
-                we ze uit de naam — dat staat er grijs voorgedrukt.
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Veld
-                  label="Voorletters"
-                  placeholder={afgeleideVoorletters(p.voornaam)}
-                  defaultValue={p.voorletters ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim() || null
-                    if (v !== (p.voorletters ?? null)) wijzig.mutate({ voorletters: v })
-                  }}
-                />
-                <Veld
-                  label="Tussenvoegsel"
-                  placeholder={splitsAchternaam(p.achternaam).tussenvoegsel || 'geen'}
-                  defaultValue={p.tussenvoegsel ?? ''}
-                  onBlur={(e) => {
-                    const v = e.target.value.trim() || null
-                    if (v !== (p.tussenvoegsel ?? null)) wijzig.mutate({ tussenvoegsel: v })
-                  }}
-                />
-              </div>
-            </div>
-
             {alVerstuurd && (
               <div className="flex flex-col gap-2">
                 <Knop soort="rustig" className="w-fit" onClick={() => setBewerken(false)}>
@@ -326,16 +331,7 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
                     : `€ ${p.uurloon.toFixed(2).replace('.', ',')}`
                 }
               />
-              {!oproepcontract && (
-                <Rij
-                  label="Uren per week"
-                  waarde={
-                    p.contracturen === null || p.contracturen === undefined
-                      ? null
-                      : String(p.contracturen).replace('.', ',')
-                  }
-                />
-              )}
+              <Rij label="Uren" waarde={urenInWoorden(p)} />
               <Rij label="Ingangsdatum" waarde={p.ingangsdatum ? korteDatum(p.ingangsdatum) : null} />
               {p.contractduur === 'bepaalde' && (
                 <Rij label="Einddatum" waarde={p.einddatum ? korteDatum(p.einddatum) : null} />
