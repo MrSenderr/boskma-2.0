@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { GetalVeld } from '../components/GetalVeld'
 import { euro, useProductOpslaan, useProductWeg, useProducten, type Btw, type Product } from '../lib/verkoop'
 
 /* De prijslijst. Prijzen zijn inclusief btw, net als op de kaart — zo ken je ze
@@ -32,14 +33,11 @@ function Bewerken({
         onChange={(e) => setC({ ...c, omschrijving: e.target.value })}
       />
       <div className="grid grid-cols-3 gap-2">
-        <Veld
+        <GetalVeld
           label="Prijs incl."
-          type="number"
-          step="0.01"
-          min="0"
-          inputMode="decimal"
-          value={c.prijs_incl ?? ''}
-          onChange={(e) => setC({ ...c, prijs_incl: Number(e.target.value) })}
+          waarde={c.prijs_incl}
+          placeholder="0,00"
+          onWijzig={(n) => setC({ ...c, prijs_incl: n ?? 0 })}
         />
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold text-muted">Btw</span>

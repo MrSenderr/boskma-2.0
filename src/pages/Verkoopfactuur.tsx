@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, FileText, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { GetalVeld } from '../components/GetalVeld'
 import {
   euro,
   euroUitCenten,
@@ -78,31 +79,19 @@ function RegelKaart({
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
-          Aantal
-          <input
-            type="number"
-            step="0.5"
-            min="0"
-            inputMode="decimal"
-            className={invoer}
-            value={r.aantal}
-            onChange={(e) => onWijzig({ ...r, aantal: Number(e.target.value) })}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
-          Prijs incl.
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            inputMode="decimal"
-            className={invoer}
-            value={r.prijs_incl}
-            onChange={(e) => onWijzig({ ...r, prijs_incl: Number(e.target.value) })}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold text-muted">
+        <GetalVeld
+          label="Aantal"
+          waarde={r.aantal}
+          placeholder="1"
+          onWijzig={(n) => onWijzig({ ...r, aantal: n ?? 0 })}
+        />
+        <GetalVeld
+          label="Prijs incl."
+          waarde={r.prijs_incl}
+          placeholder="0,00"
+          onWijzig={(n) => onWijzig({ ...r, prijs_incl: n ?? 0 })}
+        />
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-semibold text-muted">
           Btw
           <select
             className={invoer}
@@ -382,7 +371,7 @@ export function Verkoopfactuur() {
         />
         {regels.map((r, i) => (
           <RegelKaart
-            key={i}
+            key={r.id ?? `nieuw-${r.volgorde}-${i}`}
             r={r}
             onWijzig={(nieuwe) => setRegels((v) => v.map((x, j) => (j === i ? nieuwe : x)))}
             onWeg={() => setRegels((v) => v.filter((_, j) => j !== i))}
@@ -394,7 +383,10 @@ export function Verkoopfactuur() {
           onClick={() =>
             setRegels((v) => [
               ...v,
-              { volgorde: v.length, product_id: null, omschrijving: '', aantal: 1, prijs_incl: 0, btw_tarief: 9 },
+              {
+                volgorde: v.length, product_id: null, omschrijving: '',
+                aantal: 1, prijs_incl: 0, btw_tarief: 9,
+              },
             ])
           }
         >
