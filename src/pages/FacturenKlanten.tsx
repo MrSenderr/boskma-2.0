@@ -45,13 +45,22 @@ function Bewerken({
             onChange={(e) => setConcept({ ...concept, [sleutel]: e.target.value })}
           />
         ))}
-        <Veld
-          label="Betaaltermijn in dagen"
-          type="number"
-          min="1"
-          value={concept.betaaltermijn_dagen ?? 14}
-          onChange={(e) => setConcept({ ...concept, betaaltermijn_dagen: Number(e.target.value) })}
-        />
+        {/* Twee smaken: 14 dagen voor de kleinere klanten, 30 voor bedrijven
+            die dat zo gewend zijn. Een vrij getal nodigt alleen uit tot
+            typefouten. */}
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-muted">Betaaltermijn</span>
+          <select
+            className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent"
+            value={concept.betaaltermijn_dagen ?? 14}
+            onChange={(e) =>
+              setConcept({ ...concept, betaaltermijn_dagen: Number(e.target.value) })
+            }
+          >
+            <option value={14}>14 dagen</option>
+            <option value={30}>30 dagen</option>
+          </select>
+        </label>
       </div>
 
       <div className="flex flex-wrap gap-2">
