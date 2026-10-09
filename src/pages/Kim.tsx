@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Bell, BellOff, Check } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Veld } from '../components/ui'
 import {
   korteDatum,
@@ -12,6 +13,7 @@ import {
   type KimWachtpost,
 } from '../lib/kim'
 import { kimMeldingenAan, kimMeldingenStatus, type Meldingstand } from '../lib/kimpush'
+import { deelIn, euro, telOp, useFacturen } from '../lib/facturen'
 
 /* Het Kim-scherm: wat ze wil weten, en wat er openstaat.
 
@@ -73,6 +75,31 @@ function Meldingen() {
 
       {fout && <p className="text-sm text-bad">{fout}</p>}
     </Kaart>
+  )
+}
+
+/* Wat er aan facturen klaarstaat hoort hier ook: dit is het scherm waar je
+   's ochtends kijkt wat er van je gevraagd wordt. */
+function TeBetalen() {
+  const { data } = useFacturen()
+  if (!data) return null
+
+  const zelf = deelIn(data).zelfBetalen
+  if (zelf.length === 0) return null
+
+  return (
+    <Link
+      to="/facturen/inkomend"
+      data-touch
+      className="flex items-center gap-3 rounded-card border border-line bg-surface px-4 py-3 hover:bg-surface-2"
+    >
+      <span className="min-w-0 flex-1 text-sm">
+        <span className="font-semibold">Zelf betalen:</span> {zelf.length}{' '}
+        {zelf.length === 1 ? 'factuur' : 'facturen'},{' '}
+        <span className="tabular-nums">{euro(telOp(zelf))}</span>
+      </span>
+      <ArrowRight className="size-4 shrink-0 text-muted" aria-hidden />
+    </Link>
   )
 }
 
@@ -175,6 +202,7 @@ export function Kim() {
   return (
     <div className="flex flex-col gap-8">
       <Meldingen />
+      <TeBetalen />
 
       {nietsTeDoen ? (
         <Leeg

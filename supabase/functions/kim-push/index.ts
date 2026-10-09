@@ -1,9 +1,10 @@
 // kim-push
 //
-// POST { tabel: 'kim_vragen' | 'kim_wachtposten', id }
+// POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen', id }
 //
-// Stuurt Sander een pushbericht voor een nieuwe vraag van Kim, of voor een wachtpost
-// waar iets aan veranderd is. Wordt aangeroepen door een trigger in de database.
+// Stuurt Sander een pushbericht voor een nieuwe vraag van Kim, voor een wachtpost
+// waar iets aan veranderd is, of voor een factuur die hij binnen 3 dagen zelf moet
+// betalen. Wordt aangeroepen door een trigger of door facturen_dagelijks() in de database.
 //
 // Net als stuur-melding: de functie leest de rij zelf op en gebruikt uit het verzoek
 // alleen tabel en nummer. Elke rij wordt hooguit een keer gepusht (gepusht_op); een
@@ -45,7 +46,7 @@ async function zorgVoorVapid() {
   webpush.setVapidDetails("mailto:sander@boskmafoodservice.nl", k.public!, k.private!);
   vapidKlaar = true;
 }
-const TABELLEN = ["kim_vragen", "kim_wachtposten"] as const;
+const TABELLEN = ["kim_vragen", "kim_wachtposten", "facturen"] as const;
 type Tabel = typeof TABELLEN[number];
 
 function json(body: unknown, status = 200) {
@@ -68,6 +69,8 @@ async function claim(tabel: Tabel, id: number, filter: string) {
   if (!r.ok) throw new Error(`claim mislukt: ${await r.text()}`);
   return ((await r.json()) as unknown[]).length === 1;
 }
+
+const EURO = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "alleen POST" }, 405);
@@ -92,6 +95,22 @@ Deno.serve(async (req) => {
       if (rij.beantwoord_op || rij.afgehandeld_op) return json({ ok: true, overgeslagen: "al beantwoord" });
       if (!(await claim(tabel, nr, "gepusht_op=is.null"))) return json({ ok: true, overgeslagen: "al gepusht" });
       bericht = { title: "Kim vraagt", body: kort(rij.vraag), url: `${APP_URL}/kim`, tag: `kim-vraag-${nr}` };
+    } else if (tabel === "facturen") {
+      // Handmatige betaling die binnen 3 dagen vervalt (zie facturen_dagelijks in de database).
+      if (rij.status !== "open" || rij.betaalwijze !== "handmatig") {
+        return json({ ok: true, overgeslagen: "niet zelf te betalen" });
+      }
+      if (!(await claim(tabel, nr, "gepusht_op=is.null"))) return json({ ok: true, overgeslagen: "al gepusht" });
+      const bedrag = rij.bedrag_incl != null ? EURO.format(Number(rij.bedrag_incl)) : "bedrag onbekend";
+      const verval = rij.vervaldatum
+        ? new Date(`${rij.vervaldatum}T12:00:00`).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })
+        : null;
+      bericht = {
+        title: kort(`Betalen: ${rij.leverancier}`, 60),
+        body: kort(verval ? `${bedrag}, uiterlijk ${verval}` : bedrag),
+        url: `${APP_URL}/facturen`,
+        tag: `factuur-${nr}`,
+      };
     } else {
       if (!rij.melding || !rij.melding_op || rij.afgedaan_op) return json({ ok: true, overgeslagen: "niets te melden" });
       const na = encodeURIComponent(`"${rij.melding_op}"`); // quotes: tijdstempel bevat : . en +
