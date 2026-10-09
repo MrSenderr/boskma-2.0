@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, FileText, Plus, Trash2 } from 'lucid
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { GetalVeld } from '../components/GetalVeld'
+import { Versturen } from '../components/Versturen'
 import {
   euro,
   euroUitCenten,
@@ -15,10 +16,16 @@ import {
   useKlanten,
   useProducten,
   useVerkoopfactuur,
+  useCrediteren,
+  useVerkoopBetaald,
+  useVerkoopHeropenen,
   verwissel,
+  dagenTeLaat,
   haalPdf,
   type Btw,
   type Regel,
+  // De pagina heet ook Verkoopfactuur; vandaar een andere naam voor het type.
+  type Verkoopfactuur as VerkoopfactuurType,
 } from '../lib/verkoop'
 
 /* Een factuur opstellen. Zolang er geen nummer op staat is het een concept en
@@ -190,6 +197,119 @@ function Prijslijst({ onKies }: { onKies: (r: Regel) => void }) {
   )
 }
 
+/* Wat je met een verstuurde factuur nog kunt: afvinken als hij betaald is,
+   een herinnering sturen als hij te laat is, of hem crediteren. Wijzigen kan
+   niet meer — daarom staat crediteren hier en niet een bewerkknop. */
+function VerstuurdeActies({
+  factuur,
+  melden,
+}: {
+  factuur: VerkoopfactuurType
+  melden: (t: string) => void
+}) {
+  const navigeer = useNavigate()
+  const { data: klanten } = useKlanten()
+  const betaald = useVerkoopBetaald()
+  const heropenen = useVerkoopHeropenen()
+  const crediteren = useCrediteren()
+  const [datum, setDatum] = useState(() => new Date().toLocaleDateString('sv-SE'))
+  const [herinneren, setHerinneren] = useState(false)
+
+  const klant = klanten?.find((k) => k.id === factuur.klant_id)
+  const telaat = dagenTeLaat(factuur)
+  const fout = (e: unknown) => melden(e instanceof Error ? e.message : 'Dat lukte niet.')
+
+  if (factuur.status === 'betaald') {
+    return (
+      <Kaart className="flex flex-wrap items-center justify-between gap-2 p-4">
+        <span className="text-sm text-good">
+          Betaald op {factuur.betaald_op ? kortDatum(factuur.betaald_op) : 'onbekende datum'}.
+        </span>
+        <button
+          type="button"
+          className="text-sm underline"
+          onClick={() => heropenen.mutate(factuur.id, { onError: fout })}
+        >
+          Toch niet betaald
+        </button>
+      </Kaart>
+    )
+  }
+
+  if (factuur.status === 'gecrediteerd') {
+    return <p className="text-sm text-muted">Deze factuur is gecrediteerd.</p>
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {telaat > 0 && (
+        <p className="text-sm text-bad">
+          {telaat} {telaat === 1 ? 'dag' : 'dagen'} te laat.
+        </p>
+      )}
+
+      <Kaart className="flex flex-col gap-3 p-4">
+        <p className="text-sm font-semibold">Is hij betaald?</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-40">
+            <Veld
+              label="Op welke datum"
+              type="date"
+              value={datum}
+              onChange={(e) => setDatum(e.target.value)}
+            />
+          </div>
+          <Knop
+            soort="primair"
+            bezig={betaald.isPending}
+            onClick={() => betaald.mutate({ id: factuur.id, datum }, { onError: fout })}
+          >
+            Betaald ontvangen
+          </Knop>
+        </div>
+      </Kaart>
+
+      {telaat > 0 && (
+        herinneren ? (
+          <Versturen
+            factuur={factuur}
+            klant={klant}
+            melden={melden}
+            onKlaar={() => setHerinneren(false)}
+            herinnering
+          />
+        ) : (
+          <Knop soort="rustig" className="w-fit" onClick={() => setHerinneren(true)}>
+            Herinnering sturen
+          </Knop>
+        )
+      )}
+
+      <div>
+        <Knop
+          soort="gevaar"
+          bezig={crediteren.isPending}
+          onClick={() =>
+            crediteren.mutate(factuur.id, {
+              onSuccess: (nieuwId) => {
+                melden('Creditfactuur aangemaakt als concept. Kijk hem na en verstuur hem.')
+                navigeer(`/facturen/uitgaand/${nieuwId}`)
+              },
+              onError: fout,
+            })
+          }
+        >
+          Crediteren
+        </Knop>
+        <p className="mt-1 max-w-prose text-sm text-muted">
+          Maakt een creditfactuur met dezelfde regels, negatief. Die begint als concept, dus je
+          kunt hem nog aanpassen. Zodra je hem verstuurt gaat deze factuur op gecrediteerd.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function Verkoopfactuur() {
   const { id } = useParams()
   const nieuw = id === 'nieuw'
@@ -199,6 +319,7 @@ export function Verkoopfactuur() {
 
   const bestaand = useVerkoopfactuur(factuurId)
   const { data: klanten } = useKlanten()
+  const [verstuurOpen, setVerstuurOpen] = useState(false)
   const opslaan = useConceptOpslaan()
   const weg = useConceptWeg()
 
@@ -327,11 +448,13 @@ export function Verkoopfactuur() {
           Pdf bekijken
         </Knop>
 
+        <VerstuurdeActies factuur={factuur} melden={toon} />
+
         {toast}
 
         <p className="max-w-prose text-sm text-muted">
-          Deze factuur heeft een nummer en ligt daarmee vast. Klopt er iets niet, dan corrigeer je
-          dat met een creditfactuur — dat komt in de volgende stap.
+          Deze factuur heeft een nummer en ligt daarmee vast: wat de klant heeft gekregen mag niet
+          meer veranderen, en nummers moeten doorlopen zonder gaten.
         </p>
       </div>
     )
@@ -438,6 +561,23 @@ export function Verkoopfactuur() {
       </label>
 
       <Bedragen regels={regels} />
+
+      {/* Versturen pas als er iets te versturen is: een opgeslagen concept met
+          regels. Anders stuur je een lege factuur de deur uit. */}
+      {!nieuw && factuur && regels.length > 0 && (
+        <div className="border-t border-line pt-4">
+          <Versturen
+            factuur={factuur}
+            klant={klanten?.find((k) => k.id === factuur.klant_id)}
+            melden={toon}
+            onKlaar={() => setVerstuurOpen(false)}
+            key={verstuurOpen ? 'open' : 'dicht'}
+          />
+          <p className="mt-2 max-w-prose text-sm text-muted">
+            Bewaar eerst je wijzigingen; wat hier verstuurd wordt is wat er is opgeslagen.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Knop soort="primair" bezig={opslaan.isPending} onClick={bewaar}>
