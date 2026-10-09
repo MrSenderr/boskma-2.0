@@ -349,9 +349,11 @@ export function useProductWeg() {
 
 /** De pdf van een factuur ophalen. Bij een concept komt er een watermerk op en
  *  wordt hij niet bewaard: een concept is geen factuur. */
-export async function haalPdf(factuurId: number, concept: boolean): Promise<Blob> {
+export type PdfSoort = 'definitief' | 'concept' | 'test'
+
+export async function haalPdf(factuurId: number, soort: PdfSoort): Promise<Blob> {
   const { data, error } = await supabase.functions.invoke('verkoopfactuur-pdf', {
-    body: { factuur_id: factuurId, concept },
+    body: { factuur_id: factuurId, soort },
   })
   if (error) throw new Error(error.message)
   if (data instanceof Blob) return data

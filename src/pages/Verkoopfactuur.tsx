@@ -195,10 +195,10 @@ export function Verkoopfactuur() {
 
   /* De pdf in een nieuw tabblad. Downloaden kan daar; zo zie je eerst hoe hij
      eruitziet voordat er iets de deur uit gaat. */
-  async function toonPdf(vanId: number, concept: boolean) {
+  async function toonPdf(vanId: number, soort: 'definitief' | 'concept' | 'test') {
     setPdfBezig(true)
     try {
-      const blob = await haalPdf(vanId, concept)
+      const blob = await haalPdf(vanId, soort)
       window.open(URL.createObjectURL(blob), '_blank')
     } catch (e) {
       toon(e instanceof Error ? e.message : 'De pdf maken lukte niet.')
@@ -304,7 +304,7 @@ export function Verkoopfactuur() {
           <p className="text-sm text-muted">{factuur.interne_notitie}</p>
         )}
 
-        <Knop soort="rustig" className="w-fit" bezig={pdfBezig} onClick={() => toonPdf(factuur.id, false)}>
+        <Knop soort="rustig" className="w-fit" bezig={pdfBezig} onClick={() => toonPdf(factuur.id, 'definitief')}>
           <FileText className="size-4" aria-hidden />
           Pdf bekijken
         </Knop>
@@ -419,7 +419,7 @@ export function Verkoopfactuur() {
           Opslaan als concept
         </Knop>
         {!nieuw && factuurId && (
-          <Knop soort="rustig" bezig={pdfBezig} onClick={() => toonPdf(factuurId, true)}>
+          <Knop soort="rustig" bezig={pdfBezig} onClick={() => toonPdf(factuurId, 'concept')}>
             <FileText className="size-4" aria-hidden />
             Voorbeeld
           </Knop>
