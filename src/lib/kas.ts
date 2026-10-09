@@ -1,7 +1,8 @@
 /* Kas tellen: een rekenhulp, meer niet.
 
    Je telt de kas, geeft aan wat er naar de kluis gaat, en neemt de bedragen
-   over in de kassa. Er wordt niets bewaard — geen database, geen geschiedenis.
+   over in de kassa. De telling blijft op dit toestel staan en je kunt hem
+   vastzetten; de database komt er niet aan te pas, geen geschiedenis.
 
    Alles in hele centen. Met kommagetallen loopt een telling vroeg of laat een
    cent uit de pas, en bij geld is dat precies het verschil dat je zoekt. */
@@ -81,6 +82,15 @@ export function inLade(geteld: Aantallen, kluis: Aantallen, centen: number): num
   return (aantal(geteld, centen) - aantal(kluis, centen)) * centen
 }
 
+export type Kluisregel = { centen: number; stuks: number }
+
+/** Het lijstje dat je bij de kassa afleest: alleen de coupures die meegaan. */
+export function kluisregels(kluis: Aantallen): Kluisregel[] {
+  return COUPURES.map((c) => ({ centen: c.centen, stuks: aantal(kluis, c.centen) })).filter(
+    (r) => r.stuks > 0,
+  )
+}
+
 export function vandaagInWoorden(datum = new Date()): string {
   return datum.toLocaleDateString('nl-NL', {
     weekday: 'long',
@@ -98,7 +108,17 @@ export function vandaagInWoorden(datum = new Date()): string {
 
 const SLEUTEL = 'zonnetje-kastelling'
 
-export type BewaardeTelling = { geteld: Aantallen; kluis: Aantallen; bewaardOp: string }
+export type Telling = {
+  geteld: Aantallen
+  kluis: Aantallen
+  /** Gezet zodra je de telling vastzet. Dan kun je er niet meer in typen. */
+  vastgezetOp?: string
+  /** Gezet als je een vastgezette telling weer hebt opengemaakt. Dat blijft
+   *  staan, zodat je later ziet dat er na het vastzetten nog aan gezeten is. */
+  opengemaaktOp?: string
+}
+
+export type BewaardeTelling = Telling & { bewaardOp: string }
 
 /** Alleen de coupures die we kennen, en alleen hele getallen vanaf nul. Wat er
  *  in de opslag staat is oud of aangepast tot het tegendeel blijkt. */
@@ -112,16 +132,24 @@ function schoonAantallen(ruw: unknown): Aantallen {
   return uit
 }
 
+/** Een bruikbaar tijdstip, of niets. Bij een onleesbare datum staat de telling
+ *  liever open dan op slot om een reden die niemand kan nazien. */
+function tijdstempel(ruw: unknown): string | undefined {
+  return typeof ruw === 'string' && !Number.isNaN(new Date(ruw).getTime()) ? ruw : undefined
+}
+
 /** Wat er uit de opslag komt omzetten naar een telling, of niets. */
 export function uitOpslag(tekst: string | null): BewaardeTelling | null {
   if (!tekst) return null
   try {
     const ruw = JSON.parse(tekst) as Record<string, unknown>
-    const bewaardOp = typeof ruw.bewaardOp === 'string' ? ruw.bewaardOp : ''
-    if (!bewaardOp || Number.isNaN(new Date(bewaardOp).getTime())) return null
+    const bewaardOp = tijdstempel(ruw.bewaardOp)
+    if (!bewaardOp) return null
     return {
       geteld: schoonAantallen(ruw.geteld),
       kluis: schoonAantallen(ruw.kluis),
+      vastgezetOp: tijdstempel(ruw.vastgezetOp),
+      opengemaaktOp: tijdstempel(ruw.opengemaaktOp),
       bewaardOp,
     }
   } catch {
@@ -161,12 +189,9 @@ export function leesTelling(): BewaardeTelling | null {
 }
 
 /** Geeft false als bewaren niet lukte. */
-export function bewaarTelling(geteld: Aantallen, kluis: Aantallen): boolean {
+export function bewaarTelling(t: Telling): boolean {
   try {
-    window.localStorage.setItem(
-      SLEUTEL,
-      naarOpslag({ geteld, kluis, bewaardOp: new Date().toISOString() }),
-    )
+    window.localStorage.setItem(SLEUTEL, naarOpslag({ ...t, bewaardOp: new Date().toISOString() }))
     return true
   } catch {
     return false

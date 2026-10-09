@@ -10,6 +10,7 @@ import {
   ergensTeveel,
   euro,
   inLade,
+  kluisregels,
   telOp,
   teveelNaarKluis,
   isVanVandaag,
@@ -186,5 +187,47 @@ describe('de telling bewaren', () => {
   it('noemt het tijdstip waarop hij bewaard is', () => {
     expect(tijdstip(new Date('2026-10-04T18:05:00').toISOString())).toBe('18:05')
     expect(tijdstip('geen datum')).toBe('')
+  })
+})
+
+describe('het lijstje voor de kassa', () => {
+  it('noemt alleen de coupures die meegaan, van groot naar klein', () => {
+    expect(kluisregels(telling({ 1000: 4, 5000: 3, 100: 0, 20: 7 }))).toEqual([
+      { centen: 5000, stuks: 3 },
+      { centen: 1000, stuks: 4 },
+      { centen: 20, stuks: 7 },
+    ])
+  })
+
+  it('is leeg als er niets naar de kluis gaat', () => {
+    expect(kluisregels(LEEG)).toEqual([])
+  })
+})
+
+describe('een vastgezette telling', () => {
+  const vast = {
+    geteld: telling({ 5000: 3 }),
+    kluis: telling({ 5000: 2 }),
+    vastgezetOp: '2026-10-09T17:42:00.000Z',
+    bewaardOp: '2026-10-09T17:42:00.000Z',
+  }
+
+  it('onthoudt dat hij vastgezet is', () => {
+    expect(uitOpslag(naarOpslag(vast))?.vastgezetOp).toBe('2026-10-09T17:42:00.000Z')
+  })
+
+  it('onthoudt ook dat hij weer opengemaakt is', () => {
+    const uit = uitOpslag(
+      naarOpslag({ ...vast, vastgezetOp: undefined, opengemaaktOp: '2026-10-09T18:00:00.000Z' }),
+    )
+    expect(uit?.vastgezetOp).toBeUndefined()
+    expect(uit?.opengemaaktOp).toBe('2026-10-09T18:00:00.000Z')
+  })
+
+  /* Een onleesbaar tijdstip zet de telling niet op slot: dan zou je er niet
+     meer in kunnen typen om een reden die niemand kan nazien. */
+  it('staat open als het tijdstip onleesbaar is', () => {
+    const uit = uitOpslag('{"bewaardOp":"2026-10-09T17:42:00.000Z","vastgezetOp":"zomaar"}')
+    expect(uit?.vastgezetOp).toBeUndefined()
   })
 })
