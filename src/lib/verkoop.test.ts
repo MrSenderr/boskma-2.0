@@ -11,6 +11,7 @@ import {
   nogTeOntvangen,
   regelCenten,
   totalenVan,
+  zonderEigenVelden,
   type Regel,
   type Verkoopfactuur,
 } from './verkoop'
@@ -112,5 +113,24 @@ describe('de lijst met uitgaande facturen', () => {
       f({ id: 2, status: 'betaald', betaald_op: '2026-06-01' }),
     ]
     expect(deelUitgaandIn(lijst, vandaag).betaald.map((x) => x.id)).toEqual([1])
+  })
+})
+
+describe('bijwerken van een bestaande rij', () => {
+  it('stuurt het id niet mee terug', () => {
+    // De database deelt het id zelf uit en weigert het terug te krijgen:
+    // "column id can only be updated to DEFAULT".
+    const uit = zonderEigenVelden({ id: 7, naam: 'Veekro', adres: 'Bollenmarkt 11' })
+    expect(uit).toEqual({ naam: 'Veekro', adres: 'Bollenmarkt 11' })
+    expect('id' in uit).toBe(false)
+  })
+
+  it('laat het moment van aanmaken ook staan', () => {
+    const uit = zonderEigenVelden({ id: 1, aangemaakt_op: '2026-01-01', naam: 'X' })
+    expect(uit).toEqual({ naam: 'X' })
+  })
+
+  it('raakt een rij zonder die velden niet aan', () => {
+    expect(zonderEigenVelden({ naam: 'X', prijs_incl: 2 })).toEqual({ naam: 'X', prijs_incl: 2 })
   })
 })

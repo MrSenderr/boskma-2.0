@@ -300,14 +300,26 @@ export function useConceptWeg() {
   })
 }
 
+/* De database deelt het id zelf uit en weigert het terug te krijgen. Hetzelfde
+   geldt voor het moment van aanmaken. Die laten we er dus uit voordat we een
+   rij bijwerken — anders komt er "column id can only be updated to DEFAULT"
+   terug en lijkt het alsof je gegevens niet kloppen. */
+export function zonderEigenVelden<T extends Record<string, unknown>>(rij: T): Partial<T> {
+  const kopie = { ...rij }
+  delete kopie.id
+  delete kopie.aangemaakt_op
+  return kopie
+}
+
 export function useKlantOpslaan() {
   return useVerkoopActie<Partial<Klant> & { naam: string }>(async (k) => {
+    const velden = zonderEigenVelden(k as Record<string, unknown>)
     if (k.id) {
-      const { error } = await supabase.from('klanten').update(k).eq('id', k.id)
+      const { error } = await supabase.from('klanten').update(velden).eq('id', k.id)
       if (error) throw new Error(error.message)
       return k.id
     }
-    const { data, error } = await supabase.from('klanten').insert(k).select('id').single()
+    const { data, error } = await supabase.from('klanten').insert(velden).select('id').single()
     if (error) throw new Error(error.message)
     return (data as { id: number }).id
   })
@@ -315,12 +327,13 @@ export function useKlantOpslaan() {
 
 export function useProductOpslaan() {
   return useVerkoopActie<Partial<Product> & { naam: string; prijs_incl: number }>(async (p) => {
+    const velden = zonderEigenVelden(p as Record<string, unknown>)
     if (p.id) {
-      const { error } = await supabase.from('producten').update(p).eq('id', p.id)
+      const { error } = await supabase.from('producten').update(velden).eq('id', p.id)
       if (error) throw new Error(error.message)
       return p.id
     }
-    const { error } = await supabase.from('producten').insert(p)
+    const { error } = await supabase.from('producten').insert(velden)
     if (error) throw new Error(error.message)
   })
 }
