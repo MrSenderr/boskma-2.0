@@ -111,6 +111,15 @@ export function euroUitCenten(c: number): string {
   return euro(c / 100)
 }
 
+/** Een regel naar een andere plek in de lijst. De volgorde hier is de volgorde
+ *  op de factuur, dus daarna opnieuw nummeren. */
+export function verwissel(regels: Regel[], van: number, naar: number): Regel[] {
+  const uit = [...regels]
+  const [weg] = uit.splice(van, 1)
+  uit.splice(naar, 0, weg)
+  return uit.map((r, i) => ({ ...r, volgorde: i }))
+}
+
 /* ------------------------------------------------------------ datums --- */
 
 export function dagenTeLaat(f: Verkoopfactuur, vandaag = vandaagStr()): number {

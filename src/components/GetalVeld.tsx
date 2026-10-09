@@ -16,9 +16,13 @@ export function leesGetal(tekst: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-/** 6.02 wordt "6,02" en 75 blijft "75" — geen 75,00 in een invoerveld. */
+/** 6.02 wordt "6,02" en 75 blijft "75" — geen 75,00 in een invoerveld.
+ *
+ *  Nul laten we leeg. Een prijs van nul euro of een aantal van nul is geen
+ *  antwoord maar een nog niet ingevuld veld, en dan hoor je de hint te zien in
+ *  plaats van een nul die je eerst moet weghalen. */
 export function schrijfGetal(n: number | null | undefined): string {
-  if (n === null || n === undefined || Number.isNaN(n)) return ''
+  if (n === null || n === undefined || Number.isNaN(n) || n === 0) return ''
   return String(n).replace('.', ',')
 }
 
@@ -66,6 +70,9 @@ export function GetalVeld({
           setTekst(ruw)
           onWijzig(leesGetal(ruw))
         }}
+        // Alles geselecteerd bij het aantikken: dan typ je over de 0 heen in
+        // plaats van hem eerst weg te moeten halen.
+        onFocus={(e) => e.target.select()}
         onBlur={() => setTekst(schrijfGetal(leesGetal(tekst)))}
       />
     </label>

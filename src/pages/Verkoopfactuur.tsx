@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, FileText, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, FileText, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { GetalVeld } from '../components/GetalVeld'
@@ -15,6 +15,7 @@ import {
   useKlanten,
   useProducten,
   useVerkoopfactuur,
+  verwissel,
   haalPdf,
   type Btw,
   type Regel,
@@ -27,6 +28,7 @@ import {
 
 const invoer =
   'w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent'
+
 
 function Bedragen({ regels }: { regels: Regel[] }) {
   const t = totalenVan(regels)
@@ -54,10 +56,15 @@ function RegelKaart({
   r,
   onWijzig,
   onWeg,
+  onOmhoog,
+  onOmlaag,
 }: {
   r: Regel
   onWijzig: (nieuw: Regel) => void
   onWeg: () => void
+  /** Niet meegegeven = deze regel staat al boven- of onderaan. */
+  onOmhoog?: () => void
+  onOmlaag?: () => void
 }) {
   return (
     <Kaart className="flex flex-col gap-3 p-4">
@@ -68,11 +75,33 @@ function RegelKaart({
           value={r.omschrijving}
           onChange={(e) => onWijzig({ ...r, omschrijving: e.target.value })}
         />
+        {/* Pijltjes in plaats van slepen: met een vinger op een telefoon mis
+            je bij slepen net zo vaak als je raak hebt. */}
+        <div className="mt-1.5 flex shrink-0 items-center">
+          <button
+            type="button"
+            onClick={onOmhoog}
+            disabled={!onOmhoog}
+            aria-label="Regel omhoog"
+            className="p-1.5 text-muted hover:text-text disabled:opacity-25"
+          >
+            <ChevronUp className="size-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={onOmlaag}
+            disabled={!onOmlaag}
+            aria-label="Regel omlaag"
+            className="p-1.5 text-muted hover:text-text disabled:opacity-25"
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        </div>
         <button
           type="button"
           onClick={onWeg}
           aria-label="Regel weghalen"
-          className="mt-2 shrink-0 text-muted hover:text-bad"
+          className="mt-2.5 shrink-0 p-1.5 text-muted hover:text-bad"
         >
           <Trash2 className="size-4" aria-hidden />
         </button>
@@ -375,6 +404,10 @@ export function Verkoopfactuur() {
             r={r}
             onWijzig={(nieuwe) => setRegels((v) => v.map((x, j) => (j === i ? nieuwe : x)))}
             onWeg={() => setRegels((v) => v.filter((_, j) => j !== i))}
+            onOmhoog={i > 0 ? () => setRegels((v) => verwissel(v, i, i - 1)) : undefined}
+            onOmlaag={
+              i < regels.length - 1 ? () => setRegels((v) => verwissel(v, i, i + 1)) : undefined
+            }
           />
         ))}
         <Knop

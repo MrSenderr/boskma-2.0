@@ -42,4 +42,8 @@ describe('een getal schrijven', () => {
     expect(schrijfGetal(null)).toBe('')
     expect(schrijfGetal(undefined)).toBe('')
   })
+
+  it('laat nul ook leeg, want dat is geen prijs', () => {
+    expect(schrijfGetal(0)).toBe('')
+  })
 })
