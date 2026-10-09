@@ -13,8 +13,12 @@ import {
   telOp,
   uiterlijk,
   urgentie,
+  betaalwijzeNaam,
+  nogInTeStellen,
+  opWerkEerst,
   zonderBedrag,
   type Factuur,
+  type Leverancier,
 } from './facturen'
 
 function factuur(anders: Partial<Factuur> = {}): Factuur {
@@ -162,5 +166,44 @@ describe('de link naar de mail', () => {
 
   it('geeft niets als er geen thread bij zit', () => {
     expect(gmailLink(null)).toBeNull()
+  })
+})
+
+describe('het leveranciersschriftje', () => {
+  const lev = (o: Partial<Leverancier> & { leverancier: string }): Leverancier => ({
+    betaalwijze: null, bevestigd: false, opmerking: null,
+    aantal: 1, aantal_open: 0, laatste: null, ...o,
+  })
+
+  it('zet wat nog ingesteld moet worden bovenaan', () => {
+    const lijst = [
+      lev({ leverancier: 'Aldi', bevestigd: true, betaalwijze: 'incasso' }),
+      lev({ leverancier: 'Ziggo' }),
+    ].sort(opWerkEerst)
+    expect(lijst.map((l) => l.leverancier)).toEqual(['Ziggo', 'Aldi'])
+  })
+
+  it('houdt binnen die twee groepen de alfabetische volgorde aan', () => {
+    const lijst = [
+      lev({ leverancier: 'Voys' }),
+      lev({ leverancier: 'Bidfood' }),
+    ].sort(opWerkEerst)
+    expect(lijst.map((l) => l.leverancier)).toEqual(['Bidfood', 'Voys'])
+  })
+
+  it('telt een vermoeden uit de mails niet als ingesteld', () => {
+    const lijst = [lev({ leverancier: 'Ziggo', betaalwijze: 'incasso', bevestigd: false })]
+    expect(nogInTeStellen(lijst)).toBe(1)
+  })
+
+  it('telt wat jij hebt bevestigd niet meer mee', () => {
+    const lijst = [lev({ leverancier: 'Voys', betaalwijze: 'incasso', bevestigd: true })]
+    expect(nogInTeStellen(lijst)).toBe(0)
+  })
+
+  it('noemt de betaalwijze zoals jij hem kent', () => {
+    expect(betaalwijzeNaam('handmatig')).toBe('Zelf betalen')
+    expect(betaalwijzeNaam('vooraf_betaald')).toBe('Vooraf betaald')
+    expect(betaalwijzeNaam(null)).toBe('nog niet ingesteld')
   })
 })

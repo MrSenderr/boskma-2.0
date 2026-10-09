@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Copy, ExternalLink } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Copy, ExternalLink } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Kaart, Knop, Laden, Mislukt } from '../components/ui'
 import { useToast } from '../components/Toast'
 import {
@@ -10,10 +11,12 @@ import {
   telOp,
   uiterlijk,
   urgentie,
+  nogInTeStellen,
   useBetaald,
   useBetaalwijze,
   useFacturen,
   useHeropenen,
+  useLeveranciers,
   zonderBedrag,
   type Factuur,
 } from '../lib/facturen'
@@ -272,6 +275,7 @@ function Inklapbaar({
 
 export function FacturenInkomend() {
   const { data, isPending, error, refetch } = useFacturen()
+  const { data: leveranciers } = useLeveranciers()
   const heropenen = useHeropenen()
   const { toon, toast } = useToast()
 
@@ -376,6 +380,22 @@ export function FacturenInkomend() {
           aan creditnota&apos;s ({d.creditnotas.length}).
         </p>
       )}
+
+      {/* Het schriftje: hoe elke leverancier betaalt. Hoe voller, hoe minder er
+          bij Nog uitzoeken belandt. */}
+      <Link
+        to="/facturen/leveranciers"
+        data-touch
+        className="flex items-center gap-3 rounded-card border border-line bg-surface px-4 py-3 hover:bg-surface-2"
+      >
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold">Leveranciers</span>
+          {leveranciers && nogInTeStellen(leveranciers) > 0 && (
+            <> — {nogInTeStellen(leveranciers)} nog in te stellen</>
+          )}
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-muted" aria-hidden />
+      </Link>
 
       {toast}
     </div>

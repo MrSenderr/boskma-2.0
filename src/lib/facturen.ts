@@ -204,3 +204,75 @@ export function useBetaalwijze() {
     },
   )
 }
+
+/* --------------------------------------------------- leveranciers --- */
+
+/* Het schriftje: hoe betaalt elke leverancier. Zodra het ingevuld is, vult een
+   nieuwe factuur zichzelf in en komt hij niet meer bij "nog uitzoeken". */
+
+export type Leverancier = {
+  leverancier: string
+  /** Null als er nog niets over bekend is. */
+  betaalwijze: Betaalwijze | null
+  /** Door Sander zelf gezet. Alleen daarop vult een nieuwe factuur zich in. */
+  bevestigd: boolean
+  opmerking: string | null
+  aantal: number
+  aantal_open: number
+  laatste: string | null
+}
+
+export function useLeveranciers() {
+  return useQuery({
+    queryKey: ['leveranciers'],
+    queryFn: async (): Promise<Leverancier[]> => {
+      const { data, error } = await supabase.rpc('leveranciers_overzicht')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as Leverancier[]
+    },
+  })
+}
+
+export function useLeverancierZetten() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      leverancier,
+      betaalwijze,
+    }: {
+      leverancier: string
+      betaalwijze: Betaalwijze
+    }) => {
+      const { error } = await supabase.rpc('leverancier_betaalwijze_zetten', {
+        p_leverancier: leverancier,
+        p_betaalwijze: betaalwijze,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['leveranciers'] })
+      // Openstaande facturen van deze leverancier zijn meeveranderd.
+      client.invalidateQueries({ queryKey: ['facturen'] })
+    },
+  })
+}
+
+export const BETAALWIJZEN: { waarde: Betaalwijze; label: string }[] = [
+  { waarde: 'incasso', label: 'Incasso' },
+  { waarde: 'handmatig', label: 'Zelf betalen' },
+  { waarde: 'vooraf_betaald', label: 'Vooraf betaald' },
+]
+
+export function betaalwijzeNaam(w: Betaalwijze | null | undefined): string {
+  return BETAALWIJZEN.find((b) => b.waarde === w)?.label ?? 'nog niet ingesteld'
+}
+
+/** Nog in te stellen staat bovenaan: dat is het werk dat er ligt. */
+export function opWerkEerst(a: Leverancier, b: Leverancier): number {
+  if (a.bevestigd !== b.bevestigd) return a.bevestigd ? 1 : -1
+  return a.leverancier.localeCompare(b.leverancier, 'nl')
+}
+
+export function nogInTeStellen(lijst: Leverancier[]): number {
+  return lijst.filter((l) => !l.bevestigd).length
+}
