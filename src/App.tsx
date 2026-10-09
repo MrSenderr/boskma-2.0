@@ -11,6 +11,9 @@ import { Facturen } from './pages/Facturen'
 import { FacturenInkomend } from './pages/FacturenInkomend'
 import { FacturenUitgaand } from './pages/FacturenUitgaand'
 import { FacturenLeveranciers } from './pages/FacturenLeveranciers'
+import { FacturenKlanten } from './pages/FacturenKlanten'
+import { FacturenPrijslijst } from './pages/FacturenPrijslijst'
+import { Verkoopfactuur } from './pages/Verkoopfactuur'
 import { Rooster } from './pages/Rooster'
 import { RoosterDag } from './pages/RoosterDag'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
@@ -71,6 +74,9 @@ function Poort() {
           <Route index element={<Navigate to="inkomend" replace />} />
           <Route path="inkomend" element={<FacturenInkomend />} />
           <Route path="uitgaand" element={<FacturenUitgaand />} />
+          <Route path="uitgaand/:id" element={<Verkoopfactuur />} />
+          <Route path="klanten" element={<FacturenKlanten />} />
+          <Route path="prijslijst" element={<FacturenPrijslijst />} />
           <Route path="leveranciers" element={<FacturenLeveranciers />} />
         </Route>
         <Route path="kas" element={<Kas />} />
