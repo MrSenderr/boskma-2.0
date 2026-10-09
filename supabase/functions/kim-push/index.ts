@@ -1,6 +1,6 @@
 // kim-push
 //
-// POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen', id }
+// POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen' | 'verkoopfacturen', id }
 //
 // Stuurt Sander een pushbericht voor een nieuwe vraag van Kim, voor een wachtpost
 // waar iets aan veranderd is, of voor een factuur die hij binnen 3 dagen zelf moet
@@ -46,7 +46,7 @@ async function zorgVoorVapid() {
   webpush.setVapidDetails("mailto:sander@boskmafoodservice.nl", k.public!, k.private!);
   vapidKlaar = true;
 }
-const TABELLEN = ["kim_vragen", "kim_wachtposten", "facturen"] as const;
+const TABELLEN = ["kim_vragen", "kim_wachtposten", "facturen", "verkoopfacturen"] as const;
 type Tabel = typeof TABELLEN[number];
 
 function json(body: unknown, status = 200) {
@@ -110,6 +110,28 @@ Deno.serve(async (req) => {
         body: kort(verval ? `${bedrag}, uiterlijk ${verval}` : bedrag),
         url: `${APP_URL}/facturen`,
         tag: `factuur-${nr}`,
+      };
+    } else if (tabel === "verkoopfacturen") {
+      // Een eigen factuur die te laat is. Alleen verstuurd en onbetaald: een
+      // betaalde of gecrediteerde factuur hoeft niets meer van je.
+      if (rij.status !== "verzonden" || !rij.vervaldatum) {
+        return json({ ok: true, overgeslagen: "niet meer openstaand" });
+      }
+      if (!(await claim(tabel, nr, "gepusht_op=is.null"))) {
+        return json({ ok: true, overgeslagen: "al gepusht" });
+      }
+      const klant = await fetch(
+        `${SB_URL}/rest/v1/klanten?id=eq.${rij.klant_id}&select=naam`,
+        { headers: h },
+      ).then((r) => r.json()).then((r) => r?.[0]?.naam ?? "een klant");
+      const dagen = Math.max(1, Math.round(
+        (Date.now() - new Date(`${rij.vervaldatum}T00:00:00`).getTime()) / 86400000,
+      ));
+      bericht = {
+        title: kort(`Nog niet betaald: ${klant}`, 60),
+        body: `Factuur ${rij.nummer}, ${EURO.format(Number(rij.totaal_incl))}, ${dagen} ${dagen === 1 ? "dag" : "dagen"} te laat`,
+        url: `${APP_URL}/facturen/uitgaand`,
+        tag: `verkoopfactuur-${nr}`,
       };
     } else {
       if (!rij.melding || !rij.melding_op || rij.afgedaan_op) return json({ ok: true, overgeslagen: "niets te melden" });

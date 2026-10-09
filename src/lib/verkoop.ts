@@ -368,3 +368,152 @@ export async function haalPdf(factuurId: number, soort: PdfSoort): Promise<Blob>
   if (data instanceof Blob) return data
   throw new Error('De server gaf geen pdf terug.')
 }
+
+/* ------------------------------------------------------- versturen --- */
+
+/** De mailtekst die de klant leest.
+ *
+ *  Staat hier en niet alleen in de edge function: je hoort te zien wat je
+ *  verstuurt voordat je op versturen drukt, en wat je dan ziet moet ook zijn
+ *  wat er weggaat. De app stuurt deze tekst dus altijd mee. */
+export function standaardMailtekst(
+  klant: Pick<Klant, 'contactpersoon'>,
+  f: Pick<Verkoopfactuur, 'onderwerp' | 'totaal_incl' | 'vervaldatum'>,
+  nummer: string,
+): string {
+  const aanhef = klant.contactpersoon?.trim() || 'administratie'
+  const bedrag = euro(Number(f.totaal_incl))
+  const voor = f.onderwerp ? ` voor ${f.onderwerp}` : ''
+  const uiterlijk = f.vervaldatum
+    ? new Date(`${f.vervaldatum}T00:00:00`).toLocaleDateString('nl-NL', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      })
+    : 'de vervaldatum'
+
+  return [
+    `Beste ${aanhef},`,
+    '',
+    `In de bijlage vind je factuur ${nummer}${voor}. Het totaalbedrag is ${bedrag} ` +
+      `inclusief btw. Graag betalen vóór ${uiterlijk}.`,
+    '',
+    'Vriendelijke groet,',
+    "Sander Boskma – Boskma Foodservice / Snackerie 't Zonnetje",
+  ].join('\n')
+}
+
+export type Verstuurd = {
+  ok: boolean
+  test: boolean
+  nummer: number | null
+  verstuurd_naar: string
+  basecone: string
+  stap?: string
+  error?: string
+}
+
+export function useVersturen() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: {
+      id: number
+      tekst: string
+      test: boolean
+      herinnering?: boolean
+    }): Promise<Verstuurd> => {
+      const { data, error } = await supabase.functions.invoke('stuur-verkoopfactuur', {
+        body: { factuur_id: v.id, tekst: v.tekst, test: v.test, herinnering: v.herinnering },
+      })
+      if (error) throw new Error(error.message)
+      const uit = data as Verstuurd
+      // De functie vertelt bij welke stap het misging; dat is bruikbaarder dan
+      // "er ging iets mis".
+      if (!uit?.ok) throw new Error(`${uit?.stap ?? 'versturen'}: ${uit?.error ?? 'onbekende fout'}`)
+      return uit
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['verkoopfacturen'] })
+      client.invalidateQueries({ queryKey: ['verkoopfactuur'] })
+    },
+  })
+}
+
+export function useVerkoopBetaald() {
+  return useVerkoopActie<{ id: number; datum: string }>(async ({ id, datum }) => {
+    const { error } = await supabase.rpc('verkoopfactuur_betaald', { p_id: id, p_datum: datum })
+    if (error) throw new Error(error.message)
+  })
+}
+
+export function useVerkoopHeropenen() {
+  return useVerkoopActie<number>(async (id) => {
+    const { error } = await supabase.rpc('verkoopfactuur_heropenen', { p_id: id })
+    if (error) throw new Error(error.message)
+  })
+}
+
+export function useCrediteren() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number): Promise<number> => {
+      const { data, error } = await supabase.rpc('verkoopfactuur_crediteren', { p_id: id })
+      if (error) throw new Error(error.message)
+      return Number(data)
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['verkoopfacturen'] })
+      client.invalidateQueries({ queryKey: ['verkoopfactuur'] })
+    },
+  })
+}
+
+/** De tekst bij een herinnering. Vriendelijk blijven: meestal is het gewoon
+ *  blijven liggen, en je wilt de klant houden. */
+export function herinneringstekst(
+  klant: Pick<Klant, 'contactpersoon'>,
+  f: Pick<Verkoopfactuur, 'nummer' | 'onderwerp' | 'totaal_incl' | 'vervaldatum'>,
+): string {
+  const aanhef = klant.contactpersoon?.trim() || 'administratie'
+  const verviel = f.vervaldatum ? kortDatum(f.vervaldatum) : 'de vervaldatum'
+  return [
+    `Beste ${aanhef},`,
+    '',
+    `Factuur ${f.nummer}${f.onderwerp ? ` voor ${f.onderwerp}` : ''} van ` +
+      `${euro(Number(f.totaal_incl))} stond open tot ${verviel} en is nog niet betaald. ` +
+      'Mogelijk is hij blijven liggen; de factuur zit nog een keer in de bijlage.',
+    '',
+    'Is er iets niet duidelijk, bel of mail gerust.',
+    '',
+    'Vriendelijke groet,',
+    "Sander Boskma – Boskma Foodservice / Snackerie 't Zonnetje",
+  ].join('\n')
+}
+
+/* --------------------------------------------- wat het gaat worden --- */
+
+/* Een concept heeft nog geen nummer en geen vervaldatum: die worden pas bij
+   het versturen uitgedeeld. Maar in het voorbeeld van de mail moet wél staan
+   wat de klant straks leest — anders stuur je "betalen vóór de vervaldatum"
+   de deur uit. Allebei zijn ze van tevoren te weten. */
+
+export function useVolgendNummer() {
+  return useQuery({
+    queryKey: ['factuur-volgend-nummer'],
+    queryFn: async (): Promise<number | null> => {
+      const { data, error } = await supabase
+        .from('instellingen')
+        .select('waarde')
+        .eq('sleutel', 'factuur_volgend_nummer')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      const n = Number((data as { waarde?: { nummer?: number } } | null)?.waarde?.nummer)
+      return Number.isInteger(n) ? n : null
+    },
+  })
+}
+
+/** De vervaldatum die de factuur krijgt: vandaag plus de termijn van de klant. */
+export function verwachteVervaldatum(betaaltermijn: number, vandaag = new Date()): string {
+  const d = new Date(vandaag)
+  d.setDate(d.getDate() + betaaltermijn)
+  return d.toLocaleDateString('sv-SE')
+}
