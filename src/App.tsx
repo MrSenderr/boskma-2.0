@@ -7,6 +7,10 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Kim } from './pages/Kim'
 import { Kas } from './pages/Kas'
+import { Facturen } from './pages/Facturen'
+import { FacturenInkomend } from './pages/FacturenInkomend'
+import { FacturenUitgaand } from './pages/FacturenUitgaand'
+import { FacturenLeveranciers } from './pages/FacturenLeveranciers'
 import { Rooster } from './pages/Rooster'
 import { RoosterDag } from './pages/RoosterDag'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
@@ -63,6 +67,12 @@ function Poort() {
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
         <Route path="kim" element={<Kim />} />
+        <Route path="facturen" element={<Facturen />}>
+          <Route index element={<Navigate to="inkomend" replace />} />
+          <Route path="inkomend" element={<FacturenInkomend />} />
+          <Route path="uitgaand" element={<FacturenUitgaand />} />
+          <Route path="leveranciers" element={<FacturenLeveranciers />} />
+        </Route>
         <Route path="kas" element={<Kas />} />
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
