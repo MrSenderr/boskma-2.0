@@ -50,6 +50,13 @@ export function bouwHtml(f: any, klant: any, regels: Regel[], bedrijf: any, soor
     ? `Periode: ${veilig(f.periode)}`
     : f.leverdatum ? `Geleverd op ${datum(f.leverdatum)}` : "";
 
+  /* Een regel tussen het adres en de tabel. Zonder liep het adres tegen de
+     kolomkoppen aan, en een factuur die met "OMSCHRIJVING" begint leest als
+     een kassabon. */
+  const aanhef = f.onderwerp
+    ? `Hierbij ontvangt u de factuur voor <strong>${veilig(f.onderwerp)}</strong>.`
+    : "Hierbij ontvangt u onderstaande factuur.";
+
   const rijen = regels.map((r) => {
     const bedrag = Math.round(Number(r.aantal) * Math.round(Number(r.prijs_incl) * 100)) / 100;
     return `<tr>
@@ -98,9 +105,13 @@ export function bouwHtml(f: any, klant: any, regels: Regel[], bedrijf: any, soor
   .meta { margin-top: 8px; font-size: 8.5pt; color: #6b7280; }
   .meta b { color: #1c1c1e; }
   .streep { height: 3px; background: #003a41; margin: 10px 0 16px; }
-  .aan { margin: 0 0 6px; }
+  .aan { margin: 0 0 10mm; }
   .aan-label { color: #9ca3af; font-size: 7pt; letter-spacing: .14em; text-transform: uppercase; }
-  .levering { color: #6b7280; font-size: 9pt; margin-bottom: 14px; }
+  /* De afstand zit op het blok, niet op de regels: anders plakt de aanhef
+     tegen de tabel zodra er geen leverdatum bij staat. */
+  .inleiding { margin-bottom: 16px; }
+  .aanhef { margin: 0 0 3px; }
+  .levering { color: #6b7280; font-size: 9pt; margin: 0; }
   table { width: 100%; border-collapse: collapse; }
   thead { display: table-header-group; }
   tr { break-inside: avoid; }
@@ -151,8 +162,10 @@ export function bouwHtml(f: any, klant: any, regels: Regel[], bedrijf: any, soor
     <div>${adresKlant}</div>
   </div>
 
-  ${f.onderwerp ? `<p style="font-weight:600;margin:14px 0 2px">${veilig(f.onderwerp)}</p>` : ""}
-  ${levering ? `<div class="levering">${levering}</div>` : ""}
+  <div class="inleiding">
+    <p class="aanhef">${aanhef}</p>
+    ${levering ? `<div class="levering">${levering}</div>` : ""}
+  </div>
 
   <table>
     <thead><tr>
