@@ -7,8 +7,11 @@ import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
 import { Kim } from './pages/Kim'
 import { Kas } from './pages/Kas'
+import { Inkoop } from './pages/Inkoop'
 import { InkoopDocumenten } from './pages/InkoopDocumenten'
 import { InkoopFactuur } from './pages/InkoopFactuur'
+import { InkoopPrijsmutaties } from './pages/InkoopPrijsmutaties'
+import { InkoopPrijsverloop } from './pages/InkoopPrijsverloop'
 import { Facturen } from './pages/Facturen'
 import { FacturenInkomend } from './pages/FacturenInkomend'
 import { FacturenUitgaand } from './pages/FacturenUitgaand'
@@ -84,9 +87,13 @@ function Poort() {
         <Route path="kas" element={<Kas />} />
         {/* Inkoop: de facturen van de groothandel. Het scherm komt uit de losse
             inkoop-app en wordt hier stuk voor stuk opnieuw opgebouwd. */}
-        <Route path="inkoop" element={<Navigate to="/inkoop/documenten" replace />} />
-        <Route path="inkoop/documenten" element={<InkoopDocumenten />} />
-        <Route path="inkoop/documenten/:levId/:nummer" element={<InkoopFactuur />} />
+        <Route path="inkoop" element={<Inkoop />}>
+          <Route index element={<Navigate to="documenten" replace />} />
+          <Route path="documenten" element={<InkoopDocumenten />} />
+          <Route path="documenten/:levId/:nummer" element={<InkoopFactuur />} />
+          <Route path="prijzen" element={<InkoopPrijsmutaties />} />
+          <Route path="prijzen/:levId/:artikelnr" element={<InkoopPrijsverloop />} />
+        </Route>
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="rooster" element={<Rooster />}>

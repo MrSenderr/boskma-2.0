@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
-import { Kaart, Kopje, Laden, Leeg, Mislukt } from '../components/ui'
+import { Kaart, Laden, Leeg, Mislukt } from '../components/ui'
 import {
   dagEnDatum,
   euro,
@@ -74,8 +74,7 @@ export function InkoopDocumenten() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Kopje>Inkoopfacturen</Kopje>
-        <p className="mt-1 text-sm text-muted">
+        <p className="text-sm text-muted">
           {facturen.length} facturen, samen {euro(totaal)} inclusief btw
         </p>
         {nakijken.length > 0 && (
