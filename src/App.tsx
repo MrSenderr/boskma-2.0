@@ -12,6 +12,7 @@ import { InkoopDocumenten } from './pages/InkoopDocumenten'
 import { InkoopFactuur } from './pages/InkoopFactuur'
 import { InkoopPrijsmutaties } from './pages/InkoopPrijsmutaties'
 import { InkoopPrijsverloop } from './pages/InkoopPrijsverloop'
+import { InkoopStuksprijzen } from './pages/InkoopStuksprijzen'
 import { Facturen } from './pages/Facturen'
 import { FacturenInkomend } from './pages/FacturenInkomend'
 import { FacturenUitgaand } from './pages/FacturenUitgaand'
@@ -93,6 +94,7 @@ function Poort() {
           <Route path="documenten/:levId/:nummer" element={<InkoopFactuur />} />
           <Route path="prijzen" element={<InkoopPrijsmutaties />} />
           <Route path="prijzen/:levId/:artikelnr" element={<InkoopPrijsverloop />} />
+          <Route path="stuksprijzen" element={<InkoopStuksprijzen />} />
         </Route>
         <Route path="personeel" element={<Personeel />} />
         <Route path="personeel/:id" element={<Persoon />} />
