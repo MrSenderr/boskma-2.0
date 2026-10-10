@@ -142,6 +142,66 @@ export function inBlokken(regels: Documentregel[]): Blok[] {
   return blokken
 }
 
+/* --------------------------------------------------------- uploaden --- */
+
+export type Uploadstatus = 'nieuw' | 'bezig' | 'klaar' | 'mislukt' | 'duplicaat'
+
+export type Upload = {
+  id: number
+  bestandsnaam: string
+  status: Uploadstatus
+  melding: string | null
+  document_id: number | null
+  aangemaakt_op: string
+  verwerkt_op: string | null
+}
+
+export type Leverancier = { id: number; naam: string; profiel: string }
+
+/* De hash van de inhoud. Dezelfde pdf levert dezelfde hash op, dus hiermee
+   weten we vóór het uitlezen of we hem al hebben — en uitlezen kost geld. */
+export async function hashVan(bestand: File): Promise<string> {
+  const buffer = await bestand.arrayBuffer()
+  const ruw = await crypto.subtle.digest('SHA-256', buffer)
+  return [...new Uint8Array(ruw)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+export function useLeveranciers() {
+  return useQuery({
+    queryKey: ['inkoop', 'leveranciers'],
+    queryFn: async (): Promise<Leverancier[]> => {
+      const { data, error } = await inkoop
+        .from('leveranciers')
+        .select('id, naam, profiel')
+        .eq('actief', true)
+        .order('naam')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as Leverancier[]
+    },
+  })
+}
+
+/* Terwijl er iets wordt uitgelezen kijkt het scherm elke drie seconden of het
+   al klaar is. Dat duurt bij Veldboer ongeveer twee minuten. */
+export function useUploads() {
+  return useQuery({
+    queryKey: ['inkoop', 'uploads'],
+    refetchInterval: (vraag) => {
+      const rijen = (vraag.state.data ?? []) as Upload[]
+      return rijen.some((u) => u.status === 'nieuw' || u.status === 'bezig') ? 3000 : false
+    },
+    queryFn: async (): Promise<Upload[]> => {
+      const { data, error } = await inkoop
+        .from('uploads')
+        .select('id, bestandsnaam, status, melding, document_id, aangemaakt_op, verwerkt_op')
+        .order('aangemaakt_op', { ascending: false })
+        .limit(10)
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as Upload[]
+    },
+  })
+}
+
 /* ------------------------------------------------------------- pdf --- */
 
 /* De originele pdf staat in een prive-bucket, dus er is een ondertekende link
