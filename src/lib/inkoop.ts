@@ -142,6 +142,26 @@ export function inBlokken(regels: Documentregel[]): Blok[] {
   return blokken
 }
 
+/* ------------------------------------------------------------- pdf --- */
+
+/* De originele pdf staat in een prive-bucket, dus er is een ondertekende link
+   nodig. Een uur geldig: lang genoeg om hem rustig te bekijken, kort genoeg
+   dat een gekopieerde link morgen niets meer doet. */
+export function usePdfLink(opslagpad: string | null | undefined) {
+  return useQuery({
+    queryKey: ['inkoop', 'pdf', opslagpad],
+    enabled: Boolean(opslagpad),
+    staleTime: 50 * 60 * 1000,
+    queryFn: async (): Promise<string> => {
+      const { data, error } = await supabase.storage
+        .from('inkoopdocumenten')
+        .createSignedUrl(opslagpad as string, 3600)
+      if (error) throw new Error(error.message)
+      return data.signedUrl
+    },
+  })
+}
+
 /* --------------------------------------------------------- ophalen --- */
 
 export function useInkoopFacturen() {

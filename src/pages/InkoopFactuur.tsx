@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, FileText } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import {
   aantalTekst,
@@ -9,6 +9,7 @@ import {
   klopt,
   volledigeDatum,
   useInkoopFactuur,
+  usePdfLink,
   type Blok,
   type Documentregel,
   type Factuuroverzicht,
@@ -83,6 +84,25 @@ function Levering({ blok }: { blok: Blok }) {
         <Regel key={r.id} r={r} />
       ))}
     </Kaart>
+  )
+}
+
+/* De pdf zelf. Is hij er niet, dan staat hier niets: de tien oudste facturen
+   kwamen uit een inlezing zonder bestand, en een dode knop is erger dan geen
+   knop. */
+function PdfKnop({ opslagpad }: { opslagpad: string | null }) {
+  const { data: link } = usePdfLink(opslagpad)
+  if (!opslagpad || !link) return null
+  return (
+    <a
+      href={link}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold underline"
+    >
+      <FileText className="size-4" aria-hidden />
+      De factuur zelf bekijken
+    </a>
   )
 }
 
@@ -169,6 +189,7 @@ export function InkoopFactuur() {
             {blokken.length === 1 ? 'levering' : 'leveringen'}
             {emballage > 0 && `, waarvan ${emballage} emballage`}
           </p>
+          <PdfKnop opslagpad={kop.opslagpad} />
         </div>
       </div>
 
