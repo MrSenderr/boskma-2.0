@@ -11,6 +11,7 @@ const TABS = [
   { pad: 'stuksprijzen', label: 'Stuksprijzen' },
   { pad: 'producten', label: 'Producten' },
   { pad: 'uploaden', label: 'Toevoegen' },
+  { pad: 'instellingen', label: 'Instellingen' },
 ]
 
 export function Inkoop() {
