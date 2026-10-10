@@ -8,6 +8,7 @@ import { Kopje } from '../components/ui'
 const TABS = [
   { pad: 'documenten', label: 'Facturen' },
   { pad: 'prijzen', label: 'Prijsmutaties' },
+  { pad: 'stuksprijzen', label: 'Stuksprijzen' },
 ]
 
 export function Inkoop() {
