@@ -9,6 +9,7 @@ const TABS = [
   { pad: 'documenten', label: 'Facturen' },
   { pad: 'prijzen', label: 'Prijsmutaties' },
   { pad: 'stuksprijzen', label: 'Stuksprijzen' },
+  { pad: 'producten', label: 'Producten' },
   { pad: 'uploaden', label: 'Toevoegen' },
 ]
 

@@ -18,7 +18,7 @@ const rij = (r: Partial<LaatstePrijs>): LaatstePrijs => ({
 })
 
 describe('het foodcost-doel per groep', () => {
-  const doelen = { algemeen: 0.28, btw: 0.09, perGroep: { IJs: 0.6 } }
+  const doelen = { algemeen: 0.28, btw: 0.09, vetOpslag: 0.03, perGroep: { IJs: 0.6 } }
 
   it('pakt het doel van de groep als die er is', () => {
     expect(doelVan('IJs', doelen)).toBe(0.6)

@@ -75,6 +75,28 @@ export function euro(waarde: string | number | null | undefined): string {
   return nl.format(getal(waarde))
 }
 
+/* Bij kleine bedragen zegt twee cijfers achter de komma niets: een saus van
+   € 0,0044 per ml staat er dan als € 0,00 bij. Onder een euro dus drie
+   cijfers — het verschil tussen 4 en 5 tienden van een cent is bij duizend
+   milliliter een halve euro. */
+export function fijnEuro(waarde: string | number | null | undefined): string {
+  const n = getal(waarde)
+  if (n === 0 || Math.abs(n) >= 1) return euro(n)
+  return `€ ${n.toLocaleString('nl-NL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`
+}
+
+/* "1 portie" maar "2 porties". Alleen de eenheden waar het misgaat; gram,
+   kilo, ml en liter blijven in het Nederlands hetzelfde. */
+const MEERVOUD: Record<string, string> = {
+  portie: 'porties',
+  stuk: 'stuks',
+  verpakking: 'verpakkingen',
+}
+
+export function eenheidTekst(aantal: number, eenheid: string): string {
+  return aantal === 1 ? eenheid : (MEERVOUD[eenheid] ?? eenheid)
+}
+
 /** Aantallen staan met drie cijfers achter de komma in de database, maar 22,000
  *  dozen leest niet. Alleen tonen wat betekenis heeft. */
 export function aantalTekst(waarde: string | number | null | undefined): string {

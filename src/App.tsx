@@ -14,6 +14,8 @@ import { InkoopPrijsmutaties } from './pages/InkoopPrijsmutaties'
 import { InkoopPrijsverloop } from './pages/InkoopPrijsverloop'
 import { InkoopStuksprijzen } from './pages/InkoopStuksprijzen'
 import { InkoopUploaden } from './pages/InkoopUploaden'
+import { InkoopSamenstellingen } from './pages/InkoopSamenstellingen'
+import { InkoopSamenstelling } from './pages/InkoopSamenstelling'
 import { Facturen } from './pages/Facturen'
 import { FacturenInkomend } from './pages/FacturenInkomend'
 import { FacturenUitgaand } from './pages/FacturenUitgaand'
@@ -96,6 +98,8 @@ function Poort() {
           <Route path="prijzen" element={<InkoopPrijsmutaties />} />
           <Route path="prijzen/:levId/:artikelnr" element={<InkoopPrijsverloop />} />
           <Route path="stuksprijzen" element={<InkoopStuksprijzen />} />
+          <Route path="producten" element={<InkoopSamenstellingen />} />
+          <Route path="producten/:id" element={<InkoopSamenstelling />} />
           <Route path="uploaden" element={<InkoopUploaden />} />
         </Route>
         <Route path="personeel" element={<Personeel />} />

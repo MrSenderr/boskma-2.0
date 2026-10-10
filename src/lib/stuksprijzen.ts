@@ -37,10 +37,12 @@ export type Doelen = {
   /** Het doel dat geldt als een groep er geen eigen heeft. */
   algemeen: number
   btw: number
+  /** Opslag voor frituurvet, voor producten waarbij dat aanstaat. */
+  vetOpslag: number
   perGroep: Record<string, number>
 }
 
-export const STANDAARD: Doelen = { algemeen: 0.28, btw: 0.09, perGroep: {} }
+export const STANDAARD: Doelen = { algemeen: 0.28, btw: 0.09, vetOpslag: 0, perGroep: {} }
 
 export function doelVan(groep: string | null, doelen: Doelen): number {
   if (groep && doelen.perGroep[groep] !== undefined) return doelen.perGroep[groep]
@@ -107,10 +109,12 @@ export function useDoelen() {
 
       const alg = Number(waarde('foodcost'))
       const btw = Number(waarde('btw_tarief'))
+      const vet = Number(waarde('vet_opslag'))
 
       return {
         algemeen: Number.isFinite(alg) && alg > 0 ? alg : STANDAARD.algemeen,
         btw: Number.isFinite(btw) && btw >= 0 ? btw : STANDAARD.btw,
+        vetOpslag: Number.isFinite(vet) && vet >= 0 ? vet : STANDAARD.vetOpslag,
         perGroep: Object.fromEntries(
           (doelen.data ?? [])
             .map((r) => [r.groep as string, getal(r.doel as string)])

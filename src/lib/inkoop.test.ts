@@ -2,7 +2,17 @@
    inkoop gaat het om geld, dus dat rekenwerk staat los van het scherm. */
 
 import { describe, expect, it } from 'vitest'
-import { aantalTekst, dagEnDatum, euro, getal, inBlokken, klopt, type Documentregel } from './inkoop'
+import {
+  aantalTekst,
+  dagEnDatum,
+  eenheidTekst,
+  euro,
+  fijnEuro,
+  getal,
+  inBlokken,
+  klopt,
+  type Documentregel,
+} from './inkoop'
 
 const regel = (r: Partial<Documentregel>): Documentregel => ({
   id: 1,
@@ -117,5 +127,31 @@ describe('de leveringsblokken van een factuur', () => {
 
   it('geeft niets terug als er geen regels zijn', () => {
     expect(inBlokken([])).toEqual([])
+  })
+})
+
+describe('kleine bedragen en meervouden', () => {
+  /* Een saus van € 0,0044 per ml zou als € 0,00 in beeld staan, en dan lijkt
+     het gratis. */
+  it('toont bedragen onder een euro met drie cijfers', () => {
+    expect(fijnEuro(0.0044)).toBe('€ 0,004')
+    expect(fijnEuro(0.092)).toBe('€ 0,092')
+  })
+
+  it('houdt het bij twee cijfers zodra het een euro of meer is', () => {
+    expect(fijnEuro(1)).toBe('€\u00A01,00')
+    expect(fijnEuro(18.92)).toBe('€\u00A018,92')
+    expect(fijnEuro(0)).toBe('€\u00A00,00')
+  })
+
+  it('maakt van één portie twee porties', () => {
+    expect(eenheidTekst(1, 'portie')).toBe('portie')
+    expect(eenheidTekst(2, 'portie')).toBe('porties')
+    expect(eenheidTekst(3, 'stuk')).toBe('stuks')
+  })
+
+  it('laat gram en kilo met rust', () => {
+    expect(eenheidTekst(100, 'gram')).toBe('gram')
+    expect(eenheidTekst(2, 'kilo')).toBe('kilo')
   })
 })
