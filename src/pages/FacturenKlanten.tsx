@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
-import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
+import { Kaart, Knop, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { useKlantOpslaan, useKlanten, type Klant } from '../lib/verkoop'
 
@@ -105,7 +105,6 @@ export function FacturenKlanten() {
         Terug
       </Link>
 
-      <Kopje>Klanten</Kopje>
 
       {bewerkt ? (
         <Bewerken klant={bewerkt} onKlaar={() => setBewerkt(null)} melden={toon} />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
+import { Kaart, Knop, Laden, Mislukt, Veld } from '../components/ui'
 import { useToast } from '../components/Toast'
 import { GetalVeld } from '../components/GetalVeld'
 import { euro, useProductOpslaan, useProductWeg, useProducten, type Btw, type Product } from '../lib/verkoop'
@@ -104,7 +104,6 @@ export function FacturenPrijslijst() {
       </Link>
 
       <div>
-        <Kopje>Prijslijst</Kopje>
         <p className="mt-1 max-w-prose text-sm text-muted">
           Prijzen inclusief btw, net als op de kaart. Wat hier staat kun je met één tik op een
           factuur zetten.

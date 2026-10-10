@@ -1,35 +1,16 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Kopje } from '../components/ui'
+import { titelVoor } from '../lib/menu'
 
-const TABS = [
-  { pad: 'lijst', label: 'Schermen' },
-  { pad: 'afbeeldingen', label: 'Afbeeldingen' },
-]
+/* De onderdelen van deze module staan in het linkermenu, niet meer als
+   tabbladen hierboven. Dit scherm zegt alleen nog waar je bent — en haalt die
+   naam uit hetzelfde menu, zodat de kop en het menu nooit uit elkaar lopen. */
 
 export function Schermen() {
+  const { pathname } = useLocation()
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3">
-        <Kopje>Beheer</Kopje>
-        <nav className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <NavLink
-              key={t.pad}
-              to={t.pad}
-              data-touch
-              className={({ isActive }) =>
-                `rounded-[4px] px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-brand text-on-brand'
-                    : 'border border-line-strong text-text hover:bg-surface-2'
-                }`
-              }
-            >
-              {t.label}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
+      <Kopje>{titelVoor(pathname)}</Kopje>
       <Outlet />
     </div>
   )

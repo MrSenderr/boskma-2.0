@@ -1,34 +1,15 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay, CalendarClock, MessageCircleQuestion, Banknote, ReceiptEuro, ShoppingCart } from 'lucide-react'
+import { Menu, X, LogOut, Sun, Moon, Monitor } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
+import { MENU, titelVoor } from '../lib/menu'
 import { useWieBenIk } from '../lib/wie'
 
-const MENU: {
-  pad: string
-  label: string
-  icoon: typeof Users
-  exact: boolean
-  voor: Modus | 'beide'
-}[] = [
-  // Vandaag bestaat voor allebei de gezichten, met een andere inhoud.
-  { pad: '/', label: 'Vandaag', icoon: CalendarDays, exact: true, voor: 'beide' },
-  { pad: '/kim', label: 'Kim', icoon: MessageCircleQuestion, exact: false, voor: 'beheer' },
-  { pad: '/facturen', label: 'Facturen', icoon: ReceiptEuro, exact: false, voor: 'beheer' },
-  { pad: '/kas', label: 'Kas tellen', icoon: Banknote, exact: false, voor: 'beheer' },
-  { pad: '/inkoop', label: 'Inkoop', icoon: ShoppingCart, exact: false, voor: 'beheer' },
-  { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
-  { pad: '/rooster', label: 'Rooster', icoon: CalendarClock, exact: false, voor: 'beheer' },
-  { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
-  { pad: '/instellingen', label: 'Instellingen', icoon: Settings, exact: false, voor: 'beheer' },
-  // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
-  { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
-  { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
-]
+
 
 function ThemaKnop() {
   const [thema, setThemaState] = useState<Thema>(huidigThema)
@@ -108,9 +89,7 @@ export function Schil() {
   useEffect(() => {
     if (wie && !isBeheerder && modus !== 'medewerker') zetModus('medewerker')
   }, [wie, isBeheerder, modus])
-  const titel =
-    MENU.find((m) => (m.exact ? m.pad === locatie.pathname : locatie.pathname.startsWith(m.pad)))?.label ??
-    'Boskma'
+  const titel = titelVoor(locatie.pathname)
 
 
   return (
@@ -135,22 +114,45 @@ export function Schil() {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-3">
-          {zichtbaar.map(({ pad, label, icoon: Icoon, exact }) => (
-            <NavLink
-              key={pad}
-              to={pad}
-              end={exact}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm transition-colors ${
-                  isActive ? 'bg-white/10 font-semibold' : 'text-[#F0EBD5]/70 hover:bg-white/5'
-                }`
-              }
-            >
-              <Icoon className="size-5 shrink-0" aria-hidden />
-              {label}
-            </NavLink>
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+          {zichtbaar.map(({ pad, label, icoon: Icoon, exact, kinderen }) => (
+            <div key={pad} className="flex flex-col gap-1">
+              <NavLink
+                to={pad}
+                end={exact}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-[4px] px-3 py-2.5 text-sm transition-colors ${
+                    isActive ? 'bg-white/10 font-semibold' : 'text-[#F0EBD5]/70 hover:bg-white/5'
+                  }`
+                }
+              >
+                <Icoon className="size-5 shrink-0" aria-hidden />
+                {label}
+              </NavLink>
+
+              {/* De onderdelen alleen van de module waar je in bent. */}
+              {kinderen && locatie.pathname.startsWith(pad) && (
+                <div className="flex flex-col gap-0.5 pb-1">
+                  {kinderen.map((k) => (
+                    <NavLink
+                      key={k.pad}
+                      to={k.pad}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        `rounded-[4px] py-2 pl-11 pr-3 text-sm transition-colors ${
+                          isActive
+                            ? 'bg-white/10 font-semibold'
+                            : 'text-[#F0EBD5]/60 hover:bg-white/5'
+                        }`
+                      }
+                    >
+                      {k.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
 
