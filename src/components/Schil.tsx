@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay, CalendarClock, MessageCircleQuestion, Banknote, ReceiptEuro } from 'lucide-react'
+import { CalendarDays, Users, Settings, Menu, X, LogOut, Sun, Moon, Monitor, UserCircle, FolderOpen, MonitorPlay, CalendarClock, MessageCircleQuestion, Banknote, ReceiptEuro, ShoppingCart } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -20,6 +20,7 @@ const MENU: {
   { pad: '/kim', label: 'Kim', icoon: MessageCircleQuestion, exact: false, voor: 'beheer' },
   { pad: '/facturen', label: 'Facturen', icoon: ReceiptEuro, exact: false, voor: 'beheer' },
   { pad: '/kas', label: 'Kas tellen', icoon: Banknote, exact: false, voor: 'beheer' },
+  { pad: '/inkoop', label: 'Inkoop', icoon: ShoppingCart, exact: false, voor: 'beheer' },
   { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
   { pad: '/rooster', label: 'Rooster', icoon: CalendarClock, exact: false, voor: 'beheer' },
   { pad: '/schermen', label: 'Schermen', icoon: MonitorPlay, exact: false, voor: 'beheer' },
