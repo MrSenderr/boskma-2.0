@@ -95,6 +95,12 @@ export function Inloggen() {
               Vul hem hieronder in — hij is een uur geldig.
               {herstel && ' Daarna ben je binnen en kies je bij Instellingen een nieuw wachtwoord.'}
             </p>
+            {!herstel && (
+              <p className="text-sm text-muted">
+                Komt er niets binnen? Dan kennen wij dit adres niet. Probeer het adres waarop je
+                je contract kreeg, of app Sander even.
+              </p>
+            )}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="code" className="text-sm font-semibold text-muted">
                 Code uit de mail
@@ -162,6 +168,10 @@ export function Inloggen() {
                   onChange={(e) => setEmail(e.target.value)}
                   fout={fout ?? undefined}
                 />
+                <p className="-mt-2 text-sm text-muted">
+                  Gebruik het adres dat bij ons bekend is — hetzelfde waarop je je contract en
+                  je rooster krijgt. Een ander adres kennen we niet.
+                </p>
                 <Knop type="submit" breed bezig={bezig}>
                   Stuur mij een code
                 </Knop>
