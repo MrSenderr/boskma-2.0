@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vaste dagen – 't Zonnetje</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --groen:#003a41; --creme:#f0ebd5; --amber:#e8a33d;
+    --tekst:#1d2a2c; --zacht:#5b6a6c; --lijn:#d9d2b8; --wit:#fffdf6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--creme);color:var(--tekst);
+    font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{background:var(--groen);color:var(--creme);padding:28px 16px 24px}
+  header .wrap,main{max-width:560px;margin:0 auto}
+  header small{opacity:.75;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+  h1{margin:6px 0 8px;font-size:26px;line-height:1.15}
+  header p{margin:0;opacity:.9}
+  main{padding:16px 16px 48px}
+  .kaart{background:var(--wit);border:1px solid var(--lijn);border-radius:14px;padding:18px 16px;margin:14px 0}
+  h2{font-size:17px;margin:0 0 4px;color:var(--groen)}
+  .uitleg{color:var(--zacht);font-size:14px;margin:0 0 14px}
+  label.veld{display:block;font-weight:600;margin:0 0 6px}
+  input[type=text],textarea{width:100%;padding:12px;border:1px solid var(--lijn);border-radius:10px;
+    font:inherit;background:#fff;color:var(--tekst)}
+  textarea{min-height:80px;resize:vertical}
+  input:focus,textarea:focus{outline:2px solid var(--groen);outline-offset:1px}
+  .dag{padding:12px 0;border-top:1px solid var(--lijn)}
+  .dag:first-of-type{border-top:0;padding-top:0}
+  .dagnaam{font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+  .dagnaam span{font-weight:400;color:var(--zacht);font-size:14px}
+  .keuzes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .keuzes.nummers{grid-template-columns:repeat(7,1fr)}
+  .keuzes input{position:absolute;opacity:0;pointer-events:none}
+  .keuzes label{display:flex;align-items:center;justify-content:center;text-align:center;
+    min-height:44px;padding:6px 4px;border:1px solid var(--lijn);border-radius:10px;background:#fff;
+    font-size:14px;cursor:pointer;user-select:none;line-height:1.15}
+  .keuzes input:focus-visible + label{outline:2px solid var(--groen);outline-offset:1px}
+  .keuzes input:checked + label{color:#fff;border-color:transparent}
+  .keuzes input[value=graag]:checked + label{background:#1f7a4d}
+  .keuzes input[value=kan]:checked + label{background:#4f8f8a}
+  .keuzes input[value=liever_niet]:checked + label{background:#c98a2b}
+  .keuzes input[value=nee]:checked + label{background:#9b3b32}
+  .nummers input:checked + label{background:var(--groen)}
+  .keuzes.twee{grid-template-columns:1fr 1fr}
+  .keuzes.twee label{min-height:52px;padding:8px}
+  .keuzes.twee input:checked + label{background:var(--groen)}
+  .waarschuwing{margin-top:14px;padding:14px;border-radius:10px;background:#fbefd9;border:1px solid #e8c88f}
+  .waarschuwing p{margin:0 0 12px}
+  .vinkje{display:flex;gap:10px;align-items:flex-start;font-weight:600;cursor:pointer}
+  .vinkje input{width:22px;height:22px;margin:0;flex:none;accent-color:var(--groen)}
+  .sub{margin-top:10px;padding:10px 12px;background:#f7f2e2;border-radius:10px}
+  .sub .dagnaam{font-size:14px}
+  .fout{color:#9b3b32;font-size:14px;margin:6px 0 0;display:none}
+  .ontbreekt .fout{display:block}
+  .ontbreekt .keuzes label{border-color:#d9a19b}
+  button{width:100%;min-height:52px;border:0;border-radius:12px;background:var(--groen);color:var(--creme);
+    font:600 17px/1 inherit;font-family:inherit;cursor:pointer;margin-top:6px}
+  button:disabled{opacity:.6;cursor:wait}
+  .melding{margin-top:12px;font-size:15px}
+  .klaar{text-align:center;padding:32px 16px}
+  .klaar .vink{width:56px;height:56px;border-radius:50%;background:#1f7a4d;color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <small>Snackerie 't Zonnetje</small>
+  <h1>Welke vaste dagen passen bij jou?</h1>
+  <p>We willen zoveel mogelijk met vaste dagen gaan werken in de avondspits. Geef per dag aan hoe het jou uitkomt. Het kost je 2 minuten.</p>
+</div></header>
+
+<main>
+<form id="formulier" novalidate>
+
+  <div class="kaart" id="blok-naam">
+    <label class="veld" for="naam">Je voor- en achternaam</label>
+    <input type="text" id="naam" name="naam" autocomplete="name" maxlength="80">
+    <p class="fout">Vul je naam in.</p>
+  </div>
+
+  <div class="kaart" id="blok-wil_vast">
+    <h2>Wil je vaste dagen?</h2>
+    <p class="uitleg">Kies wat bij jou past.</p>
+    <div class="keuzes twee" role="radiogroup">
+      <input type="radio" name="wil_vast" value="ja" id="wil_vast_ja"><label for="wil_vast_ja">Ja, ik wil vaste dagen</label>
+      <input type="radio" name="wil_vast" value="nee" id="wil_vast_nee"><label for="wil_vast_nee">Nee, liever geen vaste dagen</label>
+    </div>
+    <p class="fout">Maak een keuze.</p>
+
+    <div class="waarschuwing" id="geen-vast" hidden>
+      <p><strong>Let op:</strong> zonder vaste dagen heb je geen vastigheid. Je wordt alleen ingepland als er ruimte ontstaat naast de vaste plekken, bijvoorbeeld bij ziekte, vakantie of extra drukte. Het kan dus zijn dat je een tijd weinig of geen diensten krijgt.</p>
+      <label class="vinkje"><input type="checkbox" id="akkoord"> Ik begrijp dit en kies toch voor geen vaste dagen</label>
+      <p class="fout">Vink dit aan om door te gaan.</p>
+    </div>
+  </div>
+
+  <div id="vast-deel" hidden>
+  <div class="kaart">
+    <h2>Avondspits 17:00 – 20:00</h2>
+    <p class="uitleg">Hoe graag zou je op deze dag vast de spits werken?</p>
+    <div id="dagen"></div>
+  </div>
+
+  <div class="kaart" id="blok-aantal">
+    <h2>Hoeveel vaste diensten per week?</h2>
+    <p class="uitleg">Hoeveel diensten wil je per week vast hebben staan?</p>
+    <div class="keuzes nummers" id="aantal"></div>
+    <p class="fout">Kies een aantal.</p>
+  </div>
+  </div>
+
+  <div class="kaart">
+    <label class="veld" for="blokkades">Wat ligt bij jou vast?</label>
+    <p class="uitleg">School, sport, een andere baan, vervoer… alles waar we rekening mee moeten houden.</p>
+    <textarea id="blokkades" maxlength="1000"></textarea>
+  </div>
+
+  <div class="kaart">
+    <label class="veld" for="geldig">Tot wanneer geldt dit ongeveer?</label>
+    <p class="uitleg">Bijvoorbeeld "tot de zomer" of "tot het nieuwe schoolrooster in februari".</p>
+    <input type="text" id="geldig" maxlength="100">
+  </div>
+
+  <div class="kaart">
+    <label class="veld" for="opmerking">Nog iets dat Sander moet weten?</label>
+    <textarea id="opmerking" maxlength="1000"></textarea>
+  </div>
+
+  <button type="submit" id="verstuur">Versturen</button>
+  <p class="melding" id="melding" role="alert"></p>
+</form>
+
+<div class="kaart klaar" id="klaar" hidden>
+  <div class="vink" aria-hidden="true">✓</div>
+  <h2>Bedankt, het is binnen!</h2>
+  <p class="uitleg">Wil je later iets aanpassen? Vul het formulier gewoon opnieuw in; je laatste versie telt.</p>
+</div>
+</main>
+
+<script>
+(function(){
+  var SUPABASE_URL = "https://xukzumqddeateztmjpzf.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_xlhdyoQLmHy_hMAHaijaWw_sRYejifx";
+
+  var OPTIES = [["graag","Graag"],["kan","Kan"],["liever_niet","Liever niet"],["nee","Nee"]];
+  var DAGEN = [["di","Dinsdag"],["wo","Woensdag"],["do","Donderdag"],["vr","Vrijdag"],["za","Zaterdag"],["zo","Zondag"]];
+
+  function keuzeGroep(naam){
+    var div = document.createElement("div");
+    div.className = "keuzes";
+    div.setAttribute("role","radiogroup");
+    OPTIES.forEach(function(o){
+      var id = naam + "_" + o[0];
+      var inp = document.createElement("input");
+      inp.type = "radio"; inp.name = naam; inp.value = o[0]; inp.id = id;
+      var lab = document.createElement("label");
+      lab.htmlFor = id; lab.textContent = o[1];
+      div.appendChild(inp); div.appendChild(lab);
+    });
+    return div;
+  }
+
+  var dagenEl = document.getElementById("dagen");
+  DAGEN.forEach(function(d){
+    var blok = document.createElement("div");
+    blok.className = "dag"; blok.id = "blok-" + d[0];
+    var kop = document.createElement("div");
+    kop.className = "dagnaam"; kop.textContent = d[1];
+    var tijd = document.createElement("span"); tijd.textContent = "spits";
+    kop.appendChild(tijd);
+    blok.appendChild(kop);
+    blok.appendChild(keuzeGroep(d[0]));
+    var f = document.createElement("p"); f.className = "fout"; f.textContent = "Maak een keuze.";
+    blok.appendChild(f);
+
+    if (d[0] === "za" || d[0] === "zo") {
+      var sub = document.createElement("div");
+      sub.className = "sub"; sub.id = "blok-" + d[0] + "_hele_dag";
+      var k2 = document.createElement("div");
+      k2.className = "dagnaam"; k2.textContent = "Of liever de hele dag?";
+      var t2 = document.createElement("span"); t2.textContent = "12:00 – 20:00";
+      k2.appendChild(t2);
+      sub.appendChild(k2);
+      sub.appendChild(keuzeGroep(d[0] + "_hele_dag"));
+      var f2 = document.createElement("p"); f2.className = "fout"; f2.textContent = "Maak een keuze.";
+      sub.appendChild(f2);
+      blok.appendChild(sub);
+    }
+    dagenEl.appendChild(blok);
+  });
+
+  var aantalEl = document.getElementById("aantal");
+  for (var n = 0; n <= 6; n++) {
+    var inp = document.createElement("input");
+    inp.type = "radio"; inp.name = "aantal_vast"; inp.value = String(n); inp.id = "aantal_" + n;
+    var lab = document.createElement("label");
+    lab.htmlFor = inp.id; lab.textContent = n === 0 ? "0" : String(n);
+    aantalEl.appendChild(inp); aantalEl.appendChild(lab);
+  }
+
+  function gekozen(naam){
+    var el = document.querySelector('input[name="' + naam + '"]:checked');
+    return el ? el.value : null;
+  }
+
+  document.addEventListener("change", function(e){
+    var blok = e.target.closest(".ontbreekt");
+    if (blok) blok.classList.remove("ontbreekt");
+    if (e.target.name === "wil_vast") {
+      var geen = e.target.value === "nee";
+      document.getElementById("geen-vast").hidden = !geen;
+      document.getElementById("vast-deel").hidden = geen;
+    }
+  });
+  document.getElementById("naam").addEventListener("input", function(){
+    document.getElementById("blok-naam").classList.remove("ontbreekt");
+  });
+
+  var form = document.getElementById("formulier");
+  var knop = document.getElementById("verstuur");
+  var melding = document.getElementById("melding");
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    melding.textContent = "";
+    var eerste = null;
+    function mis(id){ var b = document.getElementById(id); b.classList.add("ontbreekt"); if (!eerste) eerste = b; }
+
+    var naam = document.getElementById("naam").value.trim();
+    if (naam.length < 2) mis("blok-naam");
+
+    var rij = { naam: naam };
+    var keuze = gekozen("wil_vast");
+    if (!keuze) mis("blok-wil_vast");
+
+    if (keuze === "nee") {
+      rij.wil_vast = false;
+      rij.akkoord_geen_vast = document.getElementById("akkoord").checked;
+      if (!rij.akkoord_geen_vast) mis("geen-vast");
+    } else if (keuze === "ja") {
+      rij.wil_vast = true;
+      ["di","wo","do","vr","za","zo","za_hele_dag","zo_hele_dag"].forEach(function(k){
+        var v = gekozen(k);
+        if (!v) mis("blok-" + k);
+        rij[k] = v;
+      });
+      var aantal = gekozen("aantal_vast");
+      if (aantal === null) mis("blok-aantal");
+      rij.aantal_vast = aantal === null ? null : Number(aantal);
+    }
+
+    rij.blokkades = document.getElementById("blokkades").value.trim() || null;
+    rij.geldig_tot = document.getElementById("geldig").value.trim() || null;
+    rij.opmerking = document.getElementById("opmerking").value.trim() || null;
+
+    if (eerste) {
+      melding.textContent = "Er mist nog iets, kijk even bij de rode velden.";
+      eerste.scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+
+    knop.disabled = true; knop.textContent = "Bezig met versturen…";
+    fetch(SUPABASE_URL + "/rest/v1/rooster_voorkeuren", {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(rij)
+    }).then(function(r){
+      if (!r.ok) throw new Error("status " + r.status);
+      form.hidden = true;
+      document.getElementById("klaar").hidden = false;
+      window.scrollTo(0,0);
+    }).catch(function(){
+      knop.disabled = false; knop.textContent = "Versturen";
+      melding.textContent = "Versturen lukte niet. Check je internet en probeer het nog een keer. Blijft het mislukken? App Sander even.";
+    });
+  });
+})();
+</script>
+</body>
+</html>
