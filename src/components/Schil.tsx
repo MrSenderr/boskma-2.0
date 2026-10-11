@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Menu, X, LogOut, Sun, Moon, Monitor } from 'lucide-react'
+import { Menu, X, LogOut, Sun, Moon, Monitor, Eye } from 'lucide-react'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { huidigThema, zetThema, type Thema } from '../lib/thema'
@@ -196,6 +196,18 @@ export function Schil() {
             aanname en zag daardoor de balk. In medewerkersweergave blijft hij
             ook weg, anders klopt je voorbeeld niet met wat zij zien. */}
         {isBeheerder && gezicht === 'beheer' && <TestBalk />}
+
+        {/* Zodat je nooit vergeet dat je aan het meekijken bent: anders lijkt
+            het alsof je eigen app de helft kwijt is. */}
+        {isBeheerder && gezicht === 'medewerker' && (
+          <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 text-sm text-muted">
+            <Eye className="size-4 shrink-0" aria-hidden />
+            <span>
+              Je kijkt mee als medewerker. Dit is wat je personeel ziet — je eigen gegevens staan
+              er niet in.
+            </span>
+          </div>
+        )}
 
         <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
           <Outlet />

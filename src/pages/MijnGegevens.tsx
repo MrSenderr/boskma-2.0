@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Clock, Lock, Pencil } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
+import { MeekijkenLeeg } from '../components/Meekijken'
 import {
   VELDNAMEN,
   useGegevenWijzigen,
@@ -43,6 +44,16 @@ export function MijnGegevens() {
   const [melding, setMelding] = useState<string | null>(null)
   const [bezig, setBezig] = useState(false)
 
+  // Geen eigen dossier: dat is Sander die met de schakelaar meekijkt. Zonder
+  // dit blijft het scherm op laden staan, want de vraag wordt nooit gesteld.
+  if (!wie?.medewerker_id) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Kopje>Mijn gegevens</Kopje>
+        <MeekijkenLeeg wat="het adres, telefoonnummer en de maat" />
+      </div>
+    )
+  }
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 

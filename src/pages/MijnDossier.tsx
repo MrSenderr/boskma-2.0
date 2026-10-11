@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, FileText, MessageSquare, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
+import { MeekijkenLeeg } from '../components/Meekijken'
 import { DocumentLink } from '../components/DocumentLink'
 import { korteDatum } from '../lib/personeel'
 import {
@@ -137,6 +138,14 @@ export function MijnDossier() {
       })
   }, [verslagen])
 
+  if (!wie?.medewerker_id) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Kopje>Mijn dossier</Kopje>
+        <MeekijkenLeeg wat="de gespreksverslagen en papieren" />
+      </div>
+    )
+  }
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 

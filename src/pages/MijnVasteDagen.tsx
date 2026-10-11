@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Check } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
+import { MeekijkenLeeg } from '../components/Meekijken'
 import { korteDatum } from '../lib/personeel'
 import {
   DAGEN,
@@ -110,21 +111,18 @@ export function MijnVasteDagen() {
     setOpmerking(eerder.opmerking ?? '')
   }, [eerder])
 
-  if (isPending) return <Laden tekst="Je voorkeur ophalen…" />
-  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
-
   if (!persoonId) {
     return (
       <div className="flex flex-col gap-4">
         <Kopje>Mijn vaste dagen</Kopje>
-        <Kaart className="p-4">
-          <p className="text-sm text-muted">
-            Dit scherm is er voor medewerkers. Klopt dat niet, laat het Sander even weten.
-          </p>
-        </Kaart>
+        <MeekijkenLeeg wat="de voorkeur voor vaste dagen" />
       </div>
     )
   }
+
+  if (isPending) return <Laden tekst="Je voorkeur ophalen…" />
+  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
+
 
   const alleDagenIngevuld =
     DAGEN.every((d) => antwoorden[d.sleutel]) && antwoorden.za_hele_dag && antwoorden.zo_hele_dag
