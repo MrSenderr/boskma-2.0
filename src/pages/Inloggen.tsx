@@ -195,7 +195,7 @@ export function Inloggen() {
                 <button
                   type="button"
                   onClick={vergeten}
-                  className="text-sm text-[#F0EBD5]/70 underline hover:text-[#F0EBD5]"
+                  className="text-sm font-semibold text-muted underline hover:text-text"
                 >
                   Wachtwoord vergeten?
                 </button>
