@@ -6,6 +6,7 @@ import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/verjaardagen'
 import { useVerslagen } from '../lib/dossier'
 import { useMijnVasteDagen } from '../lib/vasteDagen'
+import { OpJeTelefoon } from '../components/OpJeTelefoon'
 
 /* Het startscherm van een medewerker.
  *
@@ -56,6 +57,10 @@ export function VandaagMedewerker() {
           })}
         </p>
       </div>
+
+      {/* Eén keer per toestel, tot je hem wegklikt of de app op je beginscherm
+          zet. Zie components/OpJeTelefoon.tsx. */}
+      <OpJeTelefoon />
 
       {/* Zolang je je vaste dagen nog niet hebt doorgegeven staat het hier in
           de weg; daarna is het een gewone regel onderin het menu. */}
