@@ -15,6 +15,9 @@ export function Inloggen() {
   const [bezig, setBezig] = useState(false)
   const [verstuurd, setVerstuurd] = useState<{ testmodus?: boolean; naar?: string } | null>(null)
   const [code, setCode] = useState('')
+  // Herstel loopt verder precies als inloggen met een code; alleen de mail en
+  // de uitleg verschillen.
+  const [herstel, setHerstel] = useState(false)
 
   async function metWachtwoord(e: FormEvent) {
     e.preventDefault()
@@ -35,6 +38,23 @@ export function Inloggen() {
     const melding = await inlogMetCode(email, code)
     setBezig(false)
     if (melding) setFout(melding)
+  }
+
+  async function vergeten() {
+    if (!email.trim()) {
+      setFout('Vul eerst je e-mailadres in.')
+      return
+    }
+    setFout(null)
+    setBezig(true)
+    const r = await vraagInloglink(email, true)
+    setBezig(false)
+    if (!r.ok) {
+      setFout(r.error ?? 'Er ging iets mis. Probeer het zo nog eens.')
+      return
+    }
+    setHerstel(true)
+    setVerstuurd({ testmodus: r.testmodus, naar: r.verstuurd_naar })
   }
 
   async function metLink(e: FormEvent) {
@@ -73,6 +93,7 @@ export function Inloggen() {
             <p className="text-sm text-muted">
               Als dit adres bij ons bekend is, staat er nu een mail met een code.
               Vul hem hieronder in — hij is een uur geldig.
+              {herstel && ' Daarna ben je binnen en kies je bij Instellingen een nieuw wachtwoord.'}
             </p>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="code" className="text-sm font-semibold text-muted">
@@ -171,6 +192,13 @@ export function Inloggen() {
                 <Knop type="submit" breed bezig={bezig}>
                   Inloggen
                 </Knop>
+                <button
+                  type="button"
+                  onClick={vergeten}
+                  className="text-sm text-[#F0EBD5]/70 underline hover:text-[#F0EBD5]"
+                >
+                  Wachtwoord vergeten?
+                </button>
               </form>
             )}
           </div>

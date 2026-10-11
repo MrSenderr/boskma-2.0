@@ -3,6 +3,7 @@ import { AlertTriangle, ShieldCheck } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Veld } from '../components/ui'
 import { useTestmodus, useTestmodusWijzigen } from '../lib/instellingen'
 import { Openingstijden } from '../components/Openingstijden'
+import { Wachtwoord } from '../components/Wachtwoord'
 
 export function Instellingen() {
   const { data: testmodus, isPending, error, refetch } = useTestmodus()
@@ -102,6 +103,11 @@ export function Instellingen() {
       <section className="flex flex-col gap-3">
         <h2 className="font-display text-xl">Openingstijden</h2>
         <Openingstijden />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-xl">Jouw wachtwoord</h2>
+        <Wachtwoord />
       </section>
     </div>
   )

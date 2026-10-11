@@ -60,13 +60,83 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/** Een code waarmee je binnenkomt om een nieuw wachtwoord te kunnen zetten. */
+async function stuurHerstelcode(adres: string) {
+  const stil = { ok: true, verstuurd: false } as const;
+
+  const link = await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: h,
+    body: JSON.stringify({ type: "recovery", email: adres, redirect_to: APP_URL }),
+  });
+  if (!link.ok) {
+    // Meestal: dit adres heeft geen account. Dat vertellen we niet.
+    console.warn("[herstel] geen link", link.status, await link.text());
+    return json(stil);
+  }
+  const gegevens = await link.json();
+  const code = gegevens?.properties?.email_otp ?? gegevens?.email_otp ?? null;
+  if (!code) return json(stil);
+
+  const tm = await leesTestmodus();
+  const ontvanger = tm.aan ? tm.adres : adres;
+  const balk = tm.aan
+    ? `<div style="background:#fff4d6;border:2px solid #b87a22;border-radius:6px;padding:12px 16px;margin:0 0 16px;font-family:Arial,sans-serif;font-size:14px;color:#5c4310">
+         <strong>TESTMODUS</strong> — deze mail was bedoeld voor <strong>${adres}</strong>.
+       </div>`
+    : "";
+
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f0ebd5;font-family:Helvetica,Arial,sans-serif;color:#0e2226">
+    ${balk}
+    <div style="max-width:520px;margin:0 auto;background:#fbf9f2;border-radius:6px;padding:28px">
+      <p style="margin:0 0 4px;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#5c7073">Snackerie 't Zonnetje</p>
+      <h1 style="margin:0 0 16px;font-size:22px;color:#003a41">Je wachtwoord opnieuw instellen</h1>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6">
+        Vul de code hieronder in de app in. Daarna ben je binnen en kun je bij
+        Instellingen een nieuw wachtwoord kiezen.
+      </p>
+      <div style="margin:0 0 20px;padding:18px;background:#f0ebd5;border-radius:6px;text-align:center">
+        <p style="margin:0 0 6px;font-size:13px;color:#5c7073">Vul deze code in de app in:</p>
+        <p style="margin:0;font-size:30px;font-weight:700;letter-spacing:.28em;color:#003a41;font-family:monospace">${code}</p>
+      </div>
+      <p style="margin:0;font-size:13px;color:#5c7073">
+        De code is een uur geldig. Niet zelf aangevraagd? Dan hoef je niets te doen;
+        je wachtwoord blijft zoals het was.
+      </p>
+    </div>
+  </body></html>`;
+
+  const mail = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: [ontvanger],
+      subject: `${tm.aan ? "[TEST] " : ""}Je wachtwoord opnieuw instellen`,
+      html,
+    }),
+  });
+  if (!mail.ok) {
+    console.error("[herstel] mail mislukt", mail.status, await mail.text());
+    return json({ ok: false, error: "De mail kon niet verstuurd worden." }, 500);
+  }
+  return json({ ok: true, verstuurd: true, testmodus: tm.aan, verstuurd_naar: ontvanger });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
-    const { email } = await req.json();
+    const { email, herstel } = await req.json();
     const adres = String(email ?? "").trim().toLowerCase();
     if (!adres.includes("@")) return json({ ok: false, error: "Vul een geldig e-mailadres in." }, 400);
+
+    /* Wachtwoord vergeten. Dat loopt niet langs de medewerkerscontrole: het
+       gaat juist om de beheerder, en die staat niet in sollicitaties. Bestaat
+       het adres niet, dan zegt generate_link dat en krijg jij hetzelfde
+       antwoord als anders — anders kun je hiermee uitvinden wie een account
+       heeft. */
+    if (herstel) return await stuurHerstelcode(adres);
 
     // 1. Mag deze persoon inloggen?
     const q = new URLSearchParams({

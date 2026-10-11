@@ -33,20 +33,21 @@ export function useWieBenIk() {
 
 /** Vraagt een inloglink aan. Geeft bewust altijd hetzelfde terug, ook als het
  *  adres niet bestaat — anders kun je hiermee uitvinden wie er werkt. */
-export async function vraagInloglink(email: string) {
+export async function vraagInloglink(email: string, herstel = false) {
   const { data, error } = await supabase.functions.invoke('stuur-inloglink', {
-    body: { email },
+    body: { email, herstel },
   })
   if (error) return { ok: false as const, error: error.message }
   return data as { ok: boolean; verstuurd?: boolean; testmodus?: boolean; verstuurd_naar?: string; error?: string }
 }
 
 /** Wisselt de zes cijfers uit de mail in voor een sessie. Supabase noemt dit
- *  soort code afhankelijk van hoe hij is aangemaakt anders, dus we proberen
- *  beide varianten voordat we het opgeven. */
+ *  soort code afhankelijk van hoe hij is aangemaakt anders — inloggen,
+ *  magische link of wachtwoordherstel — dus we proberen ze alle drie voordat
+ *  we het opgeven. */
 export async function inlogMetCode(email: string, code: string) {
   const schoon = code.replace(/\D/g, '')
-  for (const type of ['email', 'magiclink'] as const) {
+  for (const type of ['email', 'magiclink', 'recovery'] as const) {
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
       token: schoon,
