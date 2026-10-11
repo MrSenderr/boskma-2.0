@@ -32,6 +32,7 @@ import { Persoon } from './pages/Persoon'
 import { Instellingen } from './pages/Instellingen'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
+import { MijnVasteDagen } from './pages/MijnVasteDagen'
 import { Schermen } from './pages/Schermen'
 import { SchermenLijst } from './pages/SchermenLijst'
 import { SchermAfbeeldingen } from './pages/SchermAfbeeldingen'
@@ -79,6 +80,7 @@ function Poort() {
         <Route index element={<Startscherm />} />
         <Route path="mijn-gegevens" element={<MijnGegevens />} />
         <Route path="mijn-dossier" element={<MijnDossier />} />
+        <Route path="mijn-vaste-dagen" element={<MijnVasteDagen />} />
         <Route path="kim" element={<Kim />} />
         <Route path="facturen" element={<Facturen />}>
           <Route index element={<Navigate to="inkomend" replace />} />

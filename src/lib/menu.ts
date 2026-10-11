@@ -1,5 +1,6 @@
 import {
   Banknote,
+  CalendarCheck,
   CalendarClock,
   CalendarDays,
   FolderOpen,
@@ -72,6 +73,7 @@ export const MENU: {
   // Het medewerkersgezicht. Straks het enige dat je personeel te zien krijgt.
   { pad: '/mijn-gegevens', label: 'Mijn gegevens', icoon: UserCircle, exact: false, voor: 'medewerker' },
   { pad: '/mijn-dossier', label: 'Mijn dossier', icoon: FolderOpen, exact: false, voor: 'medewerker' },
+  { pad: '/mijn-vaste-dagen', label: 'Mijn vaste dagen', icoon: CalendarCheck, exact: false, voor: 'medewerker' },
 ]
 
 /* De naam van het scherm waar je bent: het onderdeel als dat er is, anders de

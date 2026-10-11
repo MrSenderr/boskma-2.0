@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
-import { Cake, ChevronRight, MessageSquare } from 'lucide-react'
+import { Cake, CalendarCheck, ChevronRight, MessageSquare } from 'lucide-react'
 import { Kaart, Kopje, Pil } from '../components/ui'
 import { isOpen, standVanDeDag, useRooster, vandaagStr } from '../lib/openingstijden'
 import { useWieBenIk } from '../lib/wie'
 import { jarigen, useVerjaardagen } from '../lib/verjaardagen'
 import { useVerslagen } from '../lib/dossier'
+import { useMijnVasteDagen } from '../lib/vasteDagen'
 
 /* Het startscherm van een medewerker.
  *
@@ -28,6 +29,7 @@ export function VandaagMedewerker() {
   const { data: verjaardagen } = useVerjaardagen()
   const { data: verslagen } = useVerslagen(wie?.medewerker_id)
   const { data: rooster } = useRooster()
+  const { data: vasteDagen, isPending: vasteDagenBezig } = useMijnVasteDagen(wie?.medewerker_id)
 
   const voornaam = (wie?.naam ?? '').split(' ')[0]
   const vandaag = vandaagStr()
@@ -54,6 +56,28 @@ export function VandaagMedewerker() {
           })}
         </p>
       </div>
+
+      {/* Zolang je je vaste dagen nog niet hebt doorgegeven staat het hier in
+          de weg; daarna is het een gewone regel onderin het menu. */}
+      {!vasteDagenBezig && wie?.medewerker_id && !vasteDagen && (
+        <Link
+          to="/mijn-vaste-dagen"
+          data-touch
+          className="flex items-center gap-4 rounded-card border border-warn bg-surface p-5 hover:bg-surface-2"
+        >
+          <CalendarCheck className="size-6 shrink-0 text-muted" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2 font-display text-lg">
+              Welke vaste dagen passen bij jou?
+              <Pil soort="letop">Nog invullen</Pil>
+            </span>
+            <span className="block text-sm text-muted">
+              Geef per dag aan hoe het jou uitkomt. Het kost je twee minuten.
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
+        </Link>
+      )}
 
       {wacht.length > 0 && (
         <section className="flex flex-col gap-3">
