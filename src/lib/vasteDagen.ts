@@ -114,3 +114,77 @@ export function useVasteDagenOpslaan() {
     },
   })
 }
+
+/* ------------------------------------------------- het hele overzicht --- */
+
+export type Overzichtsregel = {
+  persoon_id: string
+  naam: string
+  ingevuld_op: string | null
+  wil_vast: boolean | null
+  akkoord_geen_vast: boolean | null
+  di: Voorkeur | null
+  wo: Voorkeur | null
+  do: Voorkeur | null
+  vr: Voorkeur | null
+  za: Voorkeur | null
+  zo: Voorkeur | null
+  za_hele_dag: Voorkeur | null
+  zo_hele_dag: Voorkeur | null
+  aantal_vast: number | null
+  blokkades: string | null
+  geldig_tot: string | null
+  opmerking: string | null
+}
+
+export function useVasteDagenOverzicht() {
+  return useQuery({
+    queryKey: ['vaste-dagen-overzicht'],
+    queryFn: async (): Promise<Overzichtsregel[]> => {
+      const { data, error } = await supabase
+        .from('vaste_dagen_overzicht')
+        .select('*')
+        .order('naam')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as Overzichtsregel[]
+    },
+  })
+}
+
+/** Heeft deze persoon iets opgegeven? */
+export function heeftIngevuld(r: Overzichtsregel): boolean {
+  return r.ingevuld_op !== null
+}
+
+export type Telling = { sleutel: string; naam: string; graag: number; kan: number }
+
+/* Per dag hoeveel mensen hem graag doen en hoeveel hem kunnen. Dat is de vraag
+   bij het maken van het rooster: heb ik genoeg mensen voor dinsdag.
+
+   Wie geen vaste dagen wil telt nergens mee — die vult de dagen immers niet
+   in, en meetellen als "kan niet" zou het beeld vertekenen. */
+export function perDag(regels: Overzichtsregel[]): Telling[] {
+  return DAGEN.map((d) => {
+    const antwoorden = regels.filter((r) => r.wil_vast).map((r) => r[d.sleutel])
+    return {
+      sleutel: d.sleutel,
+      naam: d.naam,
+      graag: antwoorden.filter((a) => a === 'graag').length,
+      kan: antwoorden.filter((a) => a === 'kan').length,
+    }
+  })
+}
+
+/* Op een telefoon past geen tabel van zes kolommen. Daar is dit voor: alleen
+   de dagen die iets betekenen, kort opgeschreven. */
+export function samenvatting(r: Overzichtsregel): { graag: string[]; kan: string[]; nee: string[] } {
+  const uit = { graag: [] as string[], kan: [] as string[], nee: [] as string[] }
+  if (!r.wil_vast) return uit
+  for (const d of DAGEN) {
+    const a = r[d.sleutel]
+    if (a === 'graag') uit.graag.push(d.naam)
+    else if (a === 'kan') uit.kan.push(d.naam)
+    else if (a === 'nee') uit.nee.push(d.naam)
+  }
+  return uit
+}

@@ -59,6 +59,7 @@ export const MENU: {
     kinderen: [
       { pad: '/rooster/dag', label: 'Dag' },
       { pad: '/rooster/medewerkers', label: 'Per medewerker' },
+      { pad: '/rooster/vaste-dagen', label: 'Vaste dagen' },
       { pad: '/rooster/importeren', label: 'Importeren' },
     ],
   },
