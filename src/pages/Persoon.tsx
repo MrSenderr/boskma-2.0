@@ -7,6 +7,7 @@ import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
 import { Dossier } from '../components/Dossier'
 import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
+import { VasteDagen } from '../components/VasteDagen'
 import {
   aannemen,
   afwijzen,
@@ -171,6 +172,8 @@ export function Persoon() {
         </>
       )}
 
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <VasteDagen persoon={p} />}
 
       {p.fase === 'medewerker' && (
         <section className="flex flex-col gap-4">
