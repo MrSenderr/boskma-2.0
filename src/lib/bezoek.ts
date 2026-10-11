@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 
 export type Bezoek = {
-  email: string
+  persoon_id: string
   eerst_gezien: string
   laatst_gezien: string
   dagen: number
@@ -55,13 +55,16 @@ export function useMeldAanwezig(ingelogd: boolean) {
   }, [ingelogd])
 }
 
+/* Op persoon, niet op mailadres: de personeelslijst haalt e-mail expres niet
+   op, en dat hoort ook niet in een overzicht. Het koppelen gebeurt in de view
+   app_bezoek_persoon. */
 export function useAppBezoek() {
   return useQuery({
     queryKey: ['app-bezoek'],
     queryFn: async (): Promise<Bezoek[]> => {
       const { data, error } = await supabase
-        .from('app_bezoek')
-        .select('email, eerst_gezien, laatst_gezien, dagen')
+        .from('app_bezoek_persoon')
+        .select('persoon_id, eerst_gezien, laatst_gezien, dagen')
       if (error) throw new Error(error.message)
       return (data ?? []) as Bezoek[]
     },

@@ -162,7 +162,7 @@ function Groep({
       ) : (
         <Kaart>
           {mensen.map((p) => (
-            <Regel key={p.id} p={p} inDeApp={inDeApp?.get((p.email ?? '').toLowerCase())} />
+            <Regel key={p.id} p={p} inDeApp={inDeApp?.get(p.id)} />
           ))}
         </Kaart>
       )}
@@ -183,8 +183,8 @@ export function Personeel() {
   const sollicitanten = lopend.filter((p) => p.fase === 'sollicitant')
   const medewerkers = lopend.filter((p) => p.fase === 'medewerker')
   const archief = data.filter(inArchief)
-  const inDeApp = new Map((bezoek.data ?? []).map((b) => [b.email.toLowerCase(), b.laatst_gezien]))
-  const gebruiken = medewerkers.filter((p) => inDeApp.has((p.email ?? '').toLowerCase())).length
+  const inDeApp = new Map((bezoek.data ?? []).map((b) => [b.persoon_id, b.laatst_gezien]))
+  const gebruiken = medewerkers.filter((p) => inDeApp.has(p.id)).length
 
   return (
     <div className="flex flex-col gap-8">
@@ -238,7 +238,7 @@ export function Personeel() {
           {toonArchief && (
             <Kaart>
               {archief.map((p) => (
-                <Regel key={p.id} p={p} inDeApp={inDeApp?.get((p.email ?? '').toLowerCase())} />
+                <Regel key={p.id} p={p} inDeApp={inDeApp?.get(p.id)} />
               ))}
             </Kaart>
           )}
