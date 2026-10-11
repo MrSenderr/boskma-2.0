@@ -7,6 +7,7 @@ import { huidigThema, zetThema, type Thema } from '../lib/thema'
 import { useTestmodus } from '../lib/instellingen'
 import { useModus, zetModus, type Modus } from '../lib/modus'
 import { MENU, titelVoor } from '../lib/menu'
+import { useMeldAanwezig } from '../lib/bezoek'
 import { useWieBenIk } from '../lib/wie'
 
 
@@ -77,6 +78,8 @@ function TestBalk() {
 export function Schil() {
   const [open, setOpen] = useState(false)
   const { email, uitloggen } = useAuth()
+  // Eén streepje per dag dat iemand de app opendoet. Zie lib/bezoek.ts.
+  useMeldAanwezig(Boolean(email))
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
   const locatie = useLocation()

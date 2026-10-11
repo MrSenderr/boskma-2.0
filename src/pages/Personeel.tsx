@@ -12,6 +12,7 @@ import {
   type Fase,
   type Persoon,
 } from '../lib/personeel'
+import { geledenTekst, useAppBezoek } from '../lib/bezoek'
 
 /* Iemand met de hand toevoegen: voor wie niet via werkenbij binnenkomt maar
    bijvoorbeeld gewoon aan de deur staat. Zie
@@ -113,7 +114,7 @@ function Toevoegen({ sluit }: { sluit: () => void }) {
   )
 }
 
-function Regel({ p }: { p: Persoon }) {
+function Regel({ p, inDeApp }: { p: Persoon; inDeApp?: string }) {
   const toestand = toestandVan(p)
   return (
     <Link
@@ -121,7 +122,13 @@ function Regel({ p }: { p: Persoon }) {
       data-touch
       className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
     >
-      <span className="min-w-0 flex-1 truncate font-semibold">{naamVan(p)}</span>
+      <span className="min-w-0 flex-1 truncate">
+        <span className="font-semibold">{naamVan(p)}</span>
+        {/* Alleen bij medewerkers: een sollicitant hoort nog niet in de app. */}
+        {p.fase === 'medewerker' && (
+          <span className="block text-xs text-muted">in de app: {geledenTekst(inDeApp)}</span>
+        )}
+      </span>
       <Pil soort={toestand.soort}>{toestand.label}</Pil>
       <span className="hidden w-20 shrink-0 text-right text-sm tabular-nums text-muted sm:block">
         {sinds(p.aangemeld_op)}
@@ -136,11 +143,13 @@ function Groep({
   aantal,
   mensen,
   leeg,
+  inDeApp,
 }: {
   titel: string
   aantal: number
   mensen: Persoon[]
   leeg: string
+  inDeApp?: Map<string, string>
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -153,7 +162,7 @@ function Groep({
       ) : (
         <Kaart>
           {mensen.map((p) => (
-            <Regel key={p.id} p={p} />
+            <Regel key={p.id} p={p} inDeApp={inDeApp?.get((p.email ?? '').toLowerCase())} />
           ))}
         </Kaart>
       )}
@@ -163,6 +172,7 @@ function Groep({
 
 export function Personeel() {
   const { data, isPending, error, refetch } = usePersonen()
+  const bezoek = useAppBezoek()
   const [toonArchief, setToonArchief] = useState(false)
   const [toevoegen, setToevoegen] = useState(false)
 
@@ -173,6 +183,8 @@ export function Personeel() {
   const sollicitanten = lopend.filter((p) => p.fase === 'sollicitant')
   const medewerkers = lopend.filter((p) => p.fase === 'medewerker')
   const archief = data.filter(inArchief)
+  const inDeApp = new Map((bezoek.data ?? []).map((b) => [b.email.toLowerCase(), b.laatst_gezien]))
+  const gebruiken = medewerkers.filter((p) => inDeApp.has((p.email ?? '').toLowerCase())).length
 
   return (
     <div className="flex flex-col gap-8">
@@ -199,7 +211,18 @@ export function Personeel() {
         aantal={medewerkers.length}
         mensen={medewerkers}
         leeg="Nog geen medewerkers. Neem een sollicitant aan, of voeg iemand toe."
+        inDeApp={inDeApp}
       />
+
+      {medewerkers.length > 0 && (
+        <p className="-mt-6 text-sm text-muted">
+          {gebruiken === 0
+            ? 'Nog niemand heeft de app opengedaan sinds het bijhouden aanstaat.'
+            : `${gebruiken} van de ${medewerkers.length} medewerkers ${
+                gebruiken === 1 ? 'heeft' : 'hebben'
+              } de app opengedaan sinds het bijhouden aanstaat.`}
+        </p>
+      )}
 
       {archief.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -215,7 +238,7 @@ export function Personeel() {
           {toonArchief && (
             <Kaart>
               {archief.map((p) => (
-                <Regel key={p.id} p={p} />
+                <Regel key={p.id} p={p} inDeApp={inDeApp?.get((p.email ?? '').toLowerCase())} />
               ))}
             </Kaart>
           )}
