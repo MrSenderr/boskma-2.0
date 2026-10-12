@@ -9,7 +9,9 @@
  * ------------------
  * 1. Ga naar script.google.com en open hetzelfde project als waar het script
  *    voor de facturen staat (of maak een nieuw project).
- * 2. Plak dit bestand erin, naast het bestaande script.
+ * 2. Plak dit bestand erin, als een nieuw bestand naast het script voor de
+ *    facturen. Dat script blijft gewoon staan; ze doen niets met elkaar en
+ *    hebben allebei hun eigen label en hun eigen trigger.
  * 3. Klik links op het tandwiel (Projectinstellingen) en zet onder
  *    "Scripteigenschappen" twee eigenschappen neer:
  *
@@ -25,11 +27,16 @@
  * Klaar. Vanaf dan gaat het vanzelf.
  */
 
-const APP_URL = 'https://xukzumqddeateztmjpzf.supabase.co/functions/v1/rooster-inlezen';
+const ROOSTER_URL = 'https://xukzumqddeateztmjpzf.supabase.co/functions/v1/rooster-inlezen';
 
 // Verstuurde bestanden krijgen dit label. Daarmee weet het script de volgende
 // ronde wat het al gedaan heeft, en gaat er niets dubbel.
-const LABEL = 'naar-rooster';
+//
+// De namen hierboven beginnen met ROOSTER_ omdat dit script naast het script
+// voor de facturen in hetzelfde project staat, en Apps Script alle bestanden
+// in één ruimte zet. Twee keer een APP_URL en allebei de scripts doen het
+// niet meer.
+const ROOSTER_LABEL = 'naar-rooster';
 
 function stuurRoostersDoor() {
   const props = PropertiesService.getScriptProperties();
@@ -38,9 +45,9 @@ function stuurRoostersDoor() {
   if (!sleutel) throw new Error('Scripteigenschap ROOSTER_SLEUTEL ontbreekt.');
   if (!afzender) throw new Error('Scripteigenschap EITJE_AFZENDER ontbreekt.');
 
-  const label = GmailApp.getUserLabelByName(LABEL) || GmailApp.createLabel(LABEL);
+  const label = GmailApp.getUserLabelByName(ROOSTER_LABEL) || GmailApp.createLabel(ROOSTER_LABEL);
   const zoek =
-    'has:attachment filename:xlsx from:' + afzender + ' -label:' + LABEL + ' newer_than:60d';
+    'has:attachment filename:xlsx from:' + afzender + ' -label:' + ROOSTER_LABEL + ' newer_than:60d';
 
   const threads = GmailApp.search(zoek, 0, 20);
   Logger.log(threads.length + ' berichten om te bekijken');
@@ -54,7 +61,7 @@ function stuurRoostersDoor() {
         const naam = bijlage.getName();
         if (!/\.xlsx$/i.test(naam)) return;
 
-        const antwoord = UrlFetchApp.fetch(APP_URL, {
+        const antwoord = UrlFetchApp.fetch(ROOSTER_URL, {
           method: 'post',
           contentType: 'application/json',
           muteHttpExceptions: true,
