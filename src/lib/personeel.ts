@@ -6,7 +6,7 @@ import { supabase } from './supabase'
 const LIJST_VELDEN =
   'id,voornaam,achternaam,status,fase,aangemeld_op,aangenomen_op,' +
   'onboarding_verstuurd_op,onboarding_ingevuld_op,' +
-  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op'
+  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op,is_eigenaar'
 
 const KAART_VELDEN =
   LIJST_VELDEN +
@@ -29,6 +29,9 @@ export type Persoon = {
   loonbureau_verstuurd_op: string | null
   loonbureau_bevestigd_op: string | null
   uit_dienst_op: string | null
+  /** Meewerkend eigenaar: doet mee in rooster en spits, maar niet in de
+   *  onboarding, het loonbureau of de vergelijking met eitje. */
+  is_eigenaar: boolean
   // alleen op de kaart
   geboortedatum?: string | null
   telefoonnummer?: string | null
@@ -137,6 +140,10 @@ export function toestandVan(p: Persoon): Toestand {
     return SOLLICITANT[p.status ?? 'nieuw'] ?? SOLLICITANT.nieuw
   }
   if (p.uit_dienst_op) return { sleutel: 'uit_dienst', label: 'Uit dienst', soort: 'neutraal' }
+  // De eigenaar heeft geen invullink en geen loonbureau. Zonder dit zou zijn
+  // kaart eeuwig "link nog versturen" blijven roepen.
+  if (p.is_eigenaar)
+    return { sleutel: 'eigenaar', label: 'Meewerkend eigenaar', soort: 'neutraal' }
   if (p.loonbureau_bevestigd_op) return { sleutel: 'in_dienst', label: 'In dienst', soort: 'goed' }
   if (p.loonbureau_verstuurd_op) return { sleutel: 'naar_loonbureau', label: 'Naar loonbureau', soort: 'neutraal' }
   if (p.onboarding_ingevuld_op) return { sleutel: 'compleet', label: 'Compleet', soort: 'letop' }

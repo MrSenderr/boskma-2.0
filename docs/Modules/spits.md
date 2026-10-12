@@ -21,6 +21,17 @@ Drie dingen:
    vier niveaus. Ingevuld door Sander, niet door de medewerker: dit is een
    beoordeling, geen wens. De wens staat bij de vaste dagen.
 
+### De meewerkend eigenaar
+
+Sander staat zelf in het rooster. Zijn diensten hingen los — hij was geen
+medewerker in de app — waardoor de spits hem als open dienst telde: een dienst
+zonder naam, terwijl hij gewoon in de zaak staat.
+
+Daarvoor is de kolom `is_eigenaar` op `sollicitaties`. Wie dat merkteken heeft
+doet mee in het rooster en in de spits, en wordt ingedeeld als ieder ander, maar
+valt buiten de onboarding, het loonbureau, de contractvergelijking met eitje en
+het overzicht vaste dagen. Zo hoeft hij nergens op naam te worden uitgezonderd.
+
 | Niveau | Betekenis |
 | --- | --- |
 | liefst | Hier staat hij het liefst en het best |

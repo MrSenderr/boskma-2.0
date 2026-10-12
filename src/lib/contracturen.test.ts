@@ -13,6 +13,7 @@ function persoon(anders: Partial<Persoon> = {}): Persoon {
     achternaam: 'Doorn',
     status: 'aangenomen',
     fase: 'medewerker',
+    is_eigenaar: false,
     aangemeld_op: '2026-09-01',
     aangenomen_op: '2026-09-01',
     onboarding_verstuurd_op: null,

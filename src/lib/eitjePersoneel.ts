@@ -290,6 +290,10 @@ export function useLoongegevens() {
         .eq('fase', 'medewerker')
         .is('uit_dienst_op', null)
         .eq('is_apparaat', false)
+        // De eigenaar staat wel in eitje — daar hangt zijn eigen contract aan —
+        // maar niet in deze vergelijking. Zie `vergelijk`, dat hem al overslaat
+        // als hij niet in de app staat.
+        .eq('is_eigenaar', false)
         .order('voornaam')
       if (error) throw new Error(error.message)
       return (data ?? []) as unknown as Persoon[]

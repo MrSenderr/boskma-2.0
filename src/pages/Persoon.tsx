@@ -72,6 +72,10 @@ export function Persoon() {
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
   const toestand = toestandVan(p)
+  /* De meewerkend eigenaar doet mee in het rooster en in de spits, maar heeft
+     geen invullink, geen loonbureau en geen onboarding. Die blokken zouden op
+     zijn kaart eeuwig blijven staan als iets dat nog moet. */
+  const eigenaar = p.is_eigenaar
   // Alles is rond: de gegevens zijn binnen en het loonbureau heeft ze gehad.
   // Vanaf dan zijn de invullink en het loonbureaublok naslag, geen werk.
   const lopend =
@@ -166,17 +170,26 @@ export function Persoon() {
 
       {/* Zolang er nog iets moet, staat het bovenaan. Is alles rond, dan is
           dit archief en gaat het dagelijkse werk voor. */}
-      {!lopend && p.fase === 'medewerker' && !p.uit_dienst_op && (
+      {!lopend && !eigenaar && p.fase === 'medewerker' && !p.uit_dienst_op && (
         <>
           <Invullink persoon={p} />
           <Loonbureau persoon={p} />
         </>
       )}
 
+      {eigenaar && (
+        <Kaart className="p-4">
+          <p className="text-sm">
+            Meewerkend eigenaar. Telt mee in het rooster en in de indeling van de spits, maar niet in
+            de onboarding, het loonbureau of de vergelijking met eitje.
+          </p>
+        </Kaart>
+      )}
+
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <VasteDagen persoon={p} />}
+      {p.fase === 'medewerker' && !p.uit_dienst_op && !eigenaar && <VasteDagen persoon={p} />}
 
       {p.fase === 'medewerker' && (
         <section className="flex flex-col gap-4">
@@ -210,7 +223,7 @@ export function Persoon() {
 
       {/* Bij een medewerker altijd, ook als er nog niets is ingevuld: anders is
           er geen plek om het alsnog te doen. */}
-      {(ingevuld || p.fase === 'medewerker') && <IngevuldeGegevens persoon={p} />}
+      {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
 
       {lopend && (
         <>
@@ -223,10 +236,10 @@ export function Persoon() {
 
 
 
-      {p.fase === 'medewerker' && <UitDienst persoon={p} />}
+      {p.fase === 'medewerker' && !eigenaar && <UitDienst persoon={p} />}
 
       {/* Zelden nodig, dus niet bovenaan in de weg. */}
-      {p.fase === 'medewerker' && (!p.aangenomen_op || !p.onboarding_verstuurd_op) && (
+      {p.fase === 'medewerker' && !eigenaar && (!p.aangenomen_op || !p.onboarding_verstuurd_op) && (
         <section className="flex flex-col gap-2">
           <Knop
             soort="rustig"
