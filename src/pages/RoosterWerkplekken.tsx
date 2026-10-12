@@ -8,6 +8,9 @@ import {
   useNiveaus,
   useWerkplekWijzigen,
   useWerkplekken,
+  stoelenVan,
+  stoelnaam,
+  vulVolgorde,
   type Werkplek,
 } from '../lib/spits'
 
@@ -20,47 +23,104 @@ import {
  * Het is een beoordeling, geen wens: hij wordt hier ingevuld en niet door de
  * medewerker zelf. De voorkeur van de medewerker staat bij de vaste dagen. */
 
+function Getal({
+  label,
+  waarde,
+  min,
+  max,
+  onKlaar,
+}: {
+  label: string
+  waarde: number
+  min: number
+  max: number
+  onKlaar: (n: number) => void
+}) {
+  return (
+    <label className="flex items-center gap-2 sm:block">
+      {/* Op een breed scherm staat de kop boven de kolom; op een telefoon
+          vervalt die tabel, en dan hoort het label bij het vakje zelf. */}
+      <span className="w-36 text-sm text-muted sm:hidden">{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        aria-label={label}
+        defaultValue={waarde}
+        onBlur={(e) => {
+          const n = Number(e.target.value)
+          if (Number.isInteger(n) && n >= min && n <= max && n !== waarde) onKlaar(n)
+          else e.target.value = String(waarde)
+        }}
+        className="w-16 rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 py-1.5 text-center text-base tabular-nums outline-none focus:border-accent"
+      />
+    </label>
+  )
+}
+
 function Instelling({ w }: { w: Werkplek }) {
   const wijzig = useWerkplekWijzigen()
-  const vast = { id: w.id }
 
   return (
-    <div className="grid grid-cols-[1fr_4rem_4rem_auto] items-center gap-3 border-b border-line px-4 py-2.5 last:border-0">
+    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_5rem_8rem] sm:items-center sm:gap-4">
       <span className="min-w-0 truncate font-semibold">{w.naam}</span>
-      <input
-        type="number"
+      <Getal
+        label="Mensen tegelijk"
+        waarde={w.aantal}
         min={1}
         max={6}
-        aria-label={`Aantal mensen op ${w.naam}`}
-        defaultValue={w.aantal}
-        onBlur={(e) => {
-          const aantal = Number(e.target.value)
-          if (aantal >= 1 && aantal <= 6 && aantal !== w.aantal) wijzig.mutate({ ...vast, aantal })
-        }}
-        className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-accent"
+        onKlaar={(aantal) => wijzig.mutate({ id: w.id, aantal })}
       />
-      <input
-        type="number"
+      <Getal
+        label="Belang"
+        waarde={w.belang}
         min={1}
         max={10}
-        aria-label={`Belang van ${w.naam}`}
-        defaultValue={w.belang}
-        onBlur={(e) => {
-          const belang = Number(e.target.value)
-          if (belang >= 1 && belang <= 10 && belang !== w.belang) wijzig.mutate({ ...vast, belang })
-        }}
-        className="w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 py-1.5 text-center text-sm tabular-nums outline-none focus:border-accent"
+        onKlaar={(belang) => wijzig.mutate({ id: w.id, belang })}
       />
       <label className="flex items-center gap-2 text-sm text-muted">
         <input
           type="checkbox"
           checked={w.actief}
-          onChange={(e) => wijzig.mutate({ ...vast, actief: e.target.checked })}
+          onChange={(e) => wijzig.mutate({ id: w.id, actief: e.target.checked })}
           className="size-4"
         />
         Draait mee
       </label>
     </div>
+  )
+}
+
+/* Wat die twee getallen doen, als rijtje. Een belang van 8 zegt niets; "de
+   kassa komt na de patat" zegt alles. En bij gelijk belang zie je hier dat het
+   dan op de volgorde van de tabel aankomt — dat kun je nergens anders aflezen. */
+function Vulvolgorde({ werkplekken }: { werkplekken: Werkplek[] }) {
+  const rij = vulVolgorde(stoelenVan(werkplekken))
+  if (rij.length === 0) return null
+
+  return (
+    <>
+      <Kopje>Zo vult de app op</Kopje>
+      <p className="text-sm text-muted">
+        Heb je te weinig mensen, dan gaat de app deze rij van boven naar beneden af. Staan er vijf
+        mensen, dan worden dit de bovenste vijf en blijft de rest leeg.
+      </p>
+      <Kaart className="flex flex-col py-2">
+        {rij.map((s, i) => (
+          <div
+            key={s.sleutel}
+            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line px-4 py-2.5 last:border-0"
+          >
+            <span className="w-5 shrink-0 text-right tabular-nums text-muted">{i + 1}.</span>
+            <span className="font-semibold">{stoelnaam(s)}</span>
+            <span className="ml-auto text-sm text-muted">
+              belang {s.belang}
+              {i > 0 && rij[i - 1].belang === s.belang && ' — gelijk aan de vorige'}
+            </span>
+          </div>
+        ))}
+      </Kaart>
+    </>
   )
 }
 
@@ -155,24 +215,24 @@ export function RoosterWerkplekken() {
         <div className="mt-3 flex flex-col gap-3">
           <Kopje>Werkplekken</Kopje>
           <p className="text-sm text-muted">
-            <strong className="font-semibold text-text">Aantal</strong> is hoeveel mensen er tegelijk
+            <strong className="font-semibold text-text">Mensen tegelijk</strong> is hoeveel mensen er
             op die plek staan — bij de snackbakker twee.{' '}
-            <strong className="font-semibold text-text">Belang</strong> loopt van 1 tot 10 en bepaalt
-            welke plek het eerst bezet wordt als je te weinig volk hebt: de kassa kun je niet leeg
-            laten, de keukenhulp wel. De tweede man op een plek weegt één punt lichter dan de
-            eerste, zodat een tweede snackbakker niet vóór de chef gaat.
+            <strong className="font-semibold text-text">Belang</strong> is hoe hard de plek bezet
+            moet zijn: 10 is onmisbaar, 1 is meegenomen. Hieronder zie je wat die getallen doen.
           </p>
           <Kaart className="flex flex-col py-2">
-            <div className="grid grid-cols-[1fr_4rem_4rem_auto] gap-3 border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <div className="hidden grid-cols-[minmax(0,1fr)_5rem_5rem_8rem] gap-4 border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:grid">
               <span>Plek</span>
-              <span className="text-center">Aantal</span>
+              <span className="text-center">Mensen</span>
               <span className="text-center">Belang</span>
               <span />
             </div>
             {plekken.data.map((w) => (
-              <Instelling key={w.id} w={w} />
+              <Instelling key={`${w.id}-${w.aantal}-${w.belang}`} w={w} />
             ))}
           </Kaart>
+
+          <Vulvolgorde werkplekken={plekken.data} />
 
           <Kopje>Wat de niveaus betekenen</Kopje>
           <Kaart className="flex flex-col py-2">

@@ -58,6 +58,13 @@ punten = belang van de plek × 100 + hoe goed het past − boete voor herhaling
 - **boete**: 3 punten per keer dat iemand bij de laatste vier spitsen al op die
   plek stond, tot maximaal 9.
 
+Op het werkplekkenscherm staat onder de instellingen de rij **"zo vult de app
+op"**: alle plekken in de volgorde waarin ze bezet raken. Dat is wat die
+belanggetallen doen, zonder dat je het hoeft na te rekenen, en het laat zien
+waar twee plekken even zwaar wegen — dan beslist de volgorde van de tabel. Er
+staat een test op die controleert dat die rij en de echte indeling hetzelfde
+zeggen; een uitleg op het scherm die niet klopt is erger dan geen uitleg.
+
 Daar zitten twee regels in die je terug moet kunnen zien:
 
 **Het belang weegt altijd zwaarder dan de match.** Honderd punten per stap is

@@ -14,6 +14,7 @@ import {
   stoelenVan,
   stoelnaam,
   volgendeSpitsdag,
+  vulVolgorde,
   waardering,
   type Niveau,
   type Werkplek,
@@ -374,5 +375,45 @@ describe('niveauVan', () => {
   it('geeft onbekend als er niets is ingevuld', () => {
     expect(niveauVan(new Map(), 'a', 'kassa')).toBe('onbekend')
     expect(niveauVan(niveaus(['a', 'kassa', 'liefst']), 'a', 'kassa')).toBe('liefst')
+  })
+})
+
+describe('de volgorde waarop plekken bezet raken', () => {
+  const plekken = [KASSA, PATAT, SNACK, RUNNER, HULP]
+  const stoelen = stoelenVan(plekken)
+
+  it('zet de belangrijkste plek voorop, met de tweede man op zijn eigen plaats', () => {
+    expect(vulVolgorde(stoelen).map(stoelnaam)).toEqual([
+      'Kassa', // 10
+      'Patatbakker', // 9
+      'Snackbakker 1', // 8
+      'Snackbakker 2', // 8 - 1 = 7
+      'Runner', // 5
+      'Keukenhulp', // 3
+    ])
+  })
+
+  it('laat bij gelijk belang jouw eigen volgorde beslissen', () => {
+    const a = plek('Eerste', 6, 1)
+    const b = plek('Tweede', 6, 2)
+    expect(vulVolgorde(stoelenVan([b, a])).map(stoelnaam)).toEqual(['Eerste', 'Tweede'])
+  })
+
+  /* Dit is de belofte van het instellingenscherm: wat daar als volgorde staat
+     is ook echt wat er gebeurt. Loopt dat uit elkaar, dan staat er een
+     uitleg op het scherm die niet klopt — erger dan geen uitleg. */
+  it('is precies wat de indeling doet als iedereen overal even goed is', () => {
+    const volgorde = vulVolgorde(stoelen)
+    for (let aantal = 1; aantal <= stoelen.length; aantal++) {
+      const uit = maakIndeling({
+        stoelen,
+        mensen: Array.from({ length: aantal }, (_, i) => mens(`p${i}`)),
+        niveaus: new Map(),
+      })
+      const bezet = uit.plekken.filter((p) => p.persoon).map((p) => stoelnaam(p.stoel))
+      expect(bezet.slice().sort()).toEqual(
+        volgorde.slice(0, aantal).map(stoelnaam).sort(),
+      )
+    }
   })
 })

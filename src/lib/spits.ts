@@ -106,6 +106,20 @@ export function stoelenVan(werkplekken: Werkplek[]): Stoel[] {
     )
 }
 
+/** De volgorde waarin de plekken bezet raken als je te weinig mensen hebt.
+ *
+ *  Het belang beslist, en bij gelijk belang de volgorde die jij hebt ingesteld.
+ *  Dit is wat er op het instellingenscherm staat: het laat zien wat die
+ *  getallen doen, zonder dat je ze hoeft na te rekenen. `maakIndeling` komt bij
+ *  mensen die overal even goed zijn op dezelfde rij uit — daar staat een test
+ *  op, zodat het scherm en de werkelijkheid niet uit elkaar kunnen lopen. */
+export function vulVolgorde(stoelen: Stoel[]): Stoel[] {
+  return stoelen
+    .map((stoel, plaats) => ({ stoel, plaats }))
+    .sort((a, b) => b.stoel.belang - a.stoel.belang || a.plaats - b.plaats)
+    .map(({ stoel }) => stoel)
+}
+
 export function stoelnaam(stoel: Stoel): string {
   return stoel.werkplek.aantal > 1 ? `${stoel.werkplek.naam} ${stoel.plek}` : stoel.werkplek.naam
 }
