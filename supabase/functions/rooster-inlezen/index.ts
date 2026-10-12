@@ -21,6 +21,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { leesWerkboek } from "./gedeeld/xlsx-lezen.ts";
 import { leesEitje } from "./gedeeld/eitje.ts";
+import { koppel, naamSleutel, type Afspraak, type Kandidaat } from "./gedeeld/koppelen.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -77,9 +78,11 @@ serve(async (req) => {
     }
     const tabel = bestand.soort === "planning" ? "geplande_shifts" : "gewerkte_uren";
 
-    // Namen aan mensen koppelen zoals het scherm dat ook doet. Wat we niet
-    // kennen blijft leeg en wordt gemeld.
-    const afspraken = new Map<string, { medewerker_id: string | null; negeren: boolean }>(
+    /* Namen aan mensen koppelen met precies dezelfde module als het scherm.
+       Een platte vergelijking werkt niet: in rooster_namen staat de naam
+       genormaliseerd ("sander boskma"), en eitje schrijft "Ilona Swagerman"
+       waar wij "Swagerman-Honselaar" hebben staan. */
+    const afspraken = new Map<string, Afspraak>(
       (await haal("rooster_namen?select=naam,medewerker_id,negeren")).map(
         (r: { naam: string; medewerker_id: string | null; negeren: boolean }) => [
           r.naam,
@@ -87,18 +90,39 @@ serve(async (req) => {
         ],
       ),
     );
+    const kandidaten: Kandidaat[] = await haal(
+      "sollicitaties?select=id,voornaam,achternaam,uit_dienst_op&fase=eq.medewerker&is_apparaat=eq.false",
+    );
+
+    // Welke van deze shifts stonden er al? Daarmee kan het logboek tenminste
+    // zeggen hoeveel er nieuw zijn; of de rest ook echt veranderd is weten we
+    // niet, en dat laten we dan ook leeg.
+    const bronIds = bestand.regels.map((r) => r.bron_id);
+    const bestaand = new Set<string>();
+    for (let i = 0; i < bronIds.length; i += 200) {
+      const lijst = bronIds.slice(i, i + 200).map((id) => `"${id}"`).join(",");
+      const rijen = await haal(`${tabel}?select=bron_id&bron_id=in.(${lijst})`);
+      for (const r of rijen as { bron_id: string }[]) bestaand.add(r.bron_id);
+    }
 
     const onbekend = new Set<string>();
     const rijen = bestand.regels.map((regel) => {
-      const naam = [regel.voornaam, regel.achternaam].filter(Boolean).join(" ").trim();
-      const afspraak = naam ? afspraken.get(naam) : undefined;
-      if (naam && !afspraak) onbekend.add(naam);
+      const gevonden = koppel(
+        { voornaam: regel.voornaam, achternaam: regel.achternaam },
+        kandidaten,
+        afspraken,
+      );
+      // Een open dienst heeft geen naam, en een genegeerde naam is met opzet
+      // niet gekoppeld. Alleen wat we echt niet thuis kunnen brengen melden we.
+      if (gevonden.reden === "onbekend" || gevonden.reden === "meerdere") {
+        onbekend.add(naamSleutel(regel.voornaam, regel.achternaam));
+      }
       return {
         bron_id: regel.bron_id,
         datum: regel.datum,
         voornaam: regel.voornaam,
         achternaam: regel.achternaam,
-        medewerker_id: afspraak?.medewerker_id ?? null,
+        medewerker_id: gevonden.medewerker_id,
         begint: regel.begint,
         eindigt: regel.eindigt,
         minuten: regel.minuten,
@@ -126,7 +150,7 @@ serve(async (req) => {
         periode_van: bestand.periode?.van ?? null,
         periode_tot: bestand.periode?.tot ?? null,
         aantal_regels: rijen.length,
-        aantal_nieuw: null,
+        aantal_nieuw: bronIds.filter((id) => !bestaand.has(id)).length,
         aantal_gewijzigd: null,
         door: "eitje",
       }),

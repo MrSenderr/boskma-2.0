@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-export const BESTANDEN = ['xlsx-lezen.ts', 'eitje.ts']
+export const BESTANDEN = ['xlsx-lezen.ts', 'eitje.ts', 'koppelen.ts']
 const NAAR = 'supabase/functions/rooster-inlezen/gedeeld'
 
 export function kopieInhoud(naam) {

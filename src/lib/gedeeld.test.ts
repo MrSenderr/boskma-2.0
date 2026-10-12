@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const BESTANDEN = ['xlsx-lezen.ts', 'eitje.ts']
+const BESTANDEN = ['xlsx-lezen.ts', 'eitje.ts', 'koppelen.ts']
 
 /** Dezelfde omzetting als scripts/kopieer-lezers.mjs doet. */
 function kopieInhoud(naam: string): string {

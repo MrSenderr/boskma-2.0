@@ -297,9 +297,10 @@ export function RoosterImporteren() {
                   <span className="text-xs tabular-nums text-muted">
                     {/* Een import die vanzelf ging heeft niemand om te vragen
                         wat nieuw is en wat gewijzigd; die telt alleen regels. */}
-                    {rij.aantal_nieuw === null
-                      ? `${rij.aantal_regels as number} regels`
-                      : `${rij.aantal_nieuw as number} nieuw · ${rij.aantal_gewijzigd as number} gewijzigd`}{' '}
+                    {rij.aantal_nieuw as number} nieuw ·{' '}
+                    {rij.aantal_gewijzigd === null
+                      ? `${rij.aantal_regels as number} regels in totaal`
+                      : `${rij.aantal_gewijzigd as number} gewijzigd`}{' '}
                     ·{' '}
                     {new Date(rij.op as string).toLocaleDateString('nl-NL', {
                       day: 'numeric',
