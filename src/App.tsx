@@ -30,6 +30,7 @@ import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
 import { RoosterVasteDagen } from './pages/RoosterVasteDagen'
 import { RoosterImporteren } from './pages/RoosterImporteren'
 import { Persoon } from './pages/Persoon'
+import { PersoneelBijwerken } from './pages/PersoneelBijwerken'
 import { Instellingen } from './pages/Instellingen'
 import { MijnGegevens } from './pages/MijnGegevens'
 import { MijnDossier } from './pages/MijnDossier'
@@ -108,6 +109,7 @@ function Poort() {
           <Route path="instellingen" element={<InkoopInstellingen />} />
         </Route>
         <Route path="personeel" element={<Personeel />} />
+        <Route path="personeel/bijwerken" element={<PersoneelBijwerken />} />
         <Route path="personeel/:id" element={<Persoon />} />
         <Route path="rooster" element={<Rooster />}>
           <Route index element={<Navigate to="dag" replace />} />

@@ -53,7 +53,12 @@ export const MENU: {
       { pad: '/inkoop/instellingen', label: 'Instellingen' },
     ],
   },
-  { pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer' },
+  {
+    pad: '/personeel', label: 'Personeel', icoon: Users, exact: false, voor: 'beheer',
+    kinderen: [
+      { pad: '/personeel/bijwerken', label: 'Bijwerken uit eitje' },
+    ],
+  },
   {
     pad: '/rooster', label: 'Rooster', icoon: CalendarClock, exact: false, voor: 'beheer',
     kinderen: [
