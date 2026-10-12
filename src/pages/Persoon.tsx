@@ -8,6 +8,7 @@ import { UitDienst } from '../components/UitDienst'
 import { Dossier } from '../components/Dossier'
 import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
 import { VasteDagen } from '../components/VasteDagen'
+import { Werkplekken } from '../components/Werkplekken'
 import {
   aannemen,
   afwijzen,
@@ -172,6 +173,8 @@ export function Persoon() {
         </>
       )}
 
+
+      {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <VasteDagen persoon={p} />}
 

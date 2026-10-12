@@ -7,6 +7,7 @@ import { jarigen, useVerjaardagen } from '../lib/verjaardagen'
 import { useVerslagen } from '../lib/dossier'
 import { useMijnVasteDagen } from '../lib/vasteDagen'
 import { OpJeTelefoon } from '../components/OpJeTelefoon'
+import { MijnPlek } from '../components/MijnPlek'
 
 /* Het startscherm van een medewerker.
  *
@@ -83,6 +84,8 @@ export function VandaagMedewerker() {
           <ChevronRight className="size-5 shrink-0 text-muted" aria-hidden />
         </Link>
       )}
+
+      <MijnPlek />
 
       {wacht.length > 0 && (
         <section className="flex flex-col gap-3">

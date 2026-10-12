@@ -28,6 +28,8 @@ import { Rooster } from './pages/Rooster'
 import { RoosterDag } from './pages/RoosterDag'
 import { RoosterMedewerkers } from './pages/RoosterMedewerkers'
 import { RoosterVasteDagen } from './pages/RoosterVasteDagen'
+import { RoosterSpits } from './pages/RoosterSpits'
+import { RoosterWerkplekken } from './pages/RoosterWerkplekken'
 import { RoosterImporteren } from './pages/RoosterImporteren'
 import { Persoon } from './pages/Persoon'
 import { PersoneelBijwerken } from './pages/PersoneelBijwerken'
@@ -117,7 +119,9 @@ function Poort() {
           {/* Oude adres; blijft werken voor wie hem had opgeslagen. */}
           <Route path="week" element={<Navigate to="/rooster/dag" replace />} />
           <Route path="medewerkers" element={<RoosterMedewerkers />} />
+          <Route path="spits" element={<RoosterSpits />} />
           <Route path="vaste-dagen" element={<RoosterVasteDagen />} />
+          <Route path="werkplekken" element={<RoosterWerkplekken />} />
           <Route path="importeren" element={<RoosterImporteren />} />
         </Route>
         <Route path="schermen" element={<Schermen />}>
