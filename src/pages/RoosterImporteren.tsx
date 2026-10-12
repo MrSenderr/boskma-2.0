@@ -289,10 +289,18 @@ export function RoosterImporteren() {
                         </span>
                       )}
                     </span>
-                    <span className="text-xs text-muted">{rij.bestandsnaam as string}</span>
+                    <span className="text-xs text-muted">
+                      {rij.bestandsnaam as string}
+                      {rij.door === 'eitje' && ' · automatisch'}
+                    </span>
                   </span>
                   <span className="text-xs tabular-nums text-muted">
-                    {rij.aantal_nieuw as number} nieuw · {rij.aantal_gewijzigd as number} gewijzigd ·{' '}
+                    {/* Een import die vanzelf ging heeft niemand om te vragen
+                        wat nieuw is en wat gewijzigd; die telt alleen regels. */}
+                    {rij.aantal_nieuw === null
+                      ? `${rij.aantal_regels as number} regels`
+                      : `${rij.aantal_nieuw as number} nieuw · ${rij.aantal_gewijzigd as number} gewijzigd`}{' '}
+                    ·{' '}
                     {new Date(rij.op as string).toLocaleDateString('nl-NL', {
                       day: 'numeric',
                       month: 'short',
