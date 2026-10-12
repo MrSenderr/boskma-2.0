@@ -90,6 +90,10 @@ export function RoosterImporteren() {
 
   const uren = voorstel?.regels.reduce((som, r) => som + r.regel.minuten, 0) ?? 0
 
+  const automatisch = (imports.data ?? []).filter((r) => r.door === 'eitje')
+  const metDeHand = (imports.data ?? []).filter((r) => r.door !== 'eitje')
+  const laatsteAutomatisch = automatisch[0] ?? null
+
   return (
     <div className="flex flex-col gap-5">
       {/* ------------------------------------------------------ kiezen --- */}
@@ -268,15 +272,49 @@ export function RoosterImporteren() {
       )}
 
       {/* ------------------------------------------------- eerder gedaan --- */}
+      {/* Eitje exporteert twee keer per dag, dus de automatische regels zouden
+          de lijst overnemen en wat je zelf deed eruit duwen. Daarom staan die
+          samengevat in één regel. */}
       <div className="flex flex-col gap-3">
         <Kopje>Eerder ingelezen</Kopje>
+
+        {laatsteAutomatisch && (
+          <Kaart className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm">
+            <span>
+              <span className="font-semibold">Automatisch uit eitje</span>
+              <span className="block text-xs text-muted">
+                {automatisch.length === 1
+                  ? 'één keer binnengekomen'
+                  : `${automatisch.length} keer binnengekomen`}
+                , laatst{' '}
+                {new Date(laatsteAutomatisch.op as string).toLocaleDateString('nl-NL', {
+                  day: 'numeric',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </span>
+            <span className="text-xs tabular-nums text-muted">
+              {SOORTNAAM[laatsteAutomatisch.soort as 'planning' | 'gewerkt']}
+              {laatsteAutomatisch.periode_van ? (
+                <>
+                  {' · '}
+                  {datumKort(laatsteAutomatisch.periode_van as string)} –{' '}
+                  {datumKort(laatsteAutomatisch.periode_tot as string)}
+                </>
+              ) : null}
+            </span>
+          </Kaart>
+        )}
+
         {imports.data && imports.data.length === 0 && (
           <Leeg titel="Nog niets ingelezen" uitleg="Begin met de export van de afgelopen week." />
         )}
-        {imports.data && imports.data.length > 0 && (
+        {metDeHand.length > 0 && (
           <Kaart>
             <ul className="divide-y divide-line text-sm">
-              {imports.data.map((rij) => (
+              {metDeHand.map((rij) => (
                 <li key={rij.id as number} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3">
                   <span className="flex flex-col">
                     <span className="font-semibold">
