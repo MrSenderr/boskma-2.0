@@ -293,6 +293,9 @@ export function RoosterImporteren() {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
+                {/* Geschrapt in eitje is geschrapt hier. Dat hoor je te zien. */}
+                {(laatsteAutomatisch.aantal_vervallen as number) > 0 &&
+                  ` · ${laatsteAutomatisch.aantal_vervallen} vervallen`}
               </span>
             </span>
             <span className="text-xs tabular-nums text-muted">

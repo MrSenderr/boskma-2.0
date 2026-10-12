@@ -168,10 +168,46 @@ serve(async (req) => {
       if (!r.ok) throw new Error(`wegschrijven mislukt: ${r.status} ${await r.text()}`);
     }
 
+    /* De nieuwste planning is de waarheid voor zijn eigen week. Schrap je een
+       dienst in eitje, dan staat hij niet meer in de export — en dan hoort hij
+       hier ook weg. Zonder dit blijft hij staan en telt je rooster diensten
+       die niemand draait.
+
+       Alleen voor de planning, en alleen binnen de periode van het bestand.
+       Bij gewerkte uren doen we dit niet: een gedeeltelijke urenexport is veel
+       waarschijnlijker, en daar is per ongeluk iets weggooien veel
+       vervelender. */
+    let vervallen: number | null = null;
+    if (bestand.soort === "planning" && bestand.periode) {
+      const { van, tot } = bestand.periode;
+      const inPeriode: { bron_id: string }[] = await haal(
+        `${tabel}?select=bron_id&datum=gte.${van}&datum=lte.${tot}`,
+      );
+      const hoortErNogBij = new Set(bronIds);
+      const weg = inPeriode.map((r) => r.bron_id).filter((id) => !hoortErNogBij.has(id));
+
+      for (let i = 0; i < weg.length; i += 200) {
+        const lijst = weg.slice(i, i + 200).map((id) => `"${id}"`).join(",");
+        const r = await fetch(`${SB_URL}/rest/v1/${tabel}?bron_id=in.(${lijst})`, {
+          method: "DELETE",
+          headers: h,
+        });
+        if (!r.ok) throw new Error(`opruimen mislukt: ${r.status} ${await r.text()}`);
+      }
+      vervallen = weg.length;
+
+      await fetch(`${SB_URL}/rest/v1/rooster_imports?id=eq.${importId}`, {
+        method: "PATCH",
+        headers: h,
+        body: JSON.stringify({ aantal_vervallen: vervallen }),
+      });
+    }
+
     return json({
       ok: true,
       soort: bestand.soort,
       aantal: rijen.length,
+      vervallen,
       periode: bestand.periode,
       onbekendeNamen: [...onbekend],
     });
