@@ -277,6 +277,7 @@ function Inklapbaar({
 }
 
 export function FacturenInkomend() {
+  const { email } = useAuth()
   const { data, isPending, error, refetch } = useFacturen()
   const { data: leveranciers } = useLeveranciers()
   const heropenen = useHeropenen()
@@ -376,12 +377,48 @@ export function FacturenInkomend() {
       )}
 
       {/* --------------------------------------------------- creditnota --- */}
+      {/* Geld dat jouw kant op komt. Eerst stond hier alleen een totaal, maar
+          dan weet je niet waarvan — en statiegeld van twee weken terug ziet er
+          net zo uit als een creditnota van de groothandel. Dus: waar het
+          vandaan komt, en de mail erbij. */}
       {d.creditnotas.length > 0 && (
-        <p className="text-sm text-muted">
-          Te ontvangen:{' '}
-          <span className="font-semibold tabular-nums text-text">{euro(telOp(d.creditnotas))}</span>{' '}
-          aan creditnota&apos;s ({d.creditnotas.length}).
-        </p>
+        <Inklapbaar
+          titel={`Te ontvangen (${d.creditnotas.length})`}
+          extra={euro(telOp(d.creditnotas))}
+        >
+          <Kaart>
+            <ul className="flex flex-col divide-y divide-line">
+              {d.creditnotas.map((f) => (
+                <li key={f.id} className="flex flex-col gap-0.5 px-4 py-2.5">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-medium">{f.leverancier}</span>
+                    <span className="tabular-nums">{euro(f.bedrag_incl)}</span>
+                  </span>
+                  <span className="text-sm text-muted">
+                    {[
+                      f.factuurnummer,
+                      f.factuurdatum ? kortDatum(f.factuurdatum) : null,
+                      f.opmerking,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {gmailLink(f.gmail_thread, email) && (
+                    <a
+                      href={gmailLink(f.gmail_thread, email) as string}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex w-fit items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                    >
+                      <ExternalLink className="size-3.5" aria-hidden />
+                      De mail erbij
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Kaart>
+        </Inklapbaar>
       )}
 
       {/* Het schriftje: hoe elke leverancier betaalt. Hoe voller, hoe minder er
