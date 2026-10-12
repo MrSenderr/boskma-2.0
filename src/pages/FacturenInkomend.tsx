@@ -281,6 +281,7 @@ export function FacturenInkomend() {
   const { data, isPending, error, refetch } = useFacturen()
   const { data: leveranciers } = useLeveranciers()
   const heropenen = useHeropenen()
+  const betaald = useBetaald()
   const { toon, toast } = useToast()
 
   if (isPending) return <Laden tekst="Facturen ophalen…" />
@@ -367,7 +368,7 @@ export function FacturenInkomend() {
                       })
                     }
                   >
-                    toch niet betaald
+                    {f.soort === 'creditnota' ? 'toch niet ontvangen' : 'toch niet betaald'}
                   </button>
                 </li>
               ))}
@@ -403,17 +404,35 @@ export function FacturenInkomend() {
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  {gmailLink(f.gmail_thread, email) && (
-                    <a
-                      href={gmailLink(f.gmail_thread, email) as string}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex w-fit items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                  <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {gmailLink(f.gmail_thread, email) && (
+                      <a
+                        href={gmailLink(f.gmail_thread, email) as string}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-fit items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                      >
+                        <ExternalLink className="size-3.5" aria-hidden />
+                        De mail erbij
+                      </a>
+                    )}
+                    {/* Hetzelfde afvinken als bij een factuur die je betaalt,
+                        maar dan met het woord dat hier klopt: dit geld komt
+                        jouw kant op. */}
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                      onClick={() =>
+                        betaald.mutate(f.id, {
+                          onError: (e) =>
+                            toon(e instanceof Error ? e.message : 'Afvinken lukte niet.'),
+                        })
+                      }
                     >
-                      <ExternalLink className="size-3.5" aria-hidden />
-                      De mail erbij
-                    </a>
-                  )}
+                      <Check className="size-3.5" aria-hidden />
+                      Ontvangen
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
