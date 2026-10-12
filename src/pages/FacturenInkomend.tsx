@@ -3,6 +3,7 @@ import { ArrowRight, Check, ChevronDown, Copy, ExternalLink } from 'lucide-react
 import { Link } from 'react-router-dom'
 import { Kaart, Knop, Laden, Mislukt } from '../components/ui'
 import { useToast } from '../components/Toast'
+import { useAuth } from '../lib/auth'
 import {
   deelIn,
   euro,
@@ -80,6 +81,8 @@ function Regel({ label, waarde, wat }: { label: string; waarde: string | null; w
 }
 
 function ZelfBetalenKaart({ f, melden }: { f: Factuur; melden: (t: string) => void }) {
+  // Met welk adres je bent ingelogd bepaalt in welk Gmail-account de link opent.
+  const { email } = useAuth()
   const [open, setOpen] = useState(false)
   const [netBetaald, setNetBetaald] = useState(false)
   const betaald = useBetaald()
@@ -100,7 +103,7 @@ function ZelfBetalenKaart({ f, melden }: { f: Factuur; melden: (t: string) => vo
     })
   }
 
-  const mail = gmailLink(f.gmail_thread)
+  const mail = gmailLink(f.gmail_thread, email)
 
   if (netBetaald) {
     return (

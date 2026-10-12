@@ -161,11 +161,14 @@ describe('de indeling van het scherm', () => {
 
 describe('de link naar de mail', () => {
   it('wijst naar de thread in Gmail', () => {
-    expect(gmailLink('abc123')).toBe('https://mail.google.com/mail/u/0/#all/abc123')
+    expect(gmailLink('1a12f5b09f0f6a7d', 'sander@boskmafoodservice.nl')).toBe(
+      'https://mail.google.com/mail/?authuser=sander%40boskmafoodservice.nl#all/thread-f:1878834133498555005',
+    )
   })
 
   it('geeft niets als er geen thread bij zit', () => {
     expect(gmailLink(null)).toBeNull()
+    expect(gmailLink(undefined)).toBeNull()
   })
 })
 
@@ -205,5 +208,32 @@ describe('het leveranciersschriftje', () => {
     expect(betaalwijzeNaam('handmatig')).toBe('Zelf betalen')
     expect(betaalwijzeNaam('vooraf_betaald')).toBe('Vooraf betaald')
     expect(betaalwijzeNaam(null)).toBe('nog niet ingesteld')
+  })
+})
+
+describe('de link naar de mail', () => {
+  /* u/0 is "het eerste Google-account in deze browser". Zit je ook met een
+     privé-account ingelogd, dan opende de link daar — en daar bestaat de mail
+     niet. Met het adres erbij kiest Gmail het goede postvak. */
+  it('wijst het account aan met het mailadres', () => {
+    const link = gmailLink('1a12f5b09f0f6a7d', 'sander@boskmafoodservice.nl')
+    expect(link).toContain('authuser=sander%40boskmafoodservice.nl')
+    expect(link).not.toContain('/u/0/')
+  })
+
+  /* Kim bewaart de id van Gmail in hexadecimaal; de webversie gebruikt
+     hetzelfde nummer als gewoon getal. */
+  it('rekent de id om naar het nummer dat Gmail in de adresbalk zet', () => {
+    expect(gmailLink('1a12f5b09f0f6a7d', 'x@y.nl')).toContain('thread-f:1878834133498555005')
+  })
+
+  it('laat iets dat geen nummer is met rust', () => {
+    expect(gmailLink('zomaar-iets', 'x@y.nl')).toContain('thread-f:zomaar-iets')
+  })
+
+  it('werkt ook zonder mailadres', () => {
+    expect(gmailLink('1a12f5b09f0f6a7d')).toBe(
+      'https://mail.google.com/mail/#all/thread-f:1878834133498555005',
+    )
   })
 })

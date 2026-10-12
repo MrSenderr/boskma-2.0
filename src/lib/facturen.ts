@@ -145,8 +145,32 @@ export function deelIn(alles: Factuur[], vandaag = vandaagStr()): Indeling {
   }
 }
 
-export function gmailLink(thread: string | null | undefined): string | null {
-  return thread ? `https://mail.google.com/mail/u/0/#all/${thread}` : null
+/* De link naar de mail waar deze factuur in zat.
+
+   Precies in de vorm die Gmail zelf gebruikt, en dat luistert nauw:
+
+   - `authuser` met je mailadres, niet `u/0`. Dat laatste betekent "het eerste
+     Google-account in deze browser", en dat is niet per se het jouwe. Zit je
+     ook met een privé-account ingelogd, dan opende de link daar — en daar
+     bestaat de mail niet.
+   - `thread-f:` met het nummer. Kim bewaart de id van Gmail in hexadecimaal;
+     in de webversie staat hetzelfde nummer gewoon als getal. */
+export function gmailLink(
+  thread: string | null | undefined,
+  email?: string | null,
+): string | null {
+  if (!thread) return null
+
+  let nummer: string
+  try {
+    nummer = BigInt(`0x${thread}`).toString()
+  } catch {
+    // Geen hexadecimaal nummer: dan laten we het staan zoals het er staat.
+    nummer = thread
+  }
+
+  const account = email ? `?authuser=${encodeURIComponent(email)}` : ''
+  return `https://mail.google.com/mail/${account}#all/thread-f:${nummer}`
 }
 
 /* -------------------------------------------------------------- data --- */
