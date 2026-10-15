@@ -41,6 +41,9 @@ export type Product = {
   btw_tarief: Btw
   eenheid: string
   actief: boolean
+  /** Het kopje waaronder dit product in de prijslijst staat. */
+  groep: string | null
+  /** Waar die groep in de lijst komt. Producten in dezelfde groep delen hem. */
   volgorde: number
 }
 
@@ -228,6 +231,30 @@ export function useProducten() {
       return (data ?? []) as Product[]
     },
   })
+}
+
+/* De prijslijst met kopjes erboven, in de volgorde waarin hij staat.
+   Producten zonder groep komen onderaan onder "Overig" — anders verdwijnen ze
+   stilletjes uit de lijst zodra er ergens een groep is ingevuld. */
+export function perGroep(producten: Product[]): { groep: string; producten: Product[] }[] {
+  const uit: { groep: string; producten: Product[] }[] = []
+  for (const p of producten) {
+    const naam = p.groep?.trim() || 'Overig'
+    const laatste = uit[uit.length - 1]
+    if (laatste && laatste.groep === naam) laatste.producten.push(p)
+    else uit.push({ groep: naam, producten: [p] })
+  }
+  return uit
+}
+
+/** Welke volgorde een product krijgt als je het in een groep zet: die van de
+ *  groep als die al bestaat, anders achteraan. Zo hoef je nooit zelf een
+ *  nummer te bedenken. */
+export function volgordeVoorGroep(producten: Product[], groep: string | null | undefined): number {
+  const gezocht = (groep ?? '').trim().toLowerCase()
+  const er = producten.find((p) => (p.groep ?? '').trim().toLowerCase() === gezocht)
+  if (er) return er.volgorde
+  return producten.reduce((hoogste, p) => Math.max(hoogste, p.volgorde), 0) + 1
 }
 
 /* ---------------------------------------------------------- opslaan --- */

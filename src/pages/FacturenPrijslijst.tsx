@@ -1,37 +1,75 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import { Kaart, Knop, Laden, Mislukt, Veld } from '../components/ui'
-import { useToast } from '../components/Toast'
-import { GetalVeld } from '../components/GetalVeld'
-import { euro, useProductOpslaan, useProductWeg, useProducten, type Btw, type Product } from '../lib/verkoop'
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Kaart, Knop, Laden, Mislukt, Veld } from "../components/ui";
+import { useToast } from "../components/Toast";
+import { GetalVeld } from "../components/GetalVeld";
+import {
+  euro,
+  perGroep,
+  useProductOpslaan,
+  useProductWeg,
+  useProducten,
+  volgordeVoorGroep,
+  type Btw,
+  type Product,
+} from "../lib/verkoop";
 
 /* De prijslijst. Prijzen zijn inclusief btw, net als op de kaart — zo ken je ze
    en zo typ je ze in. De btw haalt de app er zelf uit. */
 
 const invoer =
-  'w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent'
+  "w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent";
 
 function Bewerken({
   product,
+  alles,
   onKlaar,
   melden,
 }: {
-  product: Partial<Product>
-  onKlaar: () => void
-  melden: (t: string) => void
+  product: Partial<Product>;
+  /** De hele lijst, om te weten welke groepen er al zijn en waar ze staan. */
+  alles: Product[];
+  onKlaar: () => void;
+  melden: (t: string) => void;
 }) {
-  const [c, setC] = useState<Partial<Product>>({ btw_tarief: 9, eenheid: 'stuk', ...product })
-  const opslaan = useProductOpslaan()
+  const [c, setC] = useState<Partial<Product>>({
+    btw_tarief: 9,
+    eenheid: "stuk",
+    ...product,
+  });
+  const opslaan = useProductOpslaan();
+  const groepen = [
+    ...new Set(alles.map((p) => p.groep?.trim()).filter(Boolean)),
+  ] as string[];
 
   return (
     <Kaart className="flex flex-col gap-4 p-4">
-      <Veld label="Naam" value={c.naam ?? ''} onChange={(e) => setC({ ...c, naam: e.target.value })} />
+      <Veld
+        label="Naam"
+        value={c.naam ?? ""}
+        onChange={(e) => setC({ ...c, naam: e.target.value })}
+      />
       <Veld
         label="Omschrijving"
-        value={c.omschrijving ?? ''}
+        value={c.omschrijving ?? ""}
         onChange={(e) => setC({ ...c, omschrijving: e.target.value })}
       />
+      <Veld
+        label="Groep"
+        list="prijslijst-groepen"
+        placeholder="bijvoorbeeld Pistolets"
+        value={c.groep ?? ""}
+        onChange={(e) => setC({ ...c, groep: e.target.value })}
+      />
+      {/* Kiezen uit wat er al is, of een nieuwe typen. Een lijstje met alleen
+          bestaande groepen zou je dwingen eerst ergens anders een groep aan te
+          maken. */}
+      <datalist id="prijslijst-groepen">
+        {groepen.map((g) => (
+          <option key={g} value={g} />
+        ))}
+      </datalist>
       <div className="grid grid-cols-3 gap-2">
         <GetalVeld
           label="Prijs incl."
@@ -44,7 +82,9 @@ function Bewerken({
           <select
             className={invoer}
             value={c.btw_tarief}
-            onChange={(e) => setC({ ...c, btw_tarief: Number(e.target.value) as Btw })}
+            onChange={(e) =>
+              setC({ ...c, btw_tarief: Number(e.target.value) as Btw })
+            }
           >
             <option value={9}>9%</option>
             <option value={21}>21%</option>
@@ -53,7 +93,7 @@ function Bewerken({
         </label>
         <Veld
           label="Eenheid"
-          value={c.eenheid ?? 'stuk'}
+          value={c.eenheid ?? "stuk"}
           onChange={(e) => setC({ ...c, eenheid: e.target.value })}
         />
       </div>
@@ -63,12 +103,26 @@ function Bewerken({
           soort="primair"
           bezig={opslaan.isPending}
           onClick={() => {
-            if (!(c.naam ?? '').trim()) return melden('Geef het product een naam.')
-            if (!c.prijs_incl || c.prijs_incl <= 0) return melden('Vul een prijs in.')
-            opslaan.mutate(c as Partial<Product> & { naam: string; prijs_incl: number }, {
-              onSuccess: onKlaar,
-              onError: (e) => melden(e instanceof Error ? e.message : 'Opslaan lukte niet.'),
-            })
+            if (!(c.naam ?? "").trim())
+              return melden("Geef het product een naam.");
+            if (!c.prijs_incl || c.prijs_incl <= 0)
+              return melden("Vul een prijs in.");
+            const groep = (c.groep ?? "").trim() || null;
+            const klaar = {
+              ...c,
+              groep,
+              volgorde: volgordeVoorGroep(alles, groep),
+            };
+            opslaan.mutate(
+              klaar as Partial<Product> & { naam: string; prijs_incl: number },
+              {
+                onSuccess: onKlaar,
+                onError: (e) =>
+                  melden(
+                    e instanceof Error ? e.message : "Opslaan lukte niet.",
+                  ),
+              },
+            );
           }}
         >
           Bewaren
@@ -78,20 +132,21 @@ function Bewerken({
         </Knop>
       </div>
     </Kaart>
-  )
+  );
 }
 
 export function FacturenPrijslijst() {
-  const { data, isPending, error, refetch } = useProducten()
-  const opslaan = useProductOpslaan()
-  const weg = useProductWeg()
-  const { toon, toast } = useToast()
-  const [bewerkt, setBewerkt] = useState<Partial<Product> | null>(null)
+  const { data, isPending, error, refetch } = useProducten();
+  const opslaan = useProductOpslaan();
+  const weg = useProductWeg();
+  const { toon, toast } = useToast();
+  const [bewerkt, setBewerkt] = useState<Partial<Product> | null>(null);
 
-  if (isPending) return <Laden tekst="Prijslijst ophalen…" />
-  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
+  if (isPending) return <Laden tekst="Prijslijst ophalen…" />;
+  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />;
 
-  const fout = (e: unknown) => toon(e instanceof Error ? e.message : 'Dat lukte niet.')
+  const fout = (e: unknown) =>
+    toon(e instanceof Error ? e.message : "Dat lukte niet.");
 
   return (
     <div className="flex flex-col gap-5">
@@ -105,13 +160,18 @@ export function FacturenPrijslijst() {
 
       <div>
         <p className="mt-1 max-w-prose text-sm text-muted">
-          Prijzen inclusief btw, net als op de kaart. Wat hier staat kun je met één tik op een
-          factuur zetten.
+          Prijzen inclusief btw, net als op de kaart. Wat hier staat kun je met
+          één tik op een factuur zetten.
         </p>
       </div>
 
       {bewerkt ? (
-        <Bewerken product={bewerkt} onKlaar={() => setBewerkt(null)} melden={toon} />
+        <Bewerken
+          product={bewerkt}
+          alles={data}
+          onKlaar={() => setBewerkt(null)}
+          melden={toon}
+        />
       ) : (
         <Knop soort="rustig" className="w-fit" onClick={() => setBewerkt({})}>
           <Plus className="size-4" aria-hidden />
@@ -121,47 +181,66 @@ export function FacturenPrijslijst() {
 
       {data.length === 0 && !bewerkt && (
         <Kaart className="p-6 text-sm text-muted">
-          Nog niets in de prijslijst. Je kunt ook zonder: op een factuur typ je een losse regel.
+          Nog niets in de prijslijst. Je kunt ook zonder: op een factuur typ je
+          een losse regel.
         </Kaart>
       )}
 
-      {data.map((p) => (
-        <Kaart key={p.id} className={`flex flex-col gap-2 p-4 ${p.actief ? '' : 'opacity-60'}`}>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-semibold">{p.naam}</span>
-            <span className="tabular-nums">
-              {euro(Number(p.prijs_incl))} <span className="text-sm text-muted">/ {p.eenheid}</span>
-            </span>
-          </div>
-          {p.omschrijving && <p className="text-sm text-muted">{p.omschrijving}</p>}
-          <p className="text-sm text-muted">{p.btw_tarief}% btw</p>
+      {perGroep(data).map((groep) => (
+        <section key={groep.groep} className="flex flex-col gap-3">
+          <h2 className="font-display text-lg">{groep.groep}</h2>
+          {groep.producten.map((p) => (
+            <Kaart
+              key={p.id}
+              className={`flex flex-col gap-2 p-4 ${p.actief ? "" : "opacity-60"}`}
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-semibold">{p.naam}</span>
+                <span className="tabular-nums">
+                  {euro(Number(p.prijs_incl))}{" "}
+                  <span className="text-sm text-muted">/ {p.eenheid}</span>
+                </span>
+              </div>
+              {p.omschrijving && (
+                <p className="text-sm text-muted">{p.omschrijving}</p>
+              )}
+              <p className="text-sm text-muted">{p.btw_tarief}% btw</p>
 
-          <div className="flex flex-wrap gap-3 text-sm">
-            <button type="button" className="text-muted underline" onClick={() => setBewerkt(p)}>
-              wijzigen
-            </button>
-            <button
-              type="button"
-              className="text-muted underline"
-              onClick={() =>
-                opslaan.mutate({ ...p, actief: !p.actief }, { onError: fout })
-              }
-            >
-              {p.actief ? 'uitzetten' : 'weer aanzetten'}
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1 text-bad underline"
-              onClick={() => weg.mutate(p.id, { onError: fout })}
-            >
-              <Trash2 className="size-3.5" aria-hidden />
-              weghalen
-            </button>
-          </div>
-        </Kaart>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <button
+                  type="button"
+                  className="text-muted underline"
+                  onClick={() => setBewerkt(p)}
+                >
+                  wijzigen
+                </button>
+                <button
+                  type="button"
+                  className="text-muted underline"
+                  onClick={() =>
+                    opslaan.mutate(
+                      { ...p, actief: !p.actief },
+                      { onError: fout },
+                    )
+                  }
+                >
+                  {p.actief ? "uitzetten" : "weer aanzetten"}
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-bad underline"
+                  onClick={() => weg.mutate(p.id, { onError: fout })}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  weghalen
+                </button>
+              </div>
+            </Kaart>
+          ))}
+        </section>
       ))}
 
       {toast}
     </div>
-  )
+  );
 }
