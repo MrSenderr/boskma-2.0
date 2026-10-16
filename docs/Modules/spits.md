@@ -3,7 +3,8 @@
 Vastgelegd op 12 oktober 2026.
 
 Vrijdag, zaterdag en zondag van 17 tot 20 draait de zaak op zes werkplekken:
-kassa, patatbakker, snackbakker (twee man), chef keuken, runner en keukenhulp.
+kassa, patatbakker, snackbakker (twee man), chef keuken, plankjes en service
+en keukenhulp.
 Dat zijn zeven paar handen. Wie waar het beste staat zat tot nu toe alleen in
 Sanders hoofd.
 
@@ -100,7 +101,7 @@ het vast in `spits_indeling`.
 Dat vastleggen doet twee dingen. De medewerker ziet zijn eigen plek in zijn app
 (alleen die van hemzelf, net als bij de shifts). En het is het geheugen voor de
 afwisseling: zonder vastgelegde indelingen weet de app niet wie er al vier keer
-runner was.
+op plankjes en service stond.
 
 Een plek zonder regel is onbezet. Dat is een geldige uitkomst — zijn er maar vijf
 mensen, dan blijven er twee plekken leeg — en er staat liever niets dan een lege

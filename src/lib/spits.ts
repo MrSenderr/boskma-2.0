@@ -131,7 +131,7 @@ export function stoelnaam(stoel: Stoel): string {
  * Het belang van de stoel weegt honderd keer zo zwaar als het verschil tussen
  * twee niveaus. Dat is met opzet: één stap in belang kan nooit worden
  * weggepoetst door een betere match. Zo wordt de kassa altijd eerst bezet, ook
- * als iemand liever runner is.
+ * als iemand liever de plankjes doet.
  *
  * Alles wat mag levert punten op — ook 'nood' en 'onbekend'. Daardoor is een
  * bezette stoel altijd beter dan een lege, en blijft er niemand voor niets
@@ -170,7 +170,7 @@ export type Eerder = { datum: string; medewerker_id: string; werkplek_id: string
 /** Hoe vaak iemand bij de laatste spitsen op deze plek stond.
  *
  *  Alleen de laatste paar avonden, niet alles van het afgelopen jaar: dat
- *  iemand in maart drie keer runner was mag een indeling in oktober niet meer
+ *  iemand in maart drie keer de plankjes deed mag een indeling in oktober niet
  *  beïnvloeden. */
 export function herhalingen(
   eerder: Eerder[],
