@@ -7,7 +7,8 @@
 //
 //   1. nummer toekennen   (verkoopfactuur_definitief, deelt er hoogstens een uit)
 //   2. pdf maken          (verkoopfactuur-pdf, bewaart hem in de prive-bucket)
-//   3. mail naar de klant (met de pdf als bijlage)
+//   3. mail naar de klant (met de pdf als bijlage, en blind een kopie naar
+//      Sander zodat hij ziet wat eruitging)
 //   4. mail naar Basecone (dezelfde pdf, los, voor de boekhouding)
 //   5. vastleggen dat hij verstuurd is
 //
@@ -187,12 +188,20 @@ serve(async (req) => {
     const naarKlant = proef ? [tm.adres] : [klant.factuur_email];
     const kopie = !proef && klant.cc_email ? [klant.cc_email] : undefined;
 
+    /* Blind een kopie naar jezelf, zodat je in je eigen postvak ziet wat de
+       klant heeft gekregen — inclusief de bijlage zoals die eruitging.
+       Blind, want de klant hoeft niet te weten dat je meeleest.
+
+       Bij een proef niet: die komt al bij je terecht. */
+    const blind = proef ? undefined : [ANTWOORD];
+
     // 3. Naar de klant.
     const mail = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: VAN, to: naarKlant, ...(kopie ? { cc: kopie } : {}), reply_to: ANTWOORD,
+        from: VAN, to: naarKlant, ...(kopie ? { cc: kopie } : {}),
+        ...(blind ? { bcc: blind } : {}), reply_to: ANTWOORD,
         subject: `${proef ? "[TEST] " : ""}${herinnering ? "Herinnering: factuur" : "Factuur"} ${nummerTekst} — Snackerie 't Zonnetje`,
         html: (proef ? `<p style="background:#fde;padding:8px">Testbericht. Zou naar ${veilig(klant.factuur_email)} zijn gegaan.</p>` : "") + alsHtml(body),
         attachments: [{ filename: bestandsnaam, content: pdf }],
