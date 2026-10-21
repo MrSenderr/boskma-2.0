@@ -120,6 +120,18 @@ export type Indeling = {
   incasso: Factuur[]
   betaald: Factuur[]
   creditnotas: Factuur[]
+  /** Wat in geen enkel lijstje past, met de reden erbij. Zie `deelIn`. */
+  rest: { factuur: Factuur; reden: string }[]
+}
+
+/* Waarom een factuur nergens past.
+ *
+ * Alleen voor op het scherm: je kunt pas iets rechtzetten als je weet wat
+ * eraan mankeert. */
+export function redenBuitenBeeld(f: Factuur): string {
+  if (f.status === 'betaald' && !f.betaald_op) return 'afgevinkt, maar zonder datum'
+  if (f.status === 'open') return `openstaand, maar betaalwijze "${f.betaalwijze ?? 'leeg'}"`
+  return `status "${f.status}"`
 }
 
 /** Creditnota's horen niet bij "zelf betalen": daar krijg jij geld van. Ze
@@ -128,7 +140,7 @@ export function deelIn(alles: Factuur[], vandaag = vandaagStr()): Indeling {
   const open = alles.filter((f) => f.status === 'open')
   const grens = plusDagen(vandaag, -30)
 
-  return {
+  const indeling = {
     zelfBetalen: open
       .filter((f) => f.soort === 'factuur' && f.betaalwijze === 'handmatig')
       .sort(opUiterlijk),
@@ -143,6 +155,36 @@ export function deelIn(alles: Factuur[], vandaag = vandaagStr()): Indeling {
       .sort((a, b) => (b.betaald_op ?? '').localeCompare(a.betaald_op ?? '')),
     creditnotas: open.filter((f) => f.soort === 'creditnota'),
   }
+
+  /* Wat hierboven nergens in paste.
+   *
+   * Dit is er niet voor de schoonheid. Een creditnota van Olthuis stond
+   * afgevinkt zonder datum, en viel daardoor uit álle lijstjes: niet bij te
+   * ontvangen, niet bij betaald. Tweehonderdvierendertig euro die nergens meer
+   * te zien was. Hetzelfde geldt voor een geannuleerde factuur, of een
+   * openstaande met een betaalwijze die we niet kennen.
+   *
+   * Het is met opzet een restbak en geen lijst met bekende gevallen: komt er
+   * ooit een stand bij die hier niet bedacht is, dan valt die hierin op in
+   * plaats van eruit. */
+  const staatErgens = new Set(
+    [
+      ...indeling.zelfBetalen,
+      ...indeling.onbekend,
+      ...indeling.incasso,
+      ...indeling.betaald,
+      ...indeling.creditnotas,
+    ].map((f) => f.id),
+  )
+
+  const rest = alles
+    .filter((f) => !staatErgens.has(f.id))
+    // Betaald en langer geleden dan de grens hoort hier niet: dat is geen gat,
+    // dat is opgeruimd.
+    .filter((f) => !(f.status === 'betaald' && f.betaald_op && f.betaald_op < grens))
+    .map((f) => ({ factuur: f, reden: redenBuitenBeeld(f) }))
+
+  return { ...indeling, rest }
 }
 
 /* De link naar de mail waar deze factuur in zat.
@@ -183,10 +225,13 @@ export function useFacturen() {
   return useQuery({
     queryKey: ['facturen'],
     queryFn: async (): Promise<Factuur[]> => {
+      /* Alles, ook geannuleerd en betwist. Die stonden hier eerst niet bij,
+         en dan kan een factuur niet eens opvallen als er iets mee aan de hand
+         is — hij komt de app simpelweg niet binnen. Wat nergens in een lijstje
+         past komt bij "Nog uitzoeken" terecht; zie deelIn. */
       const { data, error } = await supabase
         .from('facturen')
         .select(VELDEN)
-        .in('status', ['open', 'betaald'])
         .order('id', { ascending: false })
       if (error) throw new Error(error.message)
       return (data ?? []) as unknown as Factuur[]

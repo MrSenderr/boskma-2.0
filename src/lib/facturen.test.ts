@@ -237,3 +237,73 @@ describe('de link naar de mail', () => {
     )
   })
 })
+
+/* De restbak.
+
+   Aanleiding: een creditnota van Olthuis van € 234 stond afgevinkt zonder
+   datum, en viel daardoor uit elk lijstje. Niet bij te ontvangen, niet bij
+   betaald. Weg. Dat mag niet kunnen. */
+describe('wat nergens in past', () => {
+  const f = (anders: Partial<Factuur>): Factuur => ({
+    id: 1,
+    leverancier: 'Olthuis Recycling',
+    factuurnummer: null,
+    soort: 'factuur',
+    factuurdatum: '2026-08-11',
+    vervaldatum: null,
+    bedrag_incl: 234,
+    betaalwijze: 'handmatig',
+    iban: null,
+    betalingskenmerk: null,
+    status: 'open',
+    betaald_op: null,
+    basecone_op: null,
+    gmail_thread: null,
+    opmerking: null,
+    ...anders,
+  })
+
+  const vandaag = '2026-10-21'
+
+  it('vangt een afgevinkte factuur zonder datum op', () => {
+    const uit = deelIn([f({ status: 'betaald', soort: 'creditnota' })], vandaag)
+    expect(uit.creditnotas).toEqual([])
+    expect(uit.betaald).toEqual([])
+    expect(uit.rest).toHaveLength(1)
+    expect(uit.rest[0].reden).toBe('afgevinkt, maar zonder datum')
+  })
+
+  it('vangt een stand op die nergens voorkomt', () => {
+    const uit = deelIn([f({ status: 'geannuleerd' })], vandaag)
+    expect(uit.rest[0].reden).toBe('status "geannuleerd"')
+  })
+
+  /* Een openstaande factuur met een betaalwijze die geen lijstje heeft —
+     'vooraf_betaald' bijvoorbeeld — verdween net zo stil. */
+  it('vangt een openstaande factuur met een onbekende betaalwijze op', () => {
+    const uit = deelIn([f({ betaalwijze: 'vooraf_betaald' })], vandaag)
+    expect(uit.zelfBetalen).toEqual([])
+    expect(uit.rest[0].reden).toBe('openstaand, maar betaalwijze "vooraf_betaald"')
+  })
+
+  it('laat alles wat wél ergens staat met rust', () => {
+    const uit = deelIn(
+      [
+        f({ id: 1, status: 'open', betaalwijze: 'handmatig' }),
+        f({ id: 2, status: 'open', betaalwijze: 'incasso' }),
+        f({ id: 3, status: 'open', soort: 'creditnota' }),
+        f({ id: 4, status: 'betaald', betaald_op: '2026-10-20' }),
+      ],
+      vandaag,
+    )
+    expect(uit.rest).toEqual([])
+  })
+
+  /* Betaald en langer dan dertig dagen geleden hoort bewust niet in beeld.
+     Dat is geen gat maar opgeruimd, en zou de restbak alleen maar vullen. */
+  it('ziet een oude betaalde factuur niet als een gat', () => {
+    const uit = deelIn([f({ status: 'betaald', betaald_op: '2026-01-05' })], vandaag)
+    expect(uit.betaald).toEqual([])
+    expect(uit.rest).toEqual([])
+  })
+})

@@ -440,6 +440,66 @@ export function FacturenInkomend() {
         </Inklapbaar>
       )}
 
+      {/* ------------------------------------------------ nog uitzoeken --- */}
+      {/* Wat in geen enkel lijstje past. Stond hier eerst niet, en daardoor
+          verdween een creditnota van € 234 volledig uit beeld: afgevinkt zonder
+          datum, dus niet bij te ontvangen en niet bij betaald. Liever een
+          rommelhoekje dat je ziet dan een gat dat je niet ziet. */}
+      {d.rest.length > 0 && (
+        <Inklapbaar
+          titel={`Nog uitzoeken (${d.rest.length})`}
+          extra={euro(telOp(d.rest.map((r) => r.factuur)))}
+        >
+          <Kaart>
+            <ul className="flex flex-col divide-y divide-line">
+              {d.rest.map(({ factuur: f, reden }) => (
+                <li key={f.id} className="flex flex-col gap-0.5 px-4 py-2.5">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-medium">{f.leverancier}</span>
+                    <span className="tabular-nums">{euro(f.bedrag_incl)}</span>
+                  </span>
+                  <span className="text-sm text-muted">
+                    {[f.factuurnummer, f.factuurdatum ? kortDatum(f.factuurdatum) : null, reden]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {gmailLink(f.gmail_thread, email) && (
+                      <a
+                        href={gmailLink(f.gmail_thread, email) as string}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-fit items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                      >
+                        <ExternalLink className="size-3.5" aria-hidden />
+                        De mail erbij
+                      </a>
+                    )}
+                    {/* Terugzetten op open is hier de uitweg: dan staat hij weer
+                        bij te betalen of te ontvangen en kun je hem afhandelen
+                        zoals het hoort. */}
+                    {f.status !== 'open' && (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-sm font-semibold text-muted underline hover:text-text"
+                        onClick={() =>
+                          heropenen.mutate(f.id, {
+                            onError: (e) =>
+                              toon(e instanceof Error ? e.message : 'Heropenen lukte niet.'),
+                          })
+                        }
+                      >
+                        Terugzetten op open
+                      </button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Kaart>
+        </Inklapbaar>
+      )}
+
       {/* Het schriftje: hoe elke leverancier betaalt. Hoe voller, hoe minder er
           bij Nog uitzoeken belandt. */}
       <Link
