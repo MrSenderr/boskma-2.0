@@ -24,6 +24,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY")!;
+const ANON       = Deno.env.get("SUPABASE_ANON_KEY")!;
 const VAN        = "Snackerie 't Zonnetje <sander@boskmafoodservice.nl>";
 const ANTWOORD   = "sander@boskmafoodservice.nl";
 
@@ -36,6 +37,36 @@ const cors = {
 const EURO = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 const veilig = (t: unknown) =>
   String(t ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]!));
+
+/* Wie belt er aan, en mag die dit?
+ *
+ * Supabase controleert alleen dát er een geldige sleutel meekomt. De publieke
+ * anon-sleutel is er zo een, en die zit in de webapp die iedereen kan openen.
+ * Zonder deze controle kan dus iedereen die het adres van deze functie kent
+ * facturen naar jouw klanten sturen en je nummering opstoken.
+ *
+ * Er wordt niets hier hardgecodeerd: de database weet wie beheerder is
+ * (is_app_user), en die blijft de enige plek waar dat staat. */
+async function belIsVanJou(req: Request) {
+  const token = req.headers.get("Authorization") ?? "";
+  if (!token) return null;
+
+  const wie = await fetch(`${SB_URL}/auth/v1/user`, {
+    headers: { apikey: ANON, Authorization: token },
+  });
+  if (!wie.ok) return null;
+  const email = (await wie.json())?.email;
+  if (!email) return null;
+
+  const mag = await fetch(`${SB_URL}/rest/v1/rpc/is_app_user`, {
+    method: "POST",
+    headers: { apikey: ANON, Authorization: token, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!mag.ok || (await mag.json()) !== true) return null;
+
+  return { email: String(email), token };
+}
 
 /** Vertelt bij welke stap het misging; dat scheelt zoeken. */
 function mislukt(stap: string, waarom: string, status = 500) {
@@ -93,6 +124,9 @@ serve(async (req) => {
   if (req.method !== "POST") return mislukt("verzoek", "alleen POST", 405);
 
   try {
+    const beller = await belIsVanJou(req);
+    if (!beller) return mislukt("toegang", "hier mag je niet bij", 403);
+
     const { factuur_id, tekst, test, herinnering } = await req.json().catch(() => ({}));
     const id = Number(factuur_id);
     if (!Number.isInteger(id) || id <= 0) return mislukt("verzoek", "ongeldig factuurnummer", 400);
@@ -115,11 +149,18 @@ serve(async (req) => {
       .then((r) => r.json()))?.[0];
     if (!klant?.factuur_email) return mislukt("klant", "deze klant heeft geen factuuradres", 400);
 
-    // 1. Nummer. Bij een proef slaan we dit over, dus de telling blijft kloppen.
+    /* 1. Nummer. Bij een proef slaan we dit over, dus de telling blijft kloppen.
+
+       Met jouw eigen sleutel, niet met die van de server: verkoopfactuur_
+       definitief laat alleen een beheerder een nummer uitdelen, en de server
+       heeft geen mailadres. Dat is precies waarom het versturen op 21 oktober
+       stukliep met "geen toegang". */
     let nummer: number | null = f.nummer;
     if (!proef && !herinnering) {
       const r = await fetch(`${SB_URL}/rest/v1/rpc/verkoopfactuur_definitief`, {
-        method: "POST", headers: h, body: JSON.stringify({ p_id: id }),
+        method: "POST",
+        headers: { apikey: ANON, Authorization: beller.token, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_id: id }),
       });
       if (!r.ok) return mislukt("nummer toekennen", await r.text());
       nummer = Number(await r.json());

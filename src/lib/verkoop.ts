@@ -438,6 +438,25 @@ export type Verstuurd = {
   error?: string
 }
 
+/* Wat de serverfunctie zelf zei.
+ *
+ * Bij een foutcode geeft supabase-js alleen "Edge Function returned a non-2xx
+ * status code" terug — niet bepaald iets waar je wat mee kunt. Het echte
+ * antwoord hangt eraan vast, en daar staat bij welke stap het misging. */
+async function redenUit(fout: unknown): Promise<string | null> {
+  const antwoord = (fout as { context?: unknown })?.context
+  if (!(antwoord instanceof Response)) return null
+  try {
+    const body = await antwoord.clone().json()
+    if (body?.stap || body?.error) {
+      return `${body.stap ?? 'versturen'}: ${body.error ?? 'onbekende fout'}`
+    }
+  } catch {
+    // Geen json; dan houden we het bij wat supabase-js zei.
+  }
+  return null
+}
+
 export function useVersturen() {
   const client = useQueryClient()
   return useMutation({
@@ -450,7 +469,7 @@ export function useVersturen() {
       const { data, error } = await supabase.functions.invoke('stuur-verkoopfactuur', {
         body: { factuur_id: v.id, tekst: v.tekst, test: v.test, herinnering: v.herinnering },
       })
-      if (error) throw new Error(error.message)
+      if (error) throw new Error((await redenUit(error)) ?? error.message)
       const uit = data as Verstuurd
       // De functie vertelt bij welke stap het misging; dat is bruikbaarder dan
       // "er ging iets mis".
