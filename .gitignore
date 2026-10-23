@@ -4,3 +4,6 @@ dist
 .env.local
 .DS_Store
 tsconfig.tsbuildinfo
+
+# Ontstaat als je een serverfunctie lokaal nakijkt met deno; hoort niet in de app.
+deno.lock
