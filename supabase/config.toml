@@ -1,0 +1,50 @@
+# Instellingen van de serverfuncties.
+#
+# Waarom dit bestand bestaat: `supabase functions deploy` zet verify_jwt áán
+# tenzij je het anders opschrijft. Op 23 oktober 2026 ging daardoor kim-push
+# twee minuten dicht voor de database, die hem zonder sleutel aanroept — en dat
+# klaagt nergens, de meldingen vallen gewoon stil.
+#
+# Staat het hier, dan hoeft niemand het te onthouden.
+#
+# verify_jwt = false betekent niet "onbeveiligd". Het betekent dat deze functie
+# zijn eigen deur bewaakt: met een eigen sleutel (rooster-inlezen), met een niet
+# te raden code per persoon (medewerker-gegevens, submit-onboarding), of omdat
+# hij de rij zelf opzoekt en hooguit één keer iets doet (kim-push).
+
+project_id = "xukzumqddeateztmjpzf"
+
+# Wordt aangeroepen door de database (facturen_dagelijks) zonder sleutel.
+[functions.kim-push]
+verify_jwt = false
+
+# Eigen sleutel: ROOSTER_SLEUTEL, meegestuurd door het script in Sanders Gmail.
+[functions.rooster-inlezen]
+verify_jwt = false
+
+# Formulieren die een medewerker invult zonder in te loggen. De link bevat een
+# niet te raden code; die code ís de sleutel.
+[functions.medewerker-gegevens]
+verify_jwt = false
+
+[functions.send-onboarding]
+verify_jwt = false
+
+[functions.submit-onboarding]
+verify_jwt = false
+
+[functions.stuur-kennismaking]
+verify_jwt = false
+
+[functions.stuur-melding]
+verify_jwt = false
+
+[functions.generate-contract-pdf]
+verify_jwt = false
+
+# Schermen in de zaak, zonder gebruiker.
+[functions.f1-nieuws]
+verify_jwt = false
+
+[functions.f1-live]
+verify_jwt = false
