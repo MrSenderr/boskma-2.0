@@ -3,7 +3,7 @@
    loonbureau. */
 
 import { describe, expect, it } from 'vitest'
-import { eindeErbij, eindeNaJaar, type Persoon } from './personeel'
+import { eindeErbij, eindeNa, eindeNaJaar, gekozenDuur, type Persoon } from './personeel'
 
 describe('een jaar later, een dag ervoor', () => {
   it('rekent een gewoon jaar uit', () => {
@@ -81,5 +81,76 @@ describe('wanneer de einddatum meeschuift', () => {
 
   it('doet niets als de ingangsdatum wordt leeggemaakt', () => {
     expect(eindeErbij(p({ ingangsdatum: '2026-11-01', einddatum: '2027-10-31' }), null)).toEqual({})
+  })
+})
+
+describe('de lengtes uit het keuzelijstje', () => {
+  it('rekent een half jaar uit', () => {
+    expect(eindeNa('2026-11-01', 6)).toBe('2027-04-30')
+    expect(eindeNa('2026-01-01', 6)).toBe('2026-06-30')
+  })
+
+  it('rekent twee jaar uit', () => {
+    expect(eindeNa('2026-11-01', 24)).toBe('2028-10-31')
+  })
+
+  /* Een half jaar vanaf eind februari komt in augustus uit, niet in juli. */
+  it('telt maanden en geen dagen', () => {
+    expect(eindeNa('2026-02-28', 6)).toBe('2026-08-27')
+    expect(eindeNa('2026-04-30', 6)).toBe('2026-10-29')
+  })
+})
+
+describe('welke duur er in de lijst staat', () => {
+  const p = (anders: Partial<Persoon>): Persoon =>
+    ({ id: 'a', contractduur: 'bepaalde', ingangsdatum: '2026-11-01', einddatum: null, ...anders }) as Persoon
+
+  it('herkent een halfjaarcontract aan de datums', () => {
+    expect(gekozenDuur(p({ einddatum: '2027-04-30' }))).toBe('half')
+  })
+
+  it('herkent een jaarcontract', () => {
+    expect(gekozenDuur(p({ einddatum: '2027-10-31' }))).toBe('jaar')
+  })
+
+  it('herkent twee jaar', () => {
+    expect(gekozenDuur(p({ einddatum: '2028-10-31' }))).toBe('tweejaar')
+  })
+
+  /* Past het bij geen enkele lengte, dan heb je hem zelf gezet — en dan moet
+     de lijst dat zeggen en niet net doen alsof het een jaarcontract is. */
+  it('zegt "zelf" bij een datum die nergens bij past', () => {
+    expect(gekozenDuur(p({ einddatum: '2027-05-01' }))).toBe('zelf')
+  })
+
+  it('zegt niets zolang er geen einddatum staat', () => {
+    expect(gekozenDuur(p({}))).toBe('')
+  })
+
+  it('kent onbepaalde tijd', () => {
+    expect(gekozenDuur(p({ contractduur: 'onbepaalde' }))).toBe('onbepaalde')
+  })
+})
+
+describe('de gekozen lengte blijft bij een nieuwe startdatum', () => {
+  const p = (anders: Partial<Persoon>): Persoon =>
+    ({ id: 'a', contractduur: 'bepaalde', ingangsdatum: '2026-11-01', einddatum: null, ...anders }) as Persoon
+
+  /* Had je een half jaar gekozen, dan hoort een correctie op de startdatum
+     geen jaarcontract van je contract te maken. */
+  it('houdt een half jaar een half jaar', () => {
+    expect(eindeErbij(p({ einddatum: '2027-04-30' }), '2026-12-01')).toEqual({
+      einddatum: '2027-05-31',
+    })
+  })
+
+  it('houdt twee jaar twee jaar', () => {
+    expect(eindeErbij(p({ einddatum: '2028-10-31' }), '2026-12-01')).toEqual({
+      einddatum: '2028-11-30',
+    })
+  })
+
+  it('gaat uit van een jaar als er nog niets staat', () => {
+    expect(eindeErbij(p({}), '2026-12-01')).toEqual({ einddatum: '2027-11-30' })
   })
 })

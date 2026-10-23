@@ -113,33 +113,73 @@ export function urenInWoorden(p: Persoon): string {
   }
 }
 
-/* De einddatum van een contract van een jaar: een jaar later, een dag ervoor.
+/* De duur van een contract, zoals je hem in de app kiest.
+
+   De gekozen duur staat nergens apart opgeslagen; hij is af te leiden uit de
+   ingangs- en einddatum. Dat scheelt een kolom die uit de pas kan gaan lopen
+   met de datums waar het werkelijk om gaat. */
+export const CONTRACTDUREN: { waarde: string; label: string; maanden?: number }[] = [
+  { waarde: 'half', label: 'Half jaar', maanden: 6 },
+  { waarde: 'jaar', label: 'Een jaar', maanden: 12 },
+  { waarde: 'tweejaar', label: 'Twee jaar', maanden: 24 },
+  { waarde: 'zelf', label: 'Bepaalde tijd, zelf een einddatum' },
+  { waarde: 'onbepaalde', label: 'Onbepaalde tijd' },
+]
+
+/** Hoe lang een contract standaard duurt als er nog niets gekozen is. */
+const STANDAARD_MAANDEN = 12
+
+/* De einddatum van een contract: zoveel maanden later, een dag ervoor.
    Een contract dat op 1 november ingaat loopt tot en met 31 oktober.
 
    Schrikkeljaren rekenen vanzelf goed mee: 29 februari 2028 plus een jaar is
-   1 maart 2029, en een dag eerder is 28 februari. */
-export function eindeNaJaar(start: string | null | undefined, jaren = 1): string | null {
+   1 maart 2029, en een dag eerder is 28 februari — precies een jaar dienst. */
+export function eindeNa(start: string | null | undefined, maanden: number): string | null {
   if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null
   // Twaalf uur 's middags, zodat zomertijd de datum niet een dag verschuift.
   const d = new Date(`${start}T12:00:00`)
   if (Number.isNaN(d.getTime())) return null
-  d.setFullYear(d.getFullYear() + jaren)
+  d.setMonth(d.getMonth() + maanden)
   d.setDate(d.getDate() - 1)
   return d.toLocaleDateString('sv-SE')
 }
 
-/* Een jaarcontract is bij ons de regel, dus de einddatum loopt mee met de
-   ingangsdatum: een jaar later, een dag ervoor.
+/** Een jaar later, een dag ervoor. */
+export function eindeNaJaar(start: string | null | undefined, jaren = 1): string | null {
+  return eindeNa(start, jaren * 12)
+}
+
+/* Welke duur er nu in de app staat, afgeleid uit de datums.
+
+   Past de einddatum bij geen enkele vaste lengte, dan heb je hem zelf gezet en
+   zegt de lijst dat ook. Zo kan het lijstje nooit iets anders beweren dan er
+   in de administratie staat. */
+export function gekozenDuur(p: Persoon): string {
+  if (p.contractduur === 'onbepaalde') return 'onbepaalde'
+  if (p.contractduur !== 'bepaalde') return ''
+  if (!p.einddatum) return ''
+  const past = CONTRACTDUREN.find(
+    (d) => d.maanden && p.einddatum === eindeNa(p.ingangsdatum, d.maanden),
+  )
+  return past?.waarde ?? 'zelf'
+}
+
+/** Hoeveel maanden het contract loopt volgens de datums die er staan. */
+function maandenVan(p: Persoon): number {
+  return CONTRACTDUREN.find((d) => d.waarde === gekozenDuur(p))?.maanden ?? STANDAARD_MAANDEN
+}
+
+/* De einddatum loopt mee met de ingangsdatum, in de lengte die je gekozen
+   hebt.
 
    Alleen als je de einddatum nog niet zelf hebt aangepast. Stond er nog niets,
-   of stond er precies wat de app er de vorige keer bij bedacht, dan schuift hij
-   mee. Heb je er met de hand iets anders neergezet — een halfjaarcontract
-   bijvoorbeeld — dan blijft dat staan: een correctie op de startdatum hoort
-   jouw eigen afspraak niet te overschrijven. */
+   of stond er precies wat bij de gekozen duur hoort, dan schuift hij mee. Heb
+   je er met de hand een eigen datum neergezet, dan blijft die staan: een
+   correctie op de startdatum hoort jouw afspraak niet te overschrijven. */
 export function eindeErbij(p: Persoon, nieuweStart: string | null): { einddatum?: string | null } {
   if (!nieuweStart || p.contractduur !== 'bepaalde') return {}
-  const volgtNogMee = !p.einddatum || p.einddatum === eindeNaJaar(p.ingangsdatum)
-  return volgtNogMee ? { einddatum: eindeNaJaar(nieuweStart) } : {}
+  if (gekozenDuur(p) === 'zelf') return {}
+  return { einddatum: eindeNa(nieuweStart, maandenVan(p)) }
 }
 
 export function naamVan(p: Persoon) {

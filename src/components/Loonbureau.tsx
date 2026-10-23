@@ -5,8 +5,10 @@ import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import {
   CONTRACTTYPES,
   FUNCTIES,
+  CONTRACTDUREN,
   eindeErbij,
-  eindeNaJaar,
+  eindeNa,
+  gekozenDuur,
   korteDatum,
   naamVan,
   ontbrekendeContractvelden,
@@ -182,20 +184,23 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
           />
           <Keuze
             label="Duur"
-            waarde={p.contractduur}
-            opties={[
-              { waarde: 'bepaalde', label: 'Bepaalde tijd' },
-              { waarde: 'onbepaalde', label: 'Onbepaalde tijd' },
-            ]}
+            waarde={gekozenDuur(p)}
+            opties={CONTRACTDUREN}
             onKies={(v) => {
-              const duur = v as 'bepaalde' | 'onbepaalde'
+              if (v === 'onbepaalde') {
+                // Een contract voor onbepaalde tijd heeft geen einddatum. Laten
+                // staan zou een oude datum meesturen naar het loonbureau.
+                wijzig.mutate({ contractduur: 'onbepaalde', einddatum: null })
+                return
+              }
+              if (v === 'zelf') {
+                wijzig.mutate({ contractduur: 'bepaalde' })
+                return
+              }
+              const maanden = CONTRACTDUREN.find((d) => d.waarde === v)?.maanden
               wijzig.mutate({
-                contractduur: duur,
-                // Zet je hem op bepaalde tijd terwijl de ingangsdatum er al
-                // staat, dan hoort de einddatum er meteen bij.
-                ...(duur === 'bepaalde' && !p.einddatum && p.ingangsdatum
-                  ? { einddatum: eindeNaJaar(p.ingangsdatum) }
-                  : {}),
+                contractduur: 'bepaalde',
+                ...(maanden ? { einddatum: eindeNa(p.ingangsdatum, maanden) } : {}),
               })
             }}
           />
