@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
+import { Stromen } from '../components/Stromen'
 import { inArchief, naamVan, toestandVan, usePersonen } from '../lib/personeel'
 import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
@@ -129,6 +130,8 @@ export function Vandaag() {
       <OpJou />
 
       <Weerreeks />
+
+      <Stromen />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 // kim-push
 //
 // POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen' | 'verkoopfacturen'
-//              | 'inkoop_documenten', id }
+//              | 'inkoop_documenten' | 'stromen', id }
 //
 // Stuurt Sander een pushbericht voor een nieuwe vraag van Kim, voor een wachtpost
 // waar iets aan veranderd is, of voor een factuur die hij binnen 3 dagen zelf moet
@@ -49,6 +49,7 @@ async function zorgVoorVapid() {
 }
 const TABELLEN = [
   "kim_vragen", "kim_wachtposten", "facturen", "verkoopfacturen", "inkoop_documenten",
+  "stromen",
 ] as const;
 type Tabel = typeof TABELLEN[number];
 
@@ -60,6 +61,7 @@ const PAD: Record<Tabel, { tabel: string; schema?: string }> = {
   facturen: { tabel: "facturen" },
   verkoopfacturen: { tabel: "verkoopfacturen" },
   inkoop_documenten: { tabel: "documenten", schema: "inkoop" },
+  stromen: { tabel: "stromen" },
 };
 
 const lezen = (t: Tabel) => (PAD[t].schema ? { ...h, "Accept-Profile": PAD[t].schema! } : h);
@@ -169,6 +171,29 @@ Deno.serve(async (req) => {
         body: `${bedrag} — bekijk wat opvalt`,
         url: `${APP_URL}/inkoop/documenten/${rij.leverancier_id}/${encodeURIComponent(rij.nummer)}`,
         tag: `inkoopfactuur-${nr}`,
+      };
+    } else if (tabel === "stromen") {
+      /* Er komt iets niet meer binnen. Zie stromen_controleren in de database:
+         die bepaalt wanneer stilte te lang duurt en roept ons dan aan. Hier
+         alleen nog een tweede keer kijken, voor het geval er tussen de melding
+         en nu alsnog iets binnenkwam. */
+      const dagen = rij.laatste_op
+        ? Math.round((Date.now() - new Date(`${rij.laatste_op}T12:00:00`).getTime()) / 86400000)
+        : null;
+      if (dagen !== null && dagen <= rij.max_dagen) {
+        return json({ ok: true, overgeslagen: "komt alweer binnen" });
+      }
+      if (!(await claim(tabel, nr, "gepusht_op=is.null"))) return json({ ok: true, overgeslagen: "al gepusht" });
+      const sinds = rij.laatste_op
+        ? new Date(`${rij.laatste_op}T12:00:00`).toLocaleDateString("nl-NL", { day: "numeric", month: "long" })
+        : null;
+      bericht = {
+        title: kort(`Niets meer binnen: ${rij.naam}`, 60),
+        body: sinds
+          ? `Laatste was ${sinds}, ${dagen} dagen geleden.`
+          : "Er is hier nog nooit iets binnengekomen.",
+        url: `${APP_URL}${rij.pad ?? "/"}`,
+        tag: `stroom-${rij.sleutel}`,
       };
     } else {
       if (!rij.melding || !rij.melding_op || rij.afgedaan_op) return json({ ok: true, overgeslagen: "niets te melden" });
