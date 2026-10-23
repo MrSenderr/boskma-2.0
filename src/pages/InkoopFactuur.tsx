@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, FileText } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
+import { Factuurverslag } from '../components/Factuurverslag'
 import {
   aantalTekst,
   dagEnDatum,
@@ -194,6 +195,8 @@ export function InkoopFactuur() {
       </div>
 
       <Totalen kop={kop} />
+
+      <Factuurverslag documentId={kop.id} leverancierId={kop.leverancier_id} datum={kop.datum} />
 
       {blokken.map((b) => (
         <Levering key={b.sleutel} blok={b} />
