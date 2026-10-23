@@ -5,6 +5,8 @@ import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import {
   CONTRACTTYPES,
   FUNCTIES,
+  eindeErbij,
+  eindeNaJaar,
   korteDatum,
   naamVan,
   ontbrekendeContractvelden,
@@ -185,7 +187,17 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
               { waarde: 'bepaalde', label: 'Bepaalde tijd' },
               { waarde: 'onbepaalde', label: 'Onbepaalde tijd' },
             ]}
-            onKies={(v) => wijzig.mutate({ contractduur: v as 'bepaalde' | 'onbepaalde' })}
+            onKies={(v) => {
+              const duur = v as 'bepaalde' | 'onbepaalde'
+              wijzig.mutate({
+                contractduur: duur,
+                // Zet je hem op bepaalde tijd terwijl de ingangsdatum er al
+                // staat, dan hoort de einddatum er meteen bij.
+                ...(duur === 'bepaalde' && !p.einddatum && p.ingangsdatum
+                  ? { einddatum: eindeNaJaar(p.ingangsdatum) }
+                  : {}),
+              })
+            }}
           />
           <Keuze
             label="Functie"
@@ -255,11 +267,16 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
             defaultValue={p.ingangsdatum ?? ''}
             onBlur={(e) => {
               const v = e.target.value || null
-              if (v !== p.ingangsdatum) wijzig.mutate({ ingangsdatum: v })
+              if (v === p.ingangsdatum) return
+              wijzig.mutate({ ingangsdatum: v, ...eindeErbij(p, v) })
             }}
           />
           {p.contractduur === 'bepaalde' && (
             <Veld
+              /* Het veld is onbeheerd en leest zijn waarde alleen bij het
+                 opbouwen. Zonder deze sleutel zie je een einddatum die de app
+                 zelf invult pas na opnieuw laden staan. */
+              key={p.einddatum ?? 'leeg'}
               label="Einddatum"
               type="date"
               defaultValue={p.einddatum ?? ''}

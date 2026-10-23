@@ -113,6 +113,35 @@ export function urenInWoorden(p: Persoon): string {
   }
 }
 
+/* De einddatum van een contract van een jaar: een jaar later, een dag ervoor.
+   Een contract dat op 1 november ingaat loopt tot en met 31 oktober.
+
+   Schrikkeljaren rekenen vanzelf goed mee: 29 februari 2028 plus een jaar is
+   1 maart 2029, en een dag eerder is 28 februari. */
+export function eindeNaJaar(start: string | null | undefined, jaren = 1): string | null {
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null
+  // Twaalf uur 's middags, zodat zomertijd de datum niet een dag verschuift.
+  const d = new Date(`${start}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+  d.setFullYear(d.getFullYear() + jaren)
+  d.setDate(d.getDate() - 1)
+  return d.toLocaleDateString('sv-SE')
+}
+
+/* Een jaarcontract is bij ons de regel, dus de einddatum loopt mee met de
+   ingangsdatum: een jaar later, een dag ervoor.
+
+   Alleen als je de einddatum nog niet zelf hebt aangepast. Stond er nog niets,
+   of stond er precies wat de app er de vorige keer bij bedacht, dan schuift hij
+   mee. Heb je er met de hand iets anders neergezet — een halfjaarcontract
+   bijvoorbeeld — dan blijft dat staan: een correctie op de startdatum hoort
+   jouw eigen afspraak niet te overschrijven. */
+export function eindeErbij(p: Persoon, nieuweStart: string | null): { einddatum?: string | null } {
+  if (!nieuweStart || p.contractduur !== 'bepaalde') return {}
+  const volgtNogMee = !p.einddatum || p.einddatum === eindeNaJaar(p.ingangsdatum)
+  return volgtNogMee ? { einddatum: eindeNaJaar(nieuweStart) } : {}
+}
+
 export function naamVan(p: Persoon) {
   return [p.voornaam, p.achternaam].filter(Boolean).join(' ') || 'Naamloos'
 }
