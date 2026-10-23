@@ -13,6 +13,17 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+/* Hier staat met opzet geen controle op wie er aanbelt, anders dan bij de
+   andere functies die iets versturen.
+ *
+ * Een inloglink vraag je aan wanneer je juist níet bent ingelogd. Eisen dat de
+ * beller een beheerder is zou het inloggen onmogelijk maken.
+ *
+ * Wat hem beschermt is dat hij niets teruggeeft waar je iets aan hebt: of het
+ * adres nu bestaat of niet, het antwoord is hetzelfde. Je kunt er dus niet mee
+ * uitvinden wie er werkt. Het ergste wat iemand kan is een bekend adres een
+ * mail bezorgen die hij niet heeft aangevraagd. */
+
 const SB_URL      = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE  = (Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const RESEND_KEY  = Deno.env.get("RESEND_API_KEY")!;
@@ -238,8 +249,6 @@ serve(async (req) => {
     // zonder deze regel sta je te gissen bij een storing — en dat kostte
     // vanmiddag een uur.
     const reden = err instanceof Error ? err.message : String(err);
-    // Tijdelijk: wat zit er in de sleutel die deze functie gebruikt? Bij
-    // "JWT issued at future" is dat het enige wat de oorzaak kan aanwijzen.
     console.error("[inloglink]", reden);
     return json({ ok: false, error: "Er ging iets mis. Probeer het zo nog eens.", reden }, 500);
   }

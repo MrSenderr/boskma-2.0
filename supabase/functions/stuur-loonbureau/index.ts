@@ -9,6 +9,7 @@
 // nooit naar een persoon die er misschien niet meer werkt.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { wieBelt } from "../_shared/beller.ts";
 
 const GOTENBERG_URL  = Deno.env.get("GOTENBERG_URL")!;
 const RESEND_KEY     = Deno.env.get("RESEND_API_KEY")!;
@@ -71,6 +72,12 @@ serve(async (req) => {
   if (req.method !== "POST") return jsonErr("Method not allowed", 405);
 
   try {
+    /* Deze functie mailt het mutatieformulier met bijlagen naar het
+       loonbureau: contracten, loonheffingsverklaringen, kopieën van een
+       identiteitsbewijs. Niets daarvan hoort in gang gezet te kunnen worden
+       door iemand die alleen de publieke sleutel uit de webapp heeft. */
+    if (!(await wieBelt(req))) return jsonErr("hier mag je niet bij", 403);
+
     const { mutatie_html, files, emp_naam, lb_contract } = await req.json();
     if (!mutatie_html || !emp_naam) return jsonErr("mutatie_html en emp_naam zijn vereist", 400);
 

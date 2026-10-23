@@ -50,5 +50,40 @@ in zodra die zijn eigen deur bewaakt, en rol hem anders gewoon uit.
 
 **`verify_jwt = true` is geen slot.** Supabase controleert alleen dát er een
 geldige sleutel meekomt, en de publieke sleutel staat in elke browser die de
-app opent. Een functie die namens jou iets verstuurt hoort daarom zelf te
-vragen wie er aanbelt — zie `belIsVanJou` in `stuur-verkoopfactuur`.
+app opent.
+
+## Wie belt er aan
+
+Een functie die namens Sander iets verstuurt, een nummer uitdeelt of een
+invullink aanmaakt, vraagt zelf wie er aanbelt. Dat gebeurt met `wieBelt` uit
+`_shared/beller.ts`, dat het aan de database vraagt (`is_app_user`) zodat
+nergens een mailadres hardgecodeerd staat.
+
+Dat doen op 24 oktober 2026: `send-onboarding`, `stuur-loonbureau`,
+`verkoopfactuur-pdf` en `stuur-verkoopfactuur`.
+
+`send-onboarding` was de ergste. Die stond met `verify_jwt = false` en zonder
+enige eigen controle open, en geeft in zijn antwoord het token terug waarmee je
+het invulformulier van een sollicitant opent — BSN en rekeningnummer. Je had er
+alleen een sollicitatienummer voor nodig. Dat is een UUID en dus niet te raden,
+maar wie er een te pakken kreeg kon ermee bij die gegevens.
+
+`verkoopfactuur-pdf` accepteert ook de serversleutel, want
+`stuur-verkoopfactuur` roept hem onderweg aan. Wie die sleutel heeft kan toch
+al alles; het is geen extra recht, alleen een andere weg naar binnen.
+
+### Waar het met opzet níet staat
+
+`stuur-inloglink` vraag je juist aan wanneer je nog niet bent ingelogd. Eisen
+dat de beller een beheerder is zou inloggen onmogelijk maken. Wat hem beschermt
+is dat zijn antwoord niets verraadt: of het adres bestaat of niet, je krijgt
+hetzelfde te horen.
+
+`medewerker-gegevens` en `submit-onboarding` worden ingevuld door iemand die
+niet inlogt. De niet te raden code in de link ís daar de sleutel.
+
+`rooster-inlezen` heeft zijn eigen sleutel (`ROOSTER_SLEUTEL`), meegestuurd
+door het script in Sanders Gmail.
+
+`kim-push` zoekt de rij zelf op, gebruikt uit het verzoek alleen tabel en
+nummer, en doet per rij hooguit één keer iets.

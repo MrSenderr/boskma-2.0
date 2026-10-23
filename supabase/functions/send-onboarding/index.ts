@@ -5,6 +5,7 @@
 // POST body: { sollicitatie_id: string (UUID) }
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { wieBelt } from "../_shared/beller.ts";
 
 const RESEND_KEY    = Deno.env.get("RESEND_API_KEY")!;
 const SB_URL        = Deno.env.get("SUPABASE_URL")!;
@@ -48,6 +49,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   try {
+    /* Deze functie maakt een invullink aan en geeft hem in het antwoord terug.
+       Zonder deze controle kon iedereen die het adres van de functie kende een
+       geldig token voor een sollicitant opvragen — en daarmee bij diens BSN en
+       rekeningnummer. Er stond geen enkel slot op. */
+    if (!(await wieBelt(req))) {
+      return new Response(JSON.stringify({ ok: false, error: "hier mag je niet bij" }), {
+        status: 403, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
     const { sollicitatie_id, verstuur_mail = true } = await req.json();
     if (!sollicitatie_id) throw new Error("sollicitatie_id vereist");
 

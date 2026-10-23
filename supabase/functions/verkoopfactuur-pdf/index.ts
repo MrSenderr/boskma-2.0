@@ -11,6 +11,7 @@
 // facturen en ze horen niet in het archief.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { wieBelt } from "../_shared/beller.ts";
 
 const SB_URL  = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY  = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -42,6 +43,11 @@ serve(async (req) => {
   if (req.method !== "POST") return fout("alleen POST", 405);
 
   try {
+    /* Jij, of stuur-verkoopfactuur die hem onderweg aanroept. Een factuur-pdf
+       bevat het adres van je klant en wat hij afneemt; dat is niets voor een
+       voorbijganger die de publieke sleutel heeft. */
+    if (!(await wieBelt(req, { serverMag: true }))) return fout("hier mag je niet bij", 403);
+
     if (!GOTENBERG) return fout("GOTENBERG_URL niet ingesteld", 500);
 
     const { factuur_id, soort: gevraagd } = await req.json().catch(() => ({}));
