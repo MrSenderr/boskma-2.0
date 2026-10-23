@@ -29,9 +29,6 @@ Uit de app: `stuur-inloglink`, `stuur-loonbureau`, `stuur-verkoopfactuur`,
 `verkoopfactuur-pdf`, `send-onboarding`, `submit-onboarding`,
 `weer-verzamelen`, en `rooster-inlezen` via het script in Gmail.
 
-Uit de oude app: `medewerker-gegevens`, aangeroepen door
-`medewerker-gegevens.html` die daar nog wordt geserveerd.
-
 ## Wat er op 24 oktober 2026 is weggehaald
 
 Elf functies die nergens meer vandaan werden aangeroepen zijn verwijderd bij
@@ -45,9 +42,23 @@ Doorzocht voordat ze weggingen: beide app-mappen, de inkoop-app, de
 databasefuncties, de cron, de **webhook-triggers**, de schermgegevens en het
 aanroeplogboek van de laatste etmaal.
 
-`stuur-medewerker-verzoek` was de enige waar twijfel over was: die mailde de
-link naar `medewerker-gegevens.html`, en over dat draadje naar de oude app is
-nog niets besloten. Hij was nergens aan gekoppeld en is daarom meegegaan.
+Later die dag ging `medewerker-gegevens` er ook af, en daarmee het hele
+draadje naar de oude app: `stuur-medewerker-verzoek` mailde een link naar
+`medewerker-gegevens.html`, een pagina die de oude app serveerde, en die riep
+deze functie aan. In boskma-2.0 doet **Mijn gegevens** hetzelfde voor wie
+inlogt, en wat er nog ontbreekt kan Sander op de persoonskaart invullen.
+
+Nagekeken voordat dat wegging: van de twaalf ingevulde formulieren staan de
+gegevens van iedereen die nu in dienst is ook op zijn persoonskaart. Alleen
+Sander zelf en drie mensen die niet meer in de personeelslijst staan (Daisy
+Vermeer, Jasper Wijdenes, Tessa Vertelman) hebben gegevens die alleen in de
+oude tabel staan.
+
+**De tabel `medewerker_gegevens` blijft bestaan.** Daar is niets van
+weggegooid. Maar niets in de nieuwe app leest hem, en er staan BSN's,
+rekeningnummers en kopieën van identiteitsbewijzen in van mensen die hier niet
+meer werken. Dat is een opruimvraag die nog openstaat; zie ook
+`ruim-id-kopieen-op`, dat voor de nieuwe app wél al schoonmaakt.
 
 **Terughalen** kan altijd — de broncode staat in commit `5edf7c7`:
 

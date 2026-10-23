@@ -22,11 +22,8 @@ verify_jwt = false
 [functions.rooster-inlezen]
 verify_jwt = false
 
-# Formulieren die een medewerker invult zonder in te loggen. De link bevat een
-# niet te raden code; die code ís de sleutel.
-[functions.medewerker-gegevens]
-verify_jwt = false
-
+# Formulieren die iemand invult zonder in te loggen. De link bevat een niet te
+# raden code; die code ís de sleutel.
 [functions.send-onboarding]
 verify_jwt = false
 
