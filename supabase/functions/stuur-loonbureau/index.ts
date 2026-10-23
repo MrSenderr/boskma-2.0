@@ -1,14 +1,19 @@
 // stuur-loonbureau
 // POST { mutatie_html, files, emp_naam, lb_contract }
 // → Genereert mutatieformulier PDF, haalt overige bestanden op,
-//   stuurt alles als bijlage naar loonbureau@boskmafoodservice.nl
+//   stuurt alles als bijlage naar het loonbureau.
+//
+// Het adres staat in de tabel instellingen onder 'loonbureau_naar', zodat een
+// nieuw adres of een andere contactpersoon geen nieuwe versie van deze functie
+// vraagt. Lukt het lezen niet, dan gaat het naar het algemene adres hieronder —
+// nooit naar een persoon die er misschien niet meer werkt.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GOTENBERG_URL  = Deno.env.get("GOTENBERG_URL")!;
 const RESEND_KEY     = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL     = "onboarding@boskmafoodservice.nl";
-const TO_EMAIL       = "h.mes@lbwf.nl";
+const TO_STANDAARD   = "info@lbwf.nl";
 const CC_EMAIL       = "sander@boskmafoodservice.nl";
 
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
@@ -32,6 +37,20 @@ async function leesTestmodus() {
     return { aan: w.aan !== false, adres: w.adres || CC_EMAIL };
   } catch {
     return veilig;
+  }
+}
+
+/** Naar welk adres het loonbureau post krijgt. */
+async function leesOntvanger(): Promise<string> {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/instellingen?sleutel=eq.loonbureau_naar&select=waarde`, {
+      headers: { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` },
+    });
+    if (!r.ok) return TO_STANDAARD;
+    const adres = (await r.json())?.[0]?.waarde?.adres;
+    return typeof adres === "string" && adres.includes("@") ? adres : TO_STANDAARD;
+  } catch {
+    return TO_STANDAARD;
   }
 }
 
@@ -110,6 +129,7 @@ serve(async (req) => {
     if (attachments.length === 0) return jsonErr("Geen bestanden konden worden opgehaald", 500);
 
     const tm = await leesTestmodus();
+    const naarLoonbureau = await leesOntvanger();
 
     // 3. Verstuur via Resend
     const mailRes = await fetch("https://api.resend.com/emails", {
@@ -117,10 +137,10 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: FROM_EMAIL,
-        to: [tm.aan ? tm.adres : TO_EMAIL],
+        to: [tm.aan ? tm.adres : naarLoonbureau],
         ...(tm.aan ? {} : { cc: [CC_EMAIL] }),
         subject: `${tm.aan ? "[TEST] " : ""}Mutatieformulier + bijlagen — ${emp_naam}${lb_contract ? " (contract door loonbureau)" : ""}`,
-        html: (tm.aan ? testBalk(TO_EMAIL) : "") + buildMailBody(emp_naam, attachments.map(a => a.filename), lb_contract),
+        html: (tm.aan ? testBalk(naarLoonbureau) : "") + buildMailBody(emp_naam, attachments.map(a => a.filename), lb_contract),
         attachments,
       }),
     });
@@ -131,7 +151,7 @@ serve(async (req) => {
       return jsonErr("Verzenden mislukt: " + err, 500);
     }
 
-    return new Response(JSON.stringify({ ok: true, testmodus: tm.aan, verstuurd_naar: tm.aan ? tm.adres : TO_EMAIL, bijlagen: attachments.length }), {
+    return new Response(JSON.stringify({ ok: true, testmodus: tm.aan, verstuurd_naar: tm.aan ? tm.adres : naarLoonbureau, bijlagen: attachments.length }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
 
