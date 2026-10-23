@@ -1,6 +1,7 @@
 // kim-push
 //
-// POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen' | 'verkoopfacturen', id }
+// POST { tabel: 'kim_vragen' | 'kim_wachtposten' | 'facturen' | 'verkoopfacturen'
+//              | 'inkoop_documenten', id }
 //
 // Stuurt Sander een pushbericht voor een nieuwe vraag van Kim, voor een wachtpost
 // waar iets aan veranderd is, of voor een factuur die hij binnen 3 dagen zelf moet
@@ -46,8 +47,23 @@ async function zorgVoorVapid() {
   webpush.setVapidDetails("mailto:sander@boskmafoodservice.nl", k.public!, k.private!);
   vapidKlaar = true;
 }
-const TABELLEN = ["kim_vragen", "kim_wachtposten", "facturen", "verkoopfacturen"] as const;
+const TABELLEN = [
+  "kim_vragen", "kim_wachtposten", "facturen", "verkoopfacturen", "inkoop_documenten",
+] as const;
 type Tabel = typeof TABELLEN[number];
+
+/* De inkoopfacturen staan in een eigen schema. PostgREST wil dat als kopregel
+   horen, anders zoekt hij in public en vindt hij de tabel niet. */
+const PAD: Record<Tabel, { tabel: string; schema?: string }> = {
+  kim_vragen: { tabel: "kim_vragen" },
+  kim_wachtposten: { tabel: "kim_wachtposten" },
+  facturen: { tabel: "facturen" },
+  verkoopfacturen: { tabel: "verkoopfacturen" },
+  inkoop_documenten: { tabel: "documenten", schema: "inkoop" },
+};
+
+const lezen = (t: Tabel) => (PAD[t].schema ? { ...h, "Accept-Profile": PAD[t].schema! } : h);
+const schrijven = (t: Tabel) => (PAD[t].schema ? { ...h, "Content-Profile": PAD[t].schema! } : h);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -61,9 +77,9 @@ function kort(tekst: string, max = 160) {
 /** Zet gepusht_op, maar alleen als de rij nog gepusht moet worden. Geeft true als
  *  deze aanroep de rij "claimt"; zo gaat er nooit twee keer een push uit. */
 async function claim(tabel: Tabel, id: number, filter: string) {
-  const r = await fetch(`${SB_URL}/rest/v1/${tabel}?id=eq.${id}&${filter}`, {
+  const r = await fetch(`${SB_URL}/rest/v1/${PAD[tabel].tabel}?id=eq.${id}&${filter}`, {
     method: "PATCH",
-    headers: { ...h, Prefer: "return=representation" },
+    headers: { ...schrijven(tabel), Prefer: "return=representation" },
     body: JSON.stringify({ gepusht_op: new Date().toISOString() }),
   });
   if (!r.ok) throw new Error(`claim mislukt: ${await r.text()}`);
@@ -85,7 +101,9 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "ongeldige tabel of nummer" }, 400);
     }
 
-    const r = await fetch(`${SB_URL}/rest/v1/${tabel}?id=eq.${nr}&select=*`, { headers: h });
+    const r = await fetch(`${SB_URL}/rest/v1/${PAD[tabel as Tabel].tabel}?id=eq.${nr}&select=*`, {
+      headers: lezen(tabel as Tabel),
+    });
     const rij = (await r.json())?.[0];
     if (!rij) return json({ ok: false, error: "rij niet gevonden" }, 404);
 
@@ -132,6 +150,25 @@ Deno.serve(async (req) => {
         body: `Factuur ${rij.nummer}, ${EURO.format(Number(rij.totaal_incl))}, ${dagen} ${dagen === 1 ? "dag" : "dagen"} te laat`,
         url: `${APP_URL}/facturen/uitgaand`,
         tag: `verkoopfactuur-${nr}`,
+      };
+    } else if (tabel === "inkoop_documenten") {
+      /* Een nieuwe inkoopfactuur. Het bericht zegt met opzet niet wat eruit
+         springt: dat rekent de app uit, en die telling hier nog eens overdoen
+         zou betekenen dat twee plekken hetzelfde moeten weten. Lopen ze uit
+         elkaar, dan zegt je telefoon iets anders dan je scherm. Dus alleen
+         dát hij er is, met het verslag een tik verderop. */
+      if (rij.status !== "verwerkt") return json({ ok: true, overgeslagen: "nog niet verwerkt" });
+      if (!(await claim(tabel, nr, "gepusht_op=is.null"))) return json({ ok: true, overgeslagen: "al gepusht" });
+      const lev = await fetch(
+        `${SB_URL}/rest/v1/leveranciers?id=eq.${rij.leverancier_id}&select=naam`,
+        { headers: { ...h, "Accept-Profile": "inkoop" } },
+      ).then((r) => r.json()).then((r) => r?.[0]?.naam ?? "een leverancier");
+      const bedrag = rij.totaal_incl != null ? EURO.format(Number(rij.totaal_incl)) : "bedrag onbekend";
+      bericht = {
+        title: kort(`Nieuwe factuur: ${lev}`, 60),
+        body: `${bedrag} — bekijk wat opvalt`,
+        url: `${APP_URL}/inkoop/documenten/${rij.leverancier_id}/${encodeURIComponent(rij.nummer)}`,
+        tag: `inkoopfactuur-${nr}`,
       };
     } else {
       if (!rij.melding || !rij.melding_op || rij.afgedaan_op) return json({ ok: true, overgeslagen: "niets te melden" });
