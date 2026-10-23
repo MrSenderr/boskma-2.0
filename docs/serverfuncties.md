@@ -16,27 +16,45 @@ uitgerold, omdat geen van de vier ergens wordt aangeroepen.
 
 ## Wie roept wat aan
 
-Uit de database (`net.http_post`): `kim-push`, `ruim-id-kopieen-op`,
+Uit de database met `net.http_post`: `kim-push`, `ruim-id-kopieen-op`,
 `weer-verzamelen`.
 
+Uit de database met een **webhook-trigger** op een tabel: `dynamic-function`
+(mail bij een nieuwe sollicitatie) en `send-push`, allebei op `sollicitaties`.
+Let op: die staan niet in de tekst van een databasefunctie maar in de
+triggerdefinitie, dus zoeken op `functions/v1/` in `pg_get_functiondef` vindt ze
+niet. Zoek ook in `pg_get_triggerdef`.
+
 Uit de app: `stuur-inloglink`, `stuur-loonbureau`, `stuur-verkoopfactuur`,
-`verkoopfactuur-pdf`, `send-push`, `send-onboarding`, `submit-onboarding`,
-`weer-verzamelen`, `rooster-inlezen` (via het script in Gmail).
+`verkoopfactuur-pdf`, `send-onboarding`, `submit-onboarding`,
+`weer-verzamelen`, en `rooster-inlezen` via het script in Gmail.
 
-Nergens meer aangeroepen, voor zover te vinden in beide mappen en de database:
-`daily-digest`, `daily-reminders`, `stuur-contract`, `teken-contract`,
-`stuur-medewerker-verzoek`, `stuur-melding`, `stuur-kennismaking`,
-`generate-contract-pdf`, `vb-proxy`, `f1-nieuws`, `f1-live`.
+Uit de oude app: `medewerker-gegevens`, aangeroepen door
+`medewerker-gegevens.html` die daar nog wordt geserveerd.
 
-Weggooien is pas veilig als zeker is dat er niets buiten deze twee mappen naar
-wijst. Twee dingen om op te letten:
+## Wat er op 24 oktober 2026 is weggehaald
 
-- `medewerker-gegevens` wordt aangeroepen door `medewerker-gegevens.html`, een
-  losse pagina die de **oude app** serveert. `stuur-medewerker-verzoek` mailt
-  de link ernaartoe. Gaat de oude app weg, dan valt dat formulier om. In
-  boskma-2.0 zit inmiddels Mijn gegevens, dat hetzelfde doet voor wie inlogt.
-- `generate-contract-pdf`, `stuur-contract` en `teken-contract` horen bij de
-  contractgenerator die bewust is uitgezet.
+Elf functies die nergens meer vandaan werden aangeroepen zijn verwijderd bij
+Supabase en uit deze map:
+
+`daily-digest` · `daily-reminders` · `stuur-melding` · `stuur-kennismaking` ·
+`stuur-contract` · `teken-contract` · `generate-contract-pdf` ·
+`stuur-medewerker-verzoek` · `vb-proxy` · `f1-nieuws` · `f1-live`
+
+Doorzocht voordat ze weggingen: beide app-mappen, de inkoop-app, de
+databasefuncties, de cron, de **webhook-triggers**, de schermgegevens en het
+aanroeplogboek van de laatste etmaal.
+
+`stuur-medewerker-verzoek` was de enige waar twijfel over was: die mailde de
+link naar `medewerker-gegevens.html`, en over dat draadje naar de oude app is
+nog niets besloten. Hij was nergens aan gekoppeld en is daarom meegegaan.
+
+**Terughalen** kan altijd — de broncode staat in commit `5edf7c7`:
+
+```
+git show 5edf7c7:supabase/functions/<naam>/index.ts > supabase/functions/<naam>/index.ts
+npx supabase functions deploy <naam> --project-ref xukzumqddeateztmjpzf
+```
 
 ## verify_jwt
 

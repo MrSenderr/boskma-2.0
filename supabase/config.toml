@@ -33,18 +33,6 @@ verify_jwt = false
 [functions.submit-onboarding]
 verify_jwt = false
 
-[functions.stuur-kennismaking]
-verify_jwt = false
-
-[functions.stuur-melding]
-verify_jwt = false
-
-[functions.generate-contract-pdf]
-verify_jwt = false
-
-# Schermen in de zaak, zonder gebruiker.
-[functions.f1-nieuws]
-verify_jwt = false
-
-[functions.f1-live]
-verify_jwt = false
+# dynamic-function staat hier met opzet niet in: die draait op verify_jwt = true
+# en de webhook van de database stuurt een sleutel mee. Hem hier zetten zou hem
+# losser maken zonder dat het ergens voor nodig is.
