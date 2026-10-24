@@ -8,13 +8,24 @@
 // Verwijdert het bestand uit de opslag én de verwijzing uit onboarding_data,
 // en laat een datum achter zodat je kunt zien dat het gebeurd is.
 //
-// Draait dagelijks; wordt aangeroepen vanuit daily-digest.
+// Draait dagelijks om zes uur, via de cron ruim-id-kopieen-op-dagelijks.
+//
+// Twee plekken worden nagelopen. De personeelskaarten, en daarnaast de oude
+// tabel medewerker_gegevens van het invulformulier uit boskma-app. Die tweede
+// was jarenlang buiten beeld: deze opruimer werkte via de personeelslijst, en
+// wie daar niet in staat — iemand die weer vertrok, of nooit als medewerker is
+// aangemaakt — bleef zo met zijn identiteitsbewijs in de opslag staan. Op
+// 24 oktober 2026 waren dat er acht, van vier mensen, uit juni en juli.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = (Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const BEWAARDAGEN = 14;
+/* Voor wezen een ruimere marge. Het invulformulier zet eerst het bestand neer
+   en bewaart daarna pas de verwijzing; een bestand van vanmiddag is dus even
+   een wees zonder dat er iets mis is. Dertig dagen is ruim buiten dat gaatje. */
+const WEESDAGEN = 30;
 
 const h = {
   apikey: SB_SERVICE,
@@ -51,12 +62,18 @@ async function verwijderBestand(waarde: string): Promise<boolean> {
     method: "DELETE",
     headers: { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` },
   });
-  // 404 betekent dat hij er al niet meer is; dat is ook goed
-  if (!r.ok && r.status !== 404) {
-    console.warn("[opruimen] verwijderen mislukt:", deel.bucket, deel.pad, r.status);
-    return false;
-  }
-  return true;
+  if (r.ok) return true;
+
+  /* Al weg is ook goed. De opslag antwoordt daarop niet altijd met 404: bij een
+     bestand dat er niet meer is komt er een 400 terug met "not_found" in de
+     tekst. Dat werd hier als mislukking gelezen, en daardoor bleef de
+     verwijzing staan naar een bestand dat allang verdwenen was — elke dag
+     opnieuw gemeld, veertien keer, zonder dat er iets aan te doen viel. */
+  const tekst = await r.text().catch(() => "");
+  if (r.status === 404 || /not.?found/i.test(tekst)) return true;
+
+  console.warn("[opruimen] verwijderen mislukt:", deel.bucket, deel.pad, r.status, tekst.slice(0, 120));
+  return false;
 }
 
 serve(async () => {
@@ -119,8 +136,118 @@ serve(async () => {
       console.log(`[opruimen] ${naam}: ID-kopieën weg`);
     }
 
+    /* De oude tabel van het invulformulier. Daar hangt geen loonbureau-datum
+       aan, dus geldt het moment van indienen: veertien dagen na het invullen
+       ligt het bij het loonbureau en hoeven wij het niet meer te bewaren.
+
+       Een pad dat óók nog op een personeelskaart staat blijft met rust. Dat
+       komt voor — het formulier en de kaart deelden hun uploads — en dan is de
+       kaart de baas; die wordt hierboven al op zijn eigen moment opgeruimd. */
+    const nogInGebruik = new Set<string>();
+    const kaarten = await fetch(
+      `${SB_URL}/rest/v1/sollicitaties?select=onboarding_data&onboarding_data=not.is.null`,
+      { headers: h },
+    ).then((r) => (r.ok ? r.json() : []));
+    for (const k of kaarten) {
+      for (const sleutel of KOPIE_SLEUTELS) {
+        const w = k.onboarding_data?.[sleutel];
+        if (typeof w === "string" && w) nogInGebruik.add(w);
+      }
+    }
+
+    const oudeGrens = new Date(Date.now() - BEWAARDAGEN * 86_400_000).toISOString();
+    const oud = await fetch(
+      `${SB_URL}/rest/v1/medewerker_gegevens?select=id,medewerker_naam,gegevens,bestaande_gegevens` +
+        `&ingediend_op=lt.${oudeGrens}`,
+      { headers: h },
+    ).then((r) => (r.ok ? r.json() : []));
+
+    let oudOpgeruimd = 0;
+    for (const rij of oud) {
+      const gegevens = { ...(rij.gegevens ?? {}) };
+      let ietsGedaan = false;
+
+      for (const k of KOPIE_SLEUTELS) {
+        const waarde = gegevens[k];
+        if (typeof waarde !== "string" || !waarde) continue;
+        if (nogInGebruik.has(waarde)) continue;
+
+        if (await verwijderBestand(waarde)) {
+          bestanden++;
+          delete gegevens[k];
+          gegevens.id_kopie_opgeruimd_op = new Date().toISOString();
+          ietsGedaan = true;
+        } else {
+          nietGelukt.push({ naam: rij.medewerker_naam ?? "?", waarde: waarde.slice(0, 90) });
+        }
+      }
+
+      if (!ietsGedaan) continue;
+      const p = await fetch(`${SB_URL}/rest/v1/medewerker_gegevens?id=eq.${rij.id}`, {
+        method: "PATCH",
+        headers: { ...h, Prefer: "return=minimal" },
+        body: JSON.stringify({ gegevens }),
+      });
+      if (!p.ok) {
+        console.error("[opruimen] oude tabel bijwerken mislukt voor", rij.id, await p.text());
+        continue;
+      }
+      oudOpgeruimd++;
+      console.log(`[opruimen] ${rij.medewerker_naam}: ID-kopieën weg (oud formulier)`);
+    }
+
+    /* Wezen: bestanden in de opslag waar nergens meer een verwijzing naar
+       staat. De twee rondes hierboven werken van de administratie naar de
+       opslag, en vinden zo'n bestand dus nooit — het staat in geen enkele rij.
+       Op 24 oktober 2026 lagen er tweeëntwintig, uit juni en juli: uploads
+       waarvan het formulier nooit is afgemaakt, of die bij het overzetten naar
+       de nieuwe app zijn losgeraakt.
+
+       Deze ronde kijkt andersom: van de opslag naar de administratie. */
+    const genoemd = new Set<string>(nogInGebruik);
+    for (const rij of rijen) {
+      for (const blok of [rij.onboarding_data, rij.oude_app_data]) {
+        for (const k of KOPIE_SLEUTELS) {
+          const w = blok?.[k];
+          if (typeof w === "string" && w) genoemd.add(w);
+        }
+      }
+    }
+    for (const rij of oud) {
+      for (const blok of [rij.gegevens, rij.bestaande_gegevens]) {
+        for (const k of KOPIE_SLEUTELS) {
+          const w = blok?.[k];
+          if (typeof w === "string" && w) genoemd.add(w);
+        }
+      }
+    }
+
+    const lijst = await fetch(`${SB_URL}/storage/v1/object/list/${STANDAARD_BUCKET}`, {
+      method: "POST", headers: h,
+      body: JSON.stringify({ prefix: "id-kopie/", limit: 1000 }),
+    }).then((r) => (r.ok ? r.json() : []));
+
+    const weesGrens = Date.now() - WEESDAGEN * 86_400_000;
+    let wezen = 0;
+    for (const bestand of lijst as { name: string; created_at?: string }[]) {
+      const pad = `id-kopie/${bestand.name}`;
+      if (genoemd.has(pad)) continue;
+      // Een vers bestand met rust laten: de verwijzing kan nog onderweg zijn.
+      if (bestand.created_at && new Date(bestand.created_at).getTime() > weesGrens) continue;
+      if (await verwijderBestand(pad)) {
+        wezen++;
+        console.log(`[opruimen] wees weg: ${pad}`);
+      } else {
+        nietGelukt.push({ naam: "(wees)", waarde: pad.slice(0, 90) });
+      }
+    }
+
     return new Response(
-      JSON.stringify({ ok: true, gecontroleerd: rijen.length, opgeruimd, bestanden, nietGelukt }),
+      JSON.stringify({
+        ok: true, gecontroleerd: rijen.length, opgeruimd, bestanden, nietGelukt,
+        oudFormulier: { gecontroleerd: oud.length, opgeruimd: oudOpgeruimd },
+        wezen,
+      }),
       { headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {

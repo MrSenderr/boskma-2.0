@@ -116,3 +116,35 @@ door het script in Sanders Gmail.
 
 `kim-push` zoekt de rij zelf op, gebruikt uit het verzoek alleen tabel en
 nummer, en doet per rij hooguit één keer iets.
+
+## Opruimen van identiteitsbewijzen
+
+`ruim-id-kopieen-op` draait dagelijks om zes uur. De regel staat in
+`docs/modules/personeel/personeelsmodule.md`: het loonbureau bewaart de
+kopieën, wij houden ze veertien dagen als vangnet. BSN en rekeningnummer
+blijven staan — die heb je nodig voor de mutaties.
+
+Sinds 24 oktober 2026 loopt hij langs drie plekken in plaats van één:
+
+1. **De personeelskaarten.** Veertien dagen na `loonbureau_verstuurd_op`.
+2. **De oude tabel `medewerker_gegevens`** van het invulformulier uit
+   boskma-app. Die had geen loonbureau-datum, dus telt `ingediend_op`. Een
+   bestand dat óók op een personeelskaart staat blijft met rust; dan is de
+   kaart de baas.
+3. **Wezen in de opslag.** Bestanden waar nergens nog een verwijzing naar
+   staat. De eerste twee rondes werken van de administratie naar de opslag en
+   vinden die dus nooit. Hier wordt het omgekeerd gedaan, met een marge van
+   dertig dagen: het formulier zet eerst het bestand neer en bewaart daarna pas
+   de verwijzing, en een upload van vanmiddag is dus even een wees zonder dat
+   er iets mis is.
+
+Op die dag lagen er **tweeëntwintig wezen** uit juni en juli, en acht kopieën
+van vier mensen die niet in de personeelslijst staan. Allemaal weg. Van
+zesentwintig bestanden naar vier, en die vier horen bij Maartje en Nathal, die
+nog niet naar het loonbureau zijn gestuurd.
+
+Nog iets dat daarbij aan het licht kwam: de opslag antwoordt op het verwijderen
+van een bestand dat er niet meer is met **400**, niet met 404. Dat werd als
+mislukking gelezen, dus veertien verwijzingen naar allang verdwenen bestanden
+bleven staan en werden elke dag opnieuw gemeld. Nu wordt "not_found" in de
+tekst ook als klaar gelezen.
