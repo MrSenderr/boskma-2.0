@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
 import type { Onderbouwing } from './gewerkteUren'
+import { alsTekst, type Blok, type Brief } from './brieven'
 import {
   KETEN_MAX_CONTRACTEN,
   urenTekst,
@@ -69,8 +70,10 @@ export type Voorstel = {
   ingetrokken_reden: string | null
   naar_loonbureau_op: string | null
   contract_id: string | null
-  /** De brief zoals verstuurd. Niet opnieuw samenstellen: dit is het bewijs. */
+  /** De brief als platte tekst, zoals verstuurd. Het bewijsstuk. */
   brief: string | null
+  /** Dezelfde brief met zijn opbouw, voor het scherm van de medewerker. */
+  brief_opbouw: Blok[] | null
   /** Op papier meegegeven; het antwoord is door Sander vastgelegd. */
   op_papier: boolean
 }
@@ -523,9 +526,16 @@ export function useVoorstelIntrekken(medewerkerId: string) {
 export function useVoorstelVersturen(medewerkerId: string) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async (v: Voorstel) => {
+    mutationFn: async (opdracht: { voorstel: Voorstel; brief: Brief }) => {
+      const v = opdracht.voorstel
       const { data, error } = await supabase.functions.invoke('stuur-voorstel', {
-        body: { voorstel: v.id, brief: samenvatting(v) },
+        body: {
+          voorstel: v.id,
+          aanhef: opdracht.brief.aanhef,
+          blokken: opdracht.brief.blokken,
+          afsluiting: opdracht.brief.afsluiting,
+          tekst: alsTekst(opdracht.brief),
+        },
       })
       if (error) throw new Error(await leesFout(error))
       if (!data?.ok) throw new Error(data?.error ?? 'Versturen lukte niet.')

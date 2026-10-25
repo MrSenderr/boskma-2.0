@@ -1,14 +1,18 @@
 // stuur-voorstel
-// POST { voorstel: uuid, brief: string[] }
+// POST { voorstel: uuid, aanhef, blokken, afsluiting, tekst }
 // → mailt het contractvoorstel naar de medewerker, stuurt hem een pushbericht
 //   als hij meldingen aan heeft staan, en zet verstuurd_op.
 //
 // Waarom de brief meekomt uit de app en hier niet opnieuw wordt samengesteld:
-// Sander ziet de zinnen voordat hij op versturen drukt, en wat hij zag hoort
+// Sander ziet de brief voordat hij op versturen drukt, en wat hij zag hoort
 // verstuurd te worden. Zou deze functie de tekst zelf opbouwen uit de velden,
 // dan zijn er twee plekken waar de brief wordt geschreven en gaan die vroeg of
-// laat uit elkaar lopen. De tekst wordt opgeslagen in de kolom brief: bij een
-// geschil moet je kunnen laten zien wat er die dag is aangeboden.
+// laat uit elkaar lopen.
+//
+// De brief komt binnen als blokken — koppen, alinea's, opsommingen, kaders —
+// en wordt hier als mail gezet. Dezelfde blokken en dezelfde platte tekst gaan
+// de database in: de tekst als bewijsstuk, de blokken zodat het scherm van de
+// medewerker later precies toont wat er is verstuurd.
 //
 // Wat deze functie zelf opzoekt is wie de medewerker is en of het voorstel nog
 // verstuurd mag worden. Dat komt niet uit het verzoek: anders kan wie de
@@ -78,40 +82,46 @@ const AARDKOP: Record<string, string> = {
   verlengen_en_vaste_uren: "Een voorstel om te verlengen, en een aanbod voor vaste uren",
 };
 
+type Blok =
+  | { soort: "alinea"; tekst: string }
+  | { soort: "kop"; tekst: string }
+  | { soort: "lijst"; regels: string[] }
+  | { soort: "kader"; tekst: string };
+
+function blokAlsHtml(b: Blok): string {
+  if (b.soort === "kop") {
+    return `<p style="margin:20px 0 6px;font-weight:700">${ontsnap(b.tekst)}</p>`;
+  }
+  if (b.soort === "lijst") {
+    return `<ul style="margin:0 0 12px;padding-left:20px">${b.regels
+      .map((r) => `<li style="margin:0 0 4px">${ontsnap(r)}</li>`)
+      .join("")}</ul>`;
+  }
+  if (b.soort === "kader") {
+    return `<div style="border-left:3px solid #003a41;background:#f1efe6;padding:10px 14px;margin:16px 0">${ontsnap(b.tekst)}</div>`;
+  }
+  return `<p style="margin:0 0 12px">${ontsnap(b.tekst)}</p>`;
+}
+
 function mailtekst(opties: {
-  voornaam: string;
-  aard: string;
-  regels: string[];
-  uiterlijk: string | null;
+  aanhef: string;
+  blokken: Blok[];
+  afsluiting: string[];
   testAdres?: string;
 }): string {
-  const { voornaam, aard, regels, uiterlijk, testAdres } = opties;
+  const { aanhef, blokken, afsluiting, testAdres } = opties;
   const balk = testAdres
     ? `<div style="background:#fff4d6;border:2px solid #b87a22;border-radius:6px;padding:12px 16px;margin:0 0 16px;font-size:14px;color:#5c4310">
          <strong>TESTMODUS</strong> — deze mail was bedoeld voor <strong>${ontsnap(testAdres)}</strong>. De medewerker heeft niets ontvangen.
        </div>`
     : "";
 
-  const datum = uiterlijk
-    ? new Date(`${uiterlijk}T12:00:00`).toLocaleDateString("nl-NL", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : null;
-
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1b1b1b;max-width:560px">
     ${balk}
-    <p>Hoi ${ontsnap(voornaam)},</p>
-    <p>${ontsnap(AARDKOP[aard] ?? "Een voorstel over je contract")}:</p>
-    <div style="border-left:3px solid #d9d4cc;padding:4px 0 4px 16px;margin:16px 0">
-      ${regels.map((r) => `<p style="margin:0 0 8px">${ontsnap(r)}</p>`).join("")}
-    </div>
-    <p>Het staat ook in de app, onder <strong>Mijn dossier</strong>. Daar laat je weten
-    dat je het gelezen hebt${aard === "stoppen" ? "" : " en geef je je antwoord"}.</p>
-    ${datum ? `<p>Graag voor <strong>${datum}</strong>.</p>` : ""}
-    <p style="margin-top:20px"><a href="${APP_URL}/mijn-dossier" style="color:#1b1b1b">Naar Mijn dossier</a></p>
-    <p style="margin-top:24px">Groet,<br>Sander</p>
+    <p style="margin:0 0 16px">${ontsnap(aanhef)}</p>
+    ${blokken.map(blokAlsHtml).join("")}
+    <p style="margin:20px 0 0">${afsluiting.map(ontsnap).join("<br>")}</p>
+    <p style="margin-top:24px"><a href="${APP_URL}/mijn-dossier" style="color:#1b1b1b">Naar Mijn dossier</a></p>
     <p style="color:#6b6b6b;font-size:13px;margin-top:24px">Kom je er niet in of klopt er iets niet?
     Laat het me weten, dan geef ik het je op papier.</p>
   </div>`;
@@ -124,12 +134,13 @@ Deno.serve(async (req) => {
   try {
     if (!(await wieBelt(req))) return json({ ok: false, error: "hier mag je niet bij" }, 403);
 
-    const { voorstel, brief } = await req.json().catch(() => ({}));
+    const { voorstel, aanhef, blokken, afsluiting, tekst } = await req.json().catch(() => ({}));
     if (typeof voorstel !== "string" || !voorstel) {
       return json({ ok: false, error: "geen voorstel meegegeven" }, 400);
     }
-    const regels = Array.isArray(brief) ? brief.filter((r) => typeof r === "string" && r.trim()) : [];
-    if (regels.length === 0) return json({ ok: false, error: "de brief is leeg" }, 400);
+    if (!Array.isArray(blokken) || blokken.length === 0 || typeof tekst !== "string" || !tekst.trim()) {
+      return json({ ok: false, error: "de brief is leeg" }, 400);
+    }
 
     // De rij zelf opzoeken, inclusief naam en adres van de medewerker.
     const velden =
@@ -168,10 +179,9 @@ Deno.serve(async (req) => {
         ...(tm.aan ? {} : { bcc: [CC_EMAIL] }),
         subject: `${tm.aan ? "[TEST] " : ""}${AARDKOP[v.aard] ?? "Over je contract"}`,
         html: mailtekst({
-          voornaam: mw?.voornaam ?? "",
-          aard: v.aard,
-          regels,
-          uiterlijk: v.uiterlijk ?? null,
+          aanhef: typeof aanhef === "string" && aanhef ? aanhef : `Hoi ${mw?.voornaam ?? ""},`,
+          blokken: blokken as Blok[],
+          afsluiting: Array.isArray(afsluiting) ? afsluiting : ["Groet,", "Sander"],
           testAdres: tm.aan ? naar : undefined,
         }),
       }),
@@ -193,7 +203,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         verstuurd_op: nu,
         verstuurd_naar: ontvanger,
-        brief: regels.join("\n"),
+        brief: tekst,
+        brief_opbouw: blokken,
         bijgewerkt_op: nu,
       }),
     });

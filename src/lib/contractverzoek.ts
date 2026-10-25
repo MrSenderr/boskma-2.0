@@ -19,7 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { urenTekst, uur, type Contract } from './contracten'
 import { naamVan, type Persoon } from './personeel'
-import { AARDNAAM, samenvatting, type Voorstel } from './contractvoorstellen'
+import { type Voorstel } from './contractvoorstellen'
 
 export type Uitkomst = {
   /** Waar dit blad over gaat, in een paar woorden. */
@@ -161,14 +161,21 @@ function rij(label: string, waarde: string) {
 
 /* Het verzoek aan het loonbureau. Zelfde indeling als het mutatieformulier,
    zodat het bekend aanvoelt, maar zonder BSN, adres en identiteitsbewijs: die
-   hebben ze al, en wat je niet hoeft te versturen verstuur je niet. */
+   hebben ze al.
+ *
+ * Er stond tot 25 oktober 2026 meer op: wanneer het voorstel was verstuurd en
+ * gelezen, wat de medewerker antwoordde, waarop het gemiddelde rustte, en de
+ * hele brief die hij kreeg. Als onderbouwing bedoeld, maar het loonbureau
+ * stelt een contract op en doet daar niets mee — het is een halve bladzijde
+ * ruis in hun inbox. Dat spoor staat in de app en in het dossier, waar het
+ * thuishoort. Hier staat alleen wat zij nodig hebben om te typen. */
 export function bouwContractverzoek(opdracht: {
   persoon: Persoon
   voorstel: Voorstel
   vorig: Contract | null
   uitkomst: Uitkomst
 }): string {
-  const { persoon, voorstel: v, vorig, uitkomst } = opdracht
+  const { persoon, vorig, uitkomst } = opdracht
   const naam = naamVan(persoon)
 
   const afspraak = uitkomst.regels.map((r) => `<p class="regel">${veilig(r)}</p>`).join('')
@@ -184,48 +191,6 @@ export function bouwContractverzoek(opdracht: {
         )
       : '',
   ].join('')
-
-  /* Hoe het tot stand kwam. Dit is het stuk dat een mutatieformulier niet
-     heeft: het loonbureau stelt op wat er is aangeboden en aangenomen, en bij
-     een geschil is dit de onderbouwing. */
-  const gang = [
-    rij('Voorstel verstuurd', datum(v.verstuurd_op)),
-    v.ontvangst_bevestigd_op ? rij('Gelezen door medewerker', datum(v.ontvangst_bevestigd_op)) : '',
-    v.keuze_verlenging
-      ? rij(
-          'Antwoord op de verlenging',
-          `${v.keuze_verlenging === 'akkoord' ? 'Akkoord' : 'Niet akkoord'} op ${datum(v.keuze_verlenging_op)}`,
-        )
-      : '',
-    v.keuze_vaste_uren
-      ? rij(
-          'Antwoord op de vaste uren',
-          `${v.keuze_vaste_uren === 'aangenomen' ? 'Aangenomen' : 'Geweigerd'} op ${datum(v.keuze_vaste_uren_op)}`,
-        )
-      : '',
-    v.op_papier ? rij('Hoe', 'Op papier gegeven en door de werkgever vastgelegd') : '',
-    /* Bij een aanbod vaste uren: waarop het gemiddelde rustte. Zonder dit kan
-       later niemand nagaan waarom er dit aantal uren is aangeboden. */
-    v.gemiddelde_uren !== null && v.gemiddelde_uren !== undefined
-      ? rij(
-          'Gemiddelde waarop het aanbod rust',
-          `${veilig(uur(Number(v.gemiddelde_uren)))} uur per week` +
-            (v.gemiddelde_over ? `, over ${veilig(v.gemiddelde_over)}` : '') +
-            (v.gemiddelde_bron === 'loonbureau'
-              ? ' (opgave loonbureau)'
-              : v.gemiddelde_bron === 'deels_berekend'
-                ? ' (berekend uit de ingelezen uren; geen heel jaar)'
-                : v.gemiddelde_bron === 'berekend'
-                  ? ' (berekend uit twaalf maanden ingelezen uren)'
-                  : ''),
-        )
-      : '',
-    rij('Soort voorstel', veilig(AARDNAAM[v.aard])),
-  ].join('')
-
-  const brief = (v.brief ? v.brief.split('\n') : samenvatting(v))
-    .map((r) => `<p class="regel">${veilig(r)}</p>`)
-    .join('')
 
   return `<!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><title>Wijziging dienstverband ${veilig(naam)}</title>
@@ -283,12 +248,6 @@ export function bouwContractverzoek(opdracht: {
 
   <div class="sectie">Medewerker</div>
   <table>${wie}</table>
-
-  <div class="sectie">Hoe het is afgesproken</div>
-  <table>${gang}</table>
-
-  <div class="sectie">Wat is aangeboden</div>
-  <div class="blok">${brief}</div>
 
   <div class="voet">
     <span>Boskma Foodservice V.O.F. &nbsp;·&nbsp; Dorpsstraat 82, 1693 AH Wervershoof</span>

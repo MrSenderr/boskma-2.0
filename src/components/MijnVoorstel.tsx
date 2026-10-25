@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, FileSignature, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil } from './ui'
+import { Brief } from './Brief'
 import { korteDatum } from '../lib/personeel'
 import {
   AARDNAAM,
@@ -99,7 +100,6 @@ function Een({ v }: { v: Voorstel }) {
      dezelfde tekst bij een tweede antwoord nog eens mee. */
   const [opmerking, setOpmerking] = useState('')
   const open = openstaand(v)
-  const regels = v.brief ? v.brief.split('\n') : samenvatting(v)
 
   return (
     <Kaart className="flex flex-col gap-3 p-4">
@@ -109,13 +109,14 @@ function Een({ v }: { v: Voorstel }) {
         {!v.ontvangst_bevestigd_op && <Pil soort="letop">Nieuw</Pil>}
       </div>
 
-      {/* De brief zoals hij is verstuurd, niet opnieuw samengesteld. */}
-      <div className="flex flex-col gap-1">
-        {regels.map((r) => (
-          <p key={r}>{r}</p>
-        ))}
-      </div>
-      {v.toelichting && <p className="whitespace-pre-wrap text-muted">{v.toelichting}</p>}
+      {/* De brief zoals hij is verstuurd, niet opnieuw samengesteld. De
+          toelichting van Sander zit erin verwerkt; die hoeft er niet nog eens
+          onder. */}
+      {v.brief_opbouw?.length ? (
+        <Brief blokken={v.brief_opbouw} />
+      ) : (
+        <p className="whitespace-pre-wrap">{v.brief ?? samenvatting(v).join('\n')}</p>
+      )}
 
       {!v.ontvangst_bevestigd_op ? (
         <div className="flex flex-col gap-2 border-t border-line pt-3">

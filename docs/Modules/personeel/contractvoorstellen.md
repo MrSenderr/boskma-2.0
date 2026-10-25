@@ -1,7 +1,6 @@
 # Contractvoorstellen — verlengen, stoppen, vaste uren
 
-Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 8 is gebouwd; 9 nog
-niet.
+Plan, vastgelegd op 25 oktober 2026. Helemaal gebouwd.
 
 ## Doel
 
@@ -111,7 +110,20 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
 9. **Teksten en brieven.** Als laatste. Eén brief voor alle gevallen, in
    eenvoudige taal, met blokken: A verlengen, B niet verlengen, C aanbod vaste
    uren (met uitleg wat vaste uren betekenen), plus ontvangstbevestiging en
-   keuzestrook.
+   keuzestrook. *Gebouwd 25 oktober 2026; de teksten staan in
+   [brieven.md](brieven.md) en in `src/lib/brieven.ts`.* De
+   ontvangstbevestiging en de keuzestrook waren onderweg al gebouwd als knoppen
+   in de app; de strook is er nu alleen nog op de geprinte versie. Die geprinte
+   versie was het echte gat: papier is overal de terugval, maar de app maakte
+   dat papier niet.
+
+   Een brief wordt in twee vormen bewaard: als platte tekst (het bewijsstuk) en
+   met zijn opbouw (zodat het scherm van de medewerker toont wat er werkelijk
+   is verstuurd, ook als de tekst in de app later verandert).
+
+   Het blad voor het loonbureau is dezelfde dag uitgekleed: daar stond het hele
+   bewijsspoor en de volledige brief op, en daar doet het loonbureau niets mee.
+   Nu staat er alleen wat zij nodig hebben om een contract te typen.
 
 ## Het twaalfmaandsgemiddelde, stand 25 oktober 2026
 

@@ -225,7 +225,18 @@ describe('het blad zelf', () => {
     expect(blad).toContain('graag het contract opstellen')
     expect(blad).toContain('Thijmen Bakker')
     expect(blad).toContain('31 december 2027')
-    expect(blad).toContain('Akkoord op 22 oktober 2026')
+  })
+
+  /* Het loonbureau stelt een contract op; wanneer het voorstel is verstuurd,
+     wanneer het is gelezen en wat er precies is aangeboden doet daar niets
+     toe. Dat spoor staat in de app en in het dossier. Stond hier tot
+     25 oktober 2026 wel op, en dat was een halve bladzijde ruis. */
+  it('bevat geen bewijsspoor en niet de brief zelf', () => {
+    expect(blad).not.toContain('Akkoord op')
+    expect(blad).not.toContain('Voorstel verstuurd')
+    expect(blad).not.toContain('Gelezen door medewerker')
+    expect(blad).not.toContain('Wat is aangeboden')
+    expect(blad).not.toContain('Gemiddelde waarop het aanbod rust')
   })
 
   /* Het loonbureau heeft het BSN en het identiteitsbewijs al. Wat je niet hoeft

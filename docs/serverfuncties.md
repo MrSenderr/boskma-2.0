@@ -26,7 +26,7 @@ triggerdefinitie, dus zoeken op `functions/v1/` in `pg_get_functiondef` vindt ze
 niet. Zoek ook in `pg_get_triggerdef`.
 
 Uit de app: `stuur-inloglink`, `stuur-loonbureau`, `stuur-getekend-contract`,
-`stuur-voorstel`, `stuur-ondertekening`, `teken-contract`,
+`stuur-voorstel`, `stuur-ondertekening`, `teken-contract`, `brief-pdf`,
 `stuur-verkoopfactuur`, `verkoopfactuur-pdf`, `send-onboarding`,
 `submit-onboarding`, `weer-verzamelen`, en `rooster-inlezen` via het script in
 Gmail.

@@ -12,6 +12,9 @@ import {
   type Soort,
 } from '../lib/contracten'
 import { useGemiddeldeUren, onderbouwingVan, type Onderbouwing } from '../lib/gewerkteUren'
+import { bewaarAls, bouwPrintbrief, brieftekst, printbriefOphalen } from '../lib/brieven'
+import { ouderNodig } from '../lib/ondertekenen'
+import { Brief } from './Brief'
 import {
   bouwContractverzoek,
   klaarVoorLoonbureau,
@@ -204,7 +207,10 @@ function Opstellen({
      opslaan. Anders kijk je naar iets anders dan je bewaart. */
   const schoon = useMemo(() => schoonVoorstel(v), [v])
   const bezwaren = useMemo(() => controleer(schoon, keten), [schoon, keten])
-  const regels = useMemo(() => samenvatting(schoon), [schoon])
+  const brief = useMemo(
+    () => brieftekst({ voorstel: schoon, voornaam: persoon.voornaam, huidig }),
+    [schoon, persoon.voornaam, huidig],
+  )
   const aard = (v.aard ?? 'verlengen') as Aard
   const verlengt = metVerlenging(aard)
 
@@ -329,13 +335,12 @@ function Opstellen({
       {/* Wat de medewerker straks leest. */}
       <div className="flex flex-col gap-2">
         <Kopje>Zo ziet het eruit</Kopje>
-        <Kaart className="flex flex-col gap-1 p-4">
-          {regels.length === 0 ? (
-            <p className="text-sm text-muted">Vul hierboven in wat je voorstelt.</p>
+        <Kaart className="p-4">
+          {v.aard ? (
+            <Brief aanhef={brief.aanhef} blokken={brief.blokken} afsluiting={brief.afsluiting} />
           ) : (
-            regels.map((r) => <p key={r}>{r}</p>)
+            <p className="text-sm text-muted">Vul hierboven in wat je voorstelt.</p>
           )}
-          {v.toelichting && <p className="mt-1 whitespace-pre-wrap text-muted">{v.toelichting}</p>}
         </Kaart>
       </div>
 
@@ -407,6 +412,7 @@ function Regel({
   const [fout, setFout] = useState<string | null>(null)
   const [papier, setPapier] = useState(false)
   const [blad, setBlad] = useState<string | null>(null)
+  const [printen, setPrinten] = useState(false)
   const stand = standVan(v)
   const open = openstaand(v)
   const seintje = herinnering(v)
@@ -415,6 +421,7 @@ function Regel({
      dienstverband als er niet verlengd wordt: die staat in het oude contract,
      niet in het voorstel. */
   const vorig = contracten.find((c) => c.id === v.vorig_contract_id) ?? null
+  const brief = brieftekst({ voorstel: v, voornaam: persoon.voornaam, huidig: vorig })
   const uitkomst = uitkomstVan(v, vorig)
   const magNaarLoonbureau = klaarVoorLoonbureau(v)
 
@@ -548,7 +555,7 @@ function Regel({
             <Knop
               bezig={versturen.isPending}
               onClick={() =>
-                versturen.mutate(v, {
+                versturen.mutate({ voorstel: v, brief }, {
                   onSuccess: (uitkomst) =>
                     setFout(
                       uitkomst.testmodus
@@ -563,6 +570,35 @@ function Regel({
               Versturen
             </Knop>
           )}
+          {/* Papier is overal de terugval: wie de app niet opent, geen mail
+              leest, of liever met een pen tekent. */}
+          <button
+            type="button"
+            className="text-sm text-muted underline hover:text-text"
+            disabled={printen}
+            onClick={async () => {
+              setPrinten(true)
+              setFout(null)
+              try {
+                const pdf = await printbriefOphalen({
+                  html: bouwPrintbrief({
+                    brief,
+                    voorstel: v,
+                    naam: naamVan(persoon),
+                    ouder: ouderNodig(persoon),
+                  }),
+                  bestandsnaam: `brief_${naamVan(persoon)}`,
+                })
+                bewaarAls(pdf, `brief_${naamVan(persoon).replace(/\s+/g, '_')}.pdf`)
+              } catch (e) {
+                setFout(e instanceof Error ? e.message : 'De pdf maken lukte niet.')
+              } finally {
+                setPrinten(false)
+              }
+            }}
+          >
+            {printen ? 'bezig…' : 'printen'}
+          </button>
           {v.verstuurd_op && (open.verlenging || open.vasteUren) && !papier && (
             <button
               type="button"
