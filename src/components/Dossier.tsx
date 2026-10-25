@@ -172,7 +172,13 @@ function Regel({
             {grootte ? ` — ${grootte}` : ''}
             {vervallen && doc.vervallen_op ? ` — vervallen op ${korteDatum(doc.vervallen_op)}` : ''}
           </span>
-          {doc.notitie && <span className="block text-sm text-muted">{doc.notitie}</span>}
+          {/* break-words is hier geen opsmuk maar noodzaak: een notitie kan
+              een controlecode bevatten — vierenzestig tekens zonder spatie.
+              Zonder dit duwt die reeks de kolom breder dan de kaart en loopt
+              hij onder de knoppen door. */}
+          {doc.notitie && (
+            <span className="block break-words text-sm text-muted">{doc.notitie}</span>
+          )}
           {onder}
         </span>
         <span className="flex shrink-0 flex-wrap items-center gap-2">
