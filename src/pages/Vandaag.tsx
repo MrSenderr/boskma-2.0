@@ -6,6 +6,7 @@ import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
 import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
 import { dagnaam, getal } from '../lib/opmaak'
+import { useContractwaker } from '../lib/contractwaker'
 
 /* Het startscherm van Sander.
  *
@@ -68,6 +69,44 @@ function OpJou() {
   )
 }
 
+function Contracten() {
+  const { data, isPending, error, refetch } = useContractwaker()
+
+  // Stil als er niets is: het startscherm hoort niet weer vol personeel te staan.
+  if (isPending || (data && data.length === 0)) return null
+  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Kopje>Contracten</Kopje>
+      <Kaart>
+        {data.map((s) => (
+          <Link
+            key={`${s.persoonId}-${s.soort}`}
+            to={`/personeel/${s.persoonId}`}
+            data-touch
+            className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{s.naam}</span>
+              <span className="block text-sm text-muted">{s.wat}</span>
+            </span>
+            <Pil soort={s.ernst}>{wanneer(s.dagen, s.uiterlijk)}</Pil>
+          </Link>
+        ))}
+      </Kaart>
+    </section>
+  )
+}
+
+function wanneer(dagen: number, datum: string) {
+  if (dagen < 0) return `${-dagen} dg te laat`
+  if (dagen === 0) return 'vandaag'
+  if (dagen === 1) return 'morgen'
+  if (dagen <= 14) return `over ${dagen} dagen`
+  return new Date(`${datum}T12:00:00`).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+}
+
 function Weerreeks() {
   const { data, isPending, error, refetch } = useWeerreeks(7)
   const { data: stand } = useReeksStand()
@@ -128,6 +167,8 @@ export function Vandaag() {
       <Reacties />
 
       <OpJou />
+
+      <Contracten />
 
       <Weerreeks />
 
