@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
 import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, looptOp, type Contract } from './contracten'
-import { herinnering, type Voorstel } from './contractvoorstellen'
+import { aanbodWachtOpVerlenging, herinnering, type Voorstel } from './contractvoorstellen'
 import { klaarVoorLoonbureau } from './contractverzoek'
 
 /* De datumhulpjes staan sinds 25 oktober 2026 in datums.ts, omdat de
@@ -187,6 +187,12 @@ export function signalenVoor(
     ]
   }
 
+  /* Ligt er een beantwoord aanbod vaste uren waar nog geen verlenging op
+     volgde, dan is dát wat er moet gebeuren — en dan hoeft het seintje niet
+     meer te vragen óf hij verlengt, maar eraan te herinneren dat de keuze er
+     al ligt. */
+  const naAanbod = aanbodWachtOpVerlenging(voorstellen)
+
   const gevonden = lopendContract(contracten, vandaag)
   /* lopendContract geeft het laatste contract terug als er geen lopend is.
      Voor "wat moet er gebeuren" is dat verschil er wel degelijk. */
@@ -217,8 +223,9 @@ export function signalenVoor(
             ...basis,
             ...ketenInfo,
             soort: 'aanzeggen',
-            wat:
-              totAanzeg < 0
+            wat: naAanbod
+              ? 'Aanbod vaste uren is beantwoord — nu de verlenging'
+              : totAanzeg < 0
                 ? 'Aanzegtermijn voorbij — nu alsnog schriftelijk laten weten'
                 : 'Schriftelijk laten weten of je verlengt',
             uiterlijk: aanzeg,

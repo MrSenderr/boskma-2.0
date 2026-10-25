@@ -420,3 +420,34 @@ describe('een contract dat is afgelopen', () => {
     expect(signalenVoor(weg, [voorbij], '2026-10-25')).toEqual([])
   })
 })
+
+describe('na een beantwoord aanbod vaste uren', () => {
+  const thijmen = persoon({ voornaam: 'Thijmen', achternaam: 'Bakker' })
+  const loopt = contract({ id: 'c1', begint: '2026-01-01', eindigt: '2026-12-31', soort: 'nuluren' })
+  const aanbod = {
+    id: 'a1',
+    medewerker_id: 'p1',
+    aard: 'vaste_uren',
+    opgesteld_op: '2026-09-01T09:00:00Z',
+    verstuurd_op: '2026-09-01T09:05:00Z',
+    ingetrokken_op: null,
+    keuze_vaste_uren: 'geweigerd',
+    keuze_verlenging: null,
+    ontvangst_bevestigd_op: '2026-09-02T09:00:00Z',
+    naar_loonbureau_op: '2026-09-03T09:00:00Z',
+  } as unknown as Voorstel
+
+  /* Combineren is eruit: eerst het aanbod, dan de verlenging. Het seintje
+     herinnert aan die tweede stap in plaats van te vragen óf je verlengt. */
+  it('herinnert aan de verlenging in plaats van aan het aanzeggen', () => {
+    const s = signalenVoor(thijmen, [loopt], '2026-11-20', [aanbod]).find(
+      (x) => x.soort === 'aanzeggen',
+    )
+    expect(s?.wat).toBe('Aanbod vaste uren is beantwoord — nu de verlenging')
+  })
+
+  it('vraagt zonder aanbod gewoon om aan te zeggen', () => {
+    const s = signalenVoor(thijmen, [loopt], '2026-11-20').find((x) => x.soort === 'aanzeggen')
+    expect(s?.wat).toMatch(/laten weten of je verlengt/)
+  })
+})

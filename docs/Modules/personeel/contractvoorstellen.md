@@ -151,6 +151,27 @@ Wat de app daarom doet:
   uitbetaald. Dat getal kan het berekende overschrijven, en komt dan met bron
   en periode op het blad dat naar het loonbureau gaat.
 
+## Eerst het aanbod, dan de verlenging — 25 oktober 2026
+
+Bij de eerste proef kwam er "akkoord met verlengen, vaste uren geweigerd" uit
+één voorstel. Dat kan, maar dan moet de verlenging uit twee antwoorden worden
+afgeleid en krijgt het loonbureau een verzoek dat pas te begrijpen is als je
+allebei de antwoorden kent.
+
+Daarom staat *Verlengen én vaste uren aanbieden* niet meer in de keuzelijst. De
+aard bestaat nog wel — voorstellen van vóór die datum blijven werken zoals ze
+zijn verstuurd — maar nieuwe voorstellen gaan in twee stappen:
+
+1. Het aanbod vaste uren.
+2. Met de uitkomst in de hand de verlenging. De app vult die voor: aangenomen
+   wordt een contract met vaste uren, geweigerd wordt oproepkracht. En het
+   seintje op het startscherm zegt dan niet meer "laten weten of je verlengt"
+   maar "aanbod vaste uren is beantwoord — nu de verlenging".
+
+Let op de klok: aanzeggen moet uiterlijk een maand voor de einddatum, en op een
+aanbod heeft iemand een maand om te antwoorden. Twee stappen passen alleen als
+je op tijd met het aanbod begint.
+
 ## Afspraken
 
 - Het loonbureau maakt het contract, niet de app.

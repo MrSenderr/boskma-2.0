@@ -24,6 +24,8 @@ import {
 import {
   AARDNAAM,
   KEUZENAAM,
+  TE_KIEZEN,
+  aanbodWachtOpVerlenging,
   STANDNAAM,
   herinnering,
   openstaand,
@@ -186,19 +188,22 @@ function Opstellen({
   huidig,
   keten,
   gemiddelde,
+  beantwoordAanbod,
   onKlaar,
 }: {
   persoon: Persoon
   huidig: Contract | null
   keten: ReturnType<typeof ketenVan>
   gemiddelde: Onderbouwing
+  beantwoordAanbod: Voorstel | null
   onKlaar: () => void
 }) {
   /* Elke vorm heeft zijn eigen vooringevulde waarden: verlengen sluit aan op
      het vorige contract, een aanbod begint bij het gemiddelde. Daarom vult de
      app bij het wisselen van vorm opnieuw in, in plaats van de oude waarden te
      laten staan — die horen bij een voorstel dat je niet meer doet. */
-  const vul = (a: Aard) => vulVoorstelIn({ aard: a, huidig, keten, gemiddelde })
+  const vul = (a: Aard) =>
+    vulVoorstelIn({ aard: a, huidig, keten, gemiddelde, beantwoordAanbod })
   const [v, setV] = useState<Partial<Voorstel>>(() => vul('verlengen'))
   const opslaan = useVoorstelOpslaan(persoon.id)
   const [fout, setFout] = useState<string | null>(null)
@@ -219,7 +224,7 @@ function Opstellen({
       <Keuze<Aard>
         label="Wat stel je voor"
         waarde={aard}
-        opties={(Object.keys(AARDNAAM) as Aard[]).map((a) => ({ waarde: a, label: AARDNAAM[a] }))}
+        opties={TE_KIEZEN.map((a) => ({ waarde: a, label: AARDNAAM[a] }))}
         onKies={(nieuw) => setV({ ...vul(nieuw), toelichting: v.toelichting })}
       />
 
@@ -329,6 +334,18 @@ function Opstellen({
         value={v.toelichting ?? ''}
         onChange={(e) => setV({ ...v, toelichting: e.target.value || null })}
       />
+
+      {/* Waarom het is voorgevuld zoals het is voorgevuld. */}
+      {verlengt && beantwoordAanbod?.keuze_vaste_uren && (
+        <p className="flex items-start gap-2 text-sm text-muted">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            {beantwoordAanbod.keuze_vaste_uren === 'aangenomen'
+              ? `Het aanbod vaste uren van ${korteDatum(beantwoordAanbod.opgesteld_op)} is aangenomen. De uren staan hieronder al ingevuld.`
+              : `Het aanbod vaste uren van ${korteDatum(beantwoordAanbod.opgesteld_op)} is geweigerd. Deze verlenging staat daarom op oproepkracht.`}
+          </span>
+        </p>
+      )}
 
       {metVasteUren(aard) && <Gemiddelde v={v} setV={setV} berekend={gemiddelde} />}
 
@@ -737,6 +754,9 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
   const keten = ketenVan(contracten)
   const huidig = lopendContract(contracten)
   const gemiddelde = onderbouwingVan(uren)
+  /* Een beantwoord aanbod vaste uren waar nog geen verlenging op volgde. De
+     uitkomst daarvan vult de verlenging voor. */
+  const beantwoordAanbod = aanbodWachtOpVerlenging(voorstellen)
 
   return (
     <section className="flex flex-col gap-3">
@@ -762,6 +782,7 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
           huidig={huidig}
           keten={keten}
           gemiddelde={gemiddelde}
+          beantwoordAanbod={beantwoordAanbod}
           onKlaar={() => setOpstellen(false)}
         />
       ) : (

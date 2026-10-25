@@ -34,6 +34,19 @@ export const AARDNAAM: Record<Aard, string> = {
   verlengen_en_vaste_uren: 'Verlengen én vaste uren aanbieden',
 }
 
+/* Wat je nog kunt kiezen bij een nieuw voorstel.
+ *
+ * Verlengen én vaste uren aanbieden staat er sinds 25 oktober 2026 niet meer
+ * tussen. Het kon, maar het leverde een voorstel op met twee antwoorden die
+ * elkaar in de weg zitten: akkoord met verlengen en de uren geweigerd betekent
+ * een verlenging als oproepkracht, en dat moet je dan uit twee antwoorden zien
+ * af te leiden. Eerst het aanbod, dan weet je bij de verlenging wát je
+ * opschrijft.
+ *
+ * De aard blijft wel bestaan: er liggen voorstellen van vóór die datum, en die
+ * horen te blijven werken zoals ze zijn verstuurd. */
+export const TE_KIEZEN: Aard[] = ['verlengen', 'stoppen', 'vaste_uren']
+
 export type Voorstel = {
   id: string
   medewerker_id: string
@@ -115,6 +128,11 @@ export function vulVoorstelIn(opdracht: {
   keten: Keten
   /** Het gemiddelde met de periode waarop het berust. */
   gemiddelde?: Onderbouwing | null
+  /* Een aanbod vaste uren dat al beantwoord is. De uitkomst daarvan bepaalt
+     waarmee een verlenging wordt voorgevuld: wie de uren aannam verlengt met
+     vaste uren, wie ze weigerde als oproepkracht. Zonder dit zou de keuze bij
+     het volgende voorstel kwijtraken. */
+  beantwoordAanbod?: Voorstel | null
   vandaag?: string
 }): Partial<Voorstel> {
   const { aard, huidig, keten } = opdracht
@@ -147,7 +165,19 @@ export function vulVoorstelIn(opdracht: {
   // een vast contract. Dan is onbepaalde tijd aanbieden het eerlijke voorstel.
   const duur: Duur = keten.volgendeWordtVast ? 'onbepaalde' : 'bepaalde'
 
-  const soort: Soort = metVasteUren(aard) ? 'vaste_uren' : (huidig?.soort ?? 'nuluren')
+  /* Volgt deze verlenging op een beantwoord aanbod vaste uren, dan is dát de
+     afspraak — niet wat er in het oude contract stond. */
+  const aanbod = opdracht.beantwoordAanbod ?? null
+  const naAanbod =
+    metVerlenging(aard) && aanbod?.keuze_vaste_uren
+      ? aanbod.keuze_vaste_uren === 'aangenomen'
+        ? { soort: 'vaste_uren' as Soort, uren: getal(aanbod.uren_vast) }
+        : { soort: 'nuluren' as Soort, uren: null }
+      : null
+
+  const soort: Soort = metVasteUren(aard)
+    ? 'vaste_uren'
+    : (naAanbod?.soort ?? huidig?.soort ?? 'nuluren')
 
   return {
     ...basis,
@@ -155,7 +185,11 @@ export function vulVoorstelIn(opdracht: {
     duur,
     begint,
     eindigt: duur === 'bepaalde' ? jaarVanaf(begint) : null,
-    uren_vast: metVasteUren(aard) ? gemiddelde : (getal(huidig?.uren_vast ?? null) ?? null),
+    uren_vast: metVasteUren(aard)
+      ? gemiddelde
+      : naAanbod
+        ? naAanbod.uren
+        : (getal(huidig?.uren_vast ?? null) ?? null),
     uren_min: metVasteUren(aard) ? null : (getal(huidig?.uren_min ?? null) ?? null),
     uren_max: metVasteUren(aard) ? null : (getal(huidig?.uren_max ?? null) ?? null),
     uurloon: getal(huidig?.uurloon ?? null),
@@ -667,4 +701,25 @@ export function useVoorstelAntwoorden() {
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ['mijn-voorstellen'] }),
   })
+}
+
+/* Een beantwoord aanbod vaste uren waar nog geen verlenging op volgde.
+ *
+ * Dit is de vervolgstap sinds het combineren eruit is: eerst het aanbod, dan
+ * met de uitkomst in de hand de verlenging. Zonder deze functie moet Sander
+ * zelf onthouden wat er gekozen was, en dat is precies wat kwijtraakt. */
+export function aanbodWachtOpVerlenging(voorstellen: Voorstel[]): Voorstel | null {
+  const beantwoord = voorstellen
+    .filter((v) => v.aard === 'vaste_uren' && !v.ingetrokken_op && v.keuze_vaste_uren)
+    .sort((a, b) => b.opgesteld_op.localeCompare(a.opgesteld_op))[0]
+  if (!beantwoord) return null
+
+  // Is er na dat aanbod al een verlenging opgesteld, dan is het gedaan.
+  const verlengd = voorstellen.some(
+    (v) =>
+      metVerlenging(v.aard) &&
+      !v.ingetrokken_op &&
+      v.opgesteld_op > beantwoord.opgesteld_op,
+  )
+  return verlengd ? null : beantwoord
 }

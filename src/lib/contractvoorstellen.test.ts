@@ -8,18 +8,21 @@
 import { describe, expect, it } from 'vitest'
 import { ketenVan, type Contract } from './contracten'
 import {
+  AARDNAAM,
+  TE_KIEZEN,
+  aanbodWachtOpVerlenging,
   controleer,
+  herinnering,
   magVerstuurd,
   metVasteUren,
   metVerlenging,
-  herinnering,
   openstaand,
   samenvatting,
   schoonVoorstel,
   standVan,
-  wachtOpMedewerker,
-  vulVoorstelIn,
   type Voorstel,
+  vulVoorstelIn,
+  wachtOpMedewerker,
 } from './contractvoorstellen'
 
 let teller = 0
@@ -584,5 +587,83 @@ describe('het seintje dat een voorstel blijft liggen', () => {
   // Zonder uiterlijke datum valt er niets af te tellen.
   it('zwijgt zonder uiterlijke datum', () => {
     expect(herinnering(v({ uiterlijk: null }), '2026-11-23')).toBeNull()
+  })
+})
+
+describe('eerst het aanbod, dan de verlenging', () => {
+  const huidig = c({ begint: '2026-01-01', eindigt: '2026-12-31', soort: 'nuluren' })
+  const keten = ketenVan([huidig], vandaag)
+  const aanbod = (keuze: 'aangenomen' | 'geweigerd', anders: Partial<Voorstel> = {}): Voorstel =>
+    ({
+      id: 'a1',
+      medewerker_id: 'p1',
+      aard: 'vaste_uren',
+      uren_vast: 14,
+      opgesteld_op: '2026-09-01T09:00:00Z',
+      verstuurd_op: '2026-09-01T09:05:00Z',
+      ingetrokken_op: null,
+      keuze_vaste_uren: keuze,
+      keuze_verlenging: null,
+      ...anders,
+    }) as Voorstel
+
+  /* Combineren is eruit: eerst het aanbod, dan met de uitkomst in de hand de
+     verlenging. Dan moet die uitkomst ook niet kwijtraken. */
+  it('verlengt met vaste uren als die zijn aangenomen', () => {
+    const v = vulVoorstelIn({
+      aard: 'verlengen',
+      huidig,
+      keten,
+      beantwoordAanbod: aanbod('aangenomen'),
+      vandaag,
+    })
+    expect(v.soort).toBe('vaste_uren')
+    expect(v.uren_vast).toBe(14)
+  })
+
+  it('verlengt als oproepkracht als ze zijn geweigerd', () => {
+    const v = vulVoorstelIn({
+      aard: 'verlengen',
+      huidig,
+      keten,
+      beantwoordAanbod: aanbod('geweigerd'),
+      vandaag,
+    })
+    expect(v.soort).toBe('nuluren')
+    expect(v.uren_vast).toBeNull()
+  })
+
+  it('volgt zonder aanbod gewoon het lopende contract', () => {
+    const vast = c({ begint: '2026-01-01', eindigt: '2026-12-31', soort: 'vaste_uren', uren_vast: 20 })
+    const v = vulVoorstelIn({ aard: 'verlengen', huidig: vast, keten: ketenVan([vast], vandaag), vandaag })
+    expect(v.soort).toBe('vaste_uren')
+    expect(v.uren_vast).toBe(20)
+  })
+
+  it('vindt het aanbod dat nog op een verlenging wacht', () => {
+    expect(aanbodWachtOpVerlenging([aanbod('aangenomen')])?.id).toBe('a1')
+  })
+
+  it('zwijgt als er al een verlenging op volgde', () => {
+    const later = {
+      id: 'v2',
+      aard: 'verlengen',
+      opgesteld_op: '2026-10-01T09:00:00Z',
+      ingetrokken_op: null,
+    } as unknown as Voorstel
+    expect(aanbodWachtOpVerlenging([aanbod('aangenomen'), later])).toBeNull()
+  })
+
+  it('zwijgt bij een aanbod dat nog niet beantwoord is of is ingetrokken', () => {
+    expect(aanbodWachtOpVerlenging([aanbod('aangenomen', { keuze_vaste_uren: null })])).toBeNull()
+    expect(
+      aanbodWachtOpVerlenging([aanbod('aangenomen', { ingetrokken_op: '2026-09-05T09:00:00Z' })]),
+    ).toBeNull()
+  })
+
+  // Het combineren is uit de keuzelijst, maar bestaande voorstellen blijven werken.
+  it('biedt combineren niet meer aan, maar kent het nog wel', () => {
+    expect(TE_KIEZEN).toEqual(['verlengen', 'stoppen', 'vaste_uren'])
+    expect(AARDNAAM.verlengen_en_vaste_uren).toBeTruthy()
   })
 })
