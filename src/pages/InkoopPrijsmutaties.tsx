@@ -4,28 +4,20 @@ import { euro, getal } from '../lib/inkoop'
 import { procent, usePrijsmutaties, verdeel, type Prijsmutatie } from '../lib/prijzen'
 import { Breed } from '../lib/breedte'
 
-/* Welke artikelen duurder werden, op volgorde van wat het je kost.
+/* Wat duurder werd en wat goedkoper werd, naast elkaar.
 
-   Niet op percentage: een artikel dat 40% duurder wordt maar dat je zelden
-   koopt staat lager dan frites die een dubbeltje stijgen. */
+   Op volgorde van wat het je kost, niet van percentage: een artikel dat 40%
+   duurder wordt maar dat je zelden koopt staat lager dan frites die een
+   dubbeltje stijgen.
 
-/* Op een breed scherm passen er twee kolommen bij die er anders niet in
-   konden: van wie je het koopt, en hoe vaak. Allebei veranderen ze wat een
-   stijging betekent — dezelfde vijftig cent is iets anders bij één keer per
-   jaar dan bij elke week. */
-const RIJ =
-  'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_6rem_6rem_4rem_7rem] ' +
-  'xl:grid-cols-[1fr_9rem_6rem_6rem_4rem_5rem_7rem] items-baseline gap-x-3 gap-y-1'
+   De twee lijsten stonden onder elkaar, met een brede tabel per regel:
+   leverancier, eerst, nu, procent, hoe vaak gekocht, en wat het kost. Naast
+   elkaar is de halve breedte, en daar passen die zeven kolommen niet in. Dus
+   twee regels per artikel in plaats van zeven kolommen — dezelfde cijfers,
+   alleen achter elkaar gelezen in plaats van onder elkaar. Wat je met één blik
+   wilt zien staat rechts en vet: wat het je kost. */
 
-function Actie() {
-  return (
-    <span className="rounded-[3px] bg-warn-soft px-1.5 py-0.5 text-xs font-semibold text-warn">
-      actieprijs
-    </span>
-  )
-}
-
-function Rij({ m }: { m: Prijsmutatie }) {
+function Rij({ m, toonLeverancier }: { m: Prijsmutatie; toonLeverancier: boolean }) {
   const op = getal(m.impact) > 0
   const pct = procent(m)
   const kleur = op ? 'text-bad' : 'text-good'
@@ -33,79 +25,73 @@ function Rij({ m }: { m: Prijsmutatie }) {
   return (
     <Link
       to={`/inkoop/prijzen/${m.leverancier_id}/${encodeURIComponent(m.artikelnr)}`}
-      className={`${RIJ} border-b border-line px-4 py-3 last:border-0 hover:bg-surface-2`}
+      className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 gap-y-0.5 border-b border-line px-4 py-3 last:border-0 hover:bg-surface-2"
     >
-      <span>
-        {m.omschrijving}
-        <span className="block text-xs text-muted">
-          {[m.merk, m.artikelnr].filter(Boolean).join(' · ')}
-        </span>
-      </span>
-
-      <span className="hidden truncate text-muted xl:block">{m.leveranciernaam}</span>
-
-      <span className={`text-right font-semibold tabular-nums md:order-last ${kleur}`}>
+      {/* Niet afkappen: een naam die je moet raden kun je net zo goed
+          weglaten. Liever een regel die omloopt. */}
+      <span className="min-w-0 font-medium">{m.omschrijving}</span>
+      <span className={`text-right font-semibold tabular-nums ${kleur}`}>
         {op ? '+' : ''}
         {euro(m.impact)}
       </span>
 
-      <span className="hidden text-right tabular-nums text-muted md:block">
-        {euro(m.eerste)}
-        {m.eerste_was_actie && (
-          <span className="block">
-            <Actie />
-          </span>
-        )}
+      {/* Van wie je het koopt en hoe vaak. Allebei veranderen ze wat een
+          stijging betekent: dezelfde vijftig cent is iets anders bij één keer
+          per jaar dan bij elke week. */}
+      <span className="col-span-2 min-w-0 text-sm text-muted sm:col-span-1">
+        {[m.merk, toonLeverancier ? m.leveranciernaam : null, `${m.keer_gekocht}× gekocht`]
+          .filter(Boolean)
+          .join(' · ')}
       </span>
 
-      <span className="hidden text-right tabular-nums md:block">
-        {euro(m.laatste)}
-        {m.laatste_was_actie && (
-          <span className="block">
-            <Actie />
-            {m.normale_prijs && (
-              <span className="block text-xs text-muted">gewoon {euro(m.normale_prijs)}</span>
-            )}
-          </span>
-        )}
-      </span>
-
-      <span className={`hidden text-right tabular-nums md:block ${kleur}`}>
-        {pct > 0 ? '+' : ''}
-        {pct.toFixed(0)}%
-      </span>
-
-      <span className="hidden text-right tabular-nums text-muted xl:block">{m.keer_gekocht}×</span>
-
-      {/* Op de telefoon is er geen ruimte voor kolommen, dus hier het verhaal
-          in één regel: van wat naar wat, en hoe vaak je het kocht.
-
-          Of een van die twee prijzen een actieprijs was staat erbij, want dat
+      {/* Of een van beide prijzen een actieprijs was hoort erbij, want dat
           verandert de betekenis volledig: dan heeft de leverancier niets
           verhoogd en is de actie gewoon afgelopen. */}
-      <span className="col-span-full text-sm text-muted md:hidden">
+      <span className="col-span-2 text-sm tabular-nums text-muted sm:col-span-1 sm:text-right">
         {euro(m.eerste)}
         {m.eerste_was_actie && ' (actie)'} → {euro(m.laatste)}
-        {m.laatste_was_actie && ' (actie)'} ({pct > 0 ? '+' : ''}
-        {pct.toFixed(0)}%) · {m.keer_gekocht}× gekocht
+        {m.laatste_was_actie && ' (actie)'}{' '}
+        <span className={kleur}>
+          {pct > 0 ? '+' : ''}
+          {pct.toFixed(0)}%
+        </span>
       </span>
     </Link>
   )
 }
 
-function Kop() {
+function Kolom({
+  titel,
+  mutaties,
+  uitleg,
+  toonLeverancier,
+}: {
+  titel: string
+  mutaties: Prijsmutatie[]
+  uitleg: string
+  toonLeverancier: boolean
+}) {
   return (
-    <div
-      className={`${RIJ} hidden border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted md:grid`}
-    >
-      <span>Artikel</span>
-      <span className="hidden xl:block">Leverancier</span>
-      <span className="text-right">Eerst</span>
-      <span className="text-right">Nu</span>
-      <span className="text-right">Verschil</span>
-      <span className="hidden text-right xl:block">Gekocht</span>
-      <span className="text-right">Kost je</span>
-    </div>
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h2 className="font-display text-lg">{titel}</h2>
+        <span className="text-sm text-muted">{mutaties.length} artikelen</span>
+      </div>
+      <Kaart className="flex flex-col py-2">
+        {mutaties.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted">Niets.</p>
+        ) : (
+          mutaties.map((m) => (
+            <Rij
+              key={`${m.leverancier_id}-${m.artikelnr}`}
+              m={m}
+              toonLeverancier={toonLeverancier}
+            />
+          ))
+        )}
+        <p className="border-t border-line px-4 pt-2 text-sm text-muted">{uitleg}</p>
+      </Kaart>
+    </section>
   )
 }
 
@@ -124,8 +110,6 @@ export function InkoopPrijsmutaties() {
   if (isPending) return <Laden tekst="Prijzen vergelijken…" />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
-  const { omhoog, omlaag, saldo } = verdeel(mutaties)
-
   if (mutaties.length === 0) {
     return (
       <Leeg
@@ -134,6 +118,9 @@ export function InkoopPrijsmutaties() {
       />
     )
   }
+
+  const { omhoog, omlaag, saldo } = verdeel(mutaties)
+  const toonLeverancier = new Set(mutaties.map((m) => m.leverancier_id)).size > 1
 
   return (
     <div className="flex flex-col gap-6">
@@ -148,34 +135,22 @@ export function InkoopPrijsmutaties() {
         />
       </div>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="font-display text-lg">Duurder geworden</h2>
-        <Kaart className="flex flex-col py-2">
-          <Kop />
-          {omhoog.map((m) => (
-            <Rij key={`${m.leverancier_id}-${m.artikelnr}`} m={m} />
-          ))}
-          <p className="border-t border-line px-4 pt-2 text-sm text-muted">
-            Op volgorde van wat het je kost: prijsverschil maal afgenomen aantal. Een artikel dat
-            40% duurder wordt maar dat je zelden koopt staat dus lager dan frites die een dubbeltje
-            stijgen.
-          </p>
-        </Kaart>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-display text-lg">Goedkoper geworden</h2>
-        <Kaart className="flex flex-col py-2">
-          <Kop />
-          {omlaag.map((m) => (
-            <Rij key={`${m.leverancier_id}-${m.artikelnr}`} m={m} />
-          ))}
-          <p className="border-t border-line px-4 pt-2 text-sm text-muted">
-            Vaak acties die net liepen. Let op: als die aflopen gaat de prijs weer omhoog — dat is
-            de stijging die je niet ziet aankomen.
-          </p>
-        </Kaart>
-      </section>
+      {/* items-start, anders rekt de kortste kolom mee met de langste en staat
+          er onderaan een halve kaart leeg. */}
+      <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
+        <Kolom
+          titel="Duurder geworden"
+          mutaties={omhoog}
+          uitleg="Op volgorde van wat het je kost: prijsverschil maal afgenomen aantal."
+          toonLeverancier={toonLeverancier}
+        />
+        <Kolom
+          titel="Goedkoper geworden"
+          mutaties={omlaag}
+          uitleg="Vaak acties die net liepen. Let op: als die aflopen gaat de prijs weer omhoog — dat is de stijging die je niet ziet aankomen."
+          toonLeverancier={toonLeverancier}
+        />
+      </div>
     </div>
   )
 }

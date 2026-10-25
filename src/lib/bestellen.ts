@@ -56,10 +56,17 @@ export type Leverdag = {
 
 /* Op welke dagen wordt er geleverd?
  *
- * Niet alle zeven: er staan losse aanvullingen tussen — één woensdag, een paar
- * zondagen — en die zijn geen leverdag maar een uitzondering. Minder dan drie
- * keer in twaalf weken is geen patroon om een voorstel op te bouwen. */
-export const MINSTENS_LEVERDAGEN = 3
+ * Dinsdag en donderdag, en dat is geen uitkomst van een berekening maar een
+ * afspraak met de leverancier. De app telde het eerst zelf uit en hield elke
+ * dag over waarop minstens drie keer in twaalf weken iets binnenkwam. Dat
+ * leverde ook vrijdag en zondag op — vijf zondagleveringen, veertig artikelen
+ * — terwijl dat losse aanvullingen zijn en geen besteldag.
+ *
+ * Nagerekend wat die inperking kost: van de 244 artikelen komen er 18 nooit op
+ * een dinsdag of donderdag binnen, en die zijn op één na allemaal precies één
+ * keer besteld. Eenmalige dingen dus; ze haalden de drempel van het voorstel
+ * toch niet. */
+export const LEVERDAGEN = [2, 4]
 
 export function leverdagenVan(regels: Bestelregel[]): Leverdag[] {
   const per = new Map<number, Leverdag>()
@@ -78,7 +85,7 @@ export function leverdagenVan(regels: Bestelregel[]): Leverdag[] {
     })
   }
   return [...per.values()]
-    .filter((d) => d.leverdagen >= MINSTENS_LEVERDAGEN)
+    .filter((d) => LEVERDAGEN.includes(d.dagnr))
     .sort((a, b) => b.leverdagen - a.leverdagen || a.dagnr - b.dagnr)
 }
 

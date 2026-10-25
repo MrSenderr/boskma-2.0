@@ -35,10 +35,10 @@ const r = (anders: Partial<Bestelregel>): Bestelregel =>
   }) as Bestelregel
 
 describe('op welke dagen wordt er geleverd', () => {
-  /* In de gegevens staan losse aanvullingen: één woensdag, een paar zondagen.
-     Die als leverdag aanbieden zou een voorstel opleveren dat op één levering
-     rust. */
-  it('laat dagen weg waarop zelden geleverd wordt', () => {
+  /* Dinsdag en donderdag zijn de afspraak; de rest zijn losse aanvullingen.
+     Die als leverdag aanbieden zou een voorstel opleveren dat op een paar
+     incidentele leveringen rust. */
+  it('houdt alleen dinsdag en donderdag over', () => {
     const dagen = leverdagenVan([
       r({ dagnr: 2, leverdagen: 12 }),
       r({ dagnr: 4, leverdagen: 11 }),
@@ -46,6 +46,18 @@ describe('op welke dagen wordt er geleverd', () => {
       r({ dagnr: 7, leverdagen: 2 }),
     ])
     expect(dagen.map((d) => d.dagnr)).toEqual([2, 4])
+  })
+
+  /* Ook een vrijdag of zondag waarop vaak genoeg geleverd werd valt af. Dat is
+     precies wat er in de echte gegevens stond: vijf zondagen met veertig
+     artikelen, terwijl er op zondag niet besteld wordt. */
+  it('laat een drukke dag die geen besteldag is ook weg', () => {
+    const dagen = leverdagenVan([
+      r({ dagnr: 2, leverdagen: 12 }),
+      r({ dagnr: 7, leverdagen: 5 }),
+      r({ dagnr: 5, leverdagen: 3 }),
+    ])
+    expect(dagen.map((d) => d.dagnr)).toEqual([2])
   })
 
   it('zet de drukste dag vooraan en noemt hem bij naam', () => {
