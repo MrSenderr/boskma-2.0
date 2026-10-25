@@ -88,11 +88,42 @@ describe('vooringevuld', () => {
     expect(v.eindigt).toBeNull()
   })
 
-  it('vult bij een aanbod vaste uren het gemiddelde in', () => {
-    const v = vulVoorstelIn({ aard: 'vaste_uren', huidig, keten, gemiddelde: 14.5, vandaag })
+  it('vult bij een aanbod vaste uren het gemiddelde in, met de periode erbij', () => {
+    const v = vulVoorstelIn({
+      aard: 'vaste_uren',
+      huidig,
+      keten,
+      gemiddelde: {
+        uren: 14.5,
+        over: 'juli t/m oktober 2026',
+        volledig: false,
+        maandenGedekt: 4,
+      },
+      vandaag,
+    })
     expect(v.soort).toBe('vaste_uren')
     expect(v.uren_vast).toBe(14.5)
     expect(v.gemiddelde_uren).toBe(14.5)
+    /* De periode reist mee. Zonder dit zou de brief "de afgelopen twaalf
+       maanden" zeggen over vier maanden. */
+    expect(v.gemiddelde_bron).toBe('deels_berekend')
+    expect(v.gemiddelde_over).toBe('juli t/m oktober 2026')
+  })
+
+  it('noemt het gewoon berekend als er twaalf maanden zijn ingelezen', () => {
+    const v = vulVoorstelIn({
+      aard: 'vaste_uren',
+      huidig,
+      keten,
+      gemiddelde: {
+        uren: 14.5,
+        over: 'de twaalf maanden tot oktober 2026',
+        volledig: true,
+        maandenGedekt: 12,
+      },
+      vandaag,
+    })
+    expect(v.gemiddelde_bron).toBe('berekend')
   })
 
   it('biedt bij stoppen niets aan', () => {
@@ -223,8 +254,8 @@ describe('wat niet mag', () => {
   })
 
   /* Zonder gemiddelde kun je niet weten of het aanbod hoog genoeg is, en dan
-     hoort het niet de deur uit te gaan. Dit is vandaag de werkelijkheid: de
-     gewerkte uren zijn nog niet volledig ingelezen. */
+     hoort het niet de deur uit te gaan. Het loonbureau kan het leveren; de
+     melding wijst daarheen in plaats van te zeggen dat het niet kan. */
   it('houdt een aanbod tegen als het gemiddelde onbekend is', () => {
     const bezwaren = controleer(
       { aard: 'vaste_uren', uren_vast: 14, gemiddelde_uren: null },
@@ -232,7 +263,8 @@ describe('wat niet mag', () => {
       vandaag,
     )
     expect(bezwaren[0].ernst).toBe('fout')
-    expect(bezwaren[0].wat).toMatch(/niet bekend/)
+    expect(bezwaren[0].wat).toMatch(/geen gemiddelde bekend/)
+    expect(bezwaren[0].wat).toMatch(/loonbureau/)
   })
 
   it('houdt een bandbreedte tegen die te ver uit elkaar ligt', () => {
@@ -269,6 +301,76 @@ describe('wat niet mag', () => {
       vandaag,
     )
     expect(bezwaren.some((b) => /einddatum/.test(b.wat))).toBe(true)
+  })
+})
+
+describe('een gemiddelde dat geen heel jaar beslaat', () => {
+  /* Dit is sinds 25 oktober 2026 de werkelijkheid: de uren staan pas vanaf
+     juli in de app. Tegenhouden zou betekenen dat er helemaal geen aanbod
+     komt, en géén aanbod doen is duurder — dan loopt de vordering over álle
+     uren in plaats van over het verschil. */
+  it('laat het door, met een waarschuwing', () => {
+    const bezwaren = controleer(
+      {
+        aard: 'vaste_uren',
+        uren_vast: 16,
+        gemiddelde_uren: 15,
+        gemiddelde_bron: 'deels_berekend',
+        gemiddelde_over: 'juli t/m oktober 2026',
+      },
+      leegKeten,
+      vandaag,
+    )
+    expect(magVerstuurd(bezwaren)).toBe(true)
+    expect(bezwaren.some((b) => b.ernst === 'letop' && /juli t\/m oktober 2026/.test(b.wat))).toBe(true)
+  })
+
+  /* De waarschuwing hangt aan de bron, niet aan de woorden in de omschrijving:
+     die mag Sander zelf typen, en dan zou een juridisch bindend aanbod aan een
+     woordkeus hangen. */
+  it('zwijgt als het wél over twaalf maanden gaat', () => {
+    const bezwaren = controleer(
+      {
+        aard: 'vaste_uren',
+        uren_vast: 16,
+        gemiddelde_uren: 15,
+        gemiddelde_bron: 'berekend',
+        gemiddelde_over: 'wat Sander hier ook typt',
+      },
+      leegKeten,
+      vandaag,
+    )
+    expect(bezwaren).toEqual([])
+  })
+
+  /* Het getal van het loonbureau is de bron zelf; daar hoeft niets bij
+     gezegd te worden. */
+  it('zwijgt bij een opgave van het loonbureau', () => {
+    const bezwaren = controleer(
+      {
+        aard: 'vaste_uren',
+        uren_vast: 16,
+        gemiddelde_uren: 15,
+        gemiddelde_bron: 'loonbureau',
+        gemiddelde_over: 'november 2025 t/m oktober 2026',
+      },
+      leegKeten,
+      vandaag,
+    )
+    expect(bezwaren).toEqual([])
+  })
+
+  // De brief mag niet "twaalf maanden" zeggen over vier maanden.
+  it('schrijft in de brief de echte periode op', () => {
+    const regels = samenvatting({
+      aard: 'vaste_uren',
+      uren_vast: 16,
+      gemiddelde_uren: 15,
+      gemiddelde_over: 'juli t/m oktober 2026',
+    })
+    expect(regels.some((r) => r === 'Het gemiddelde over juli t/m oktober 2026 is 15 uur.')).toBe(
+      true,
+    )
   })
 })
 

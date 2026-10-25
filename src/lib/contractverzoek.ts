@@ -204,6 +204,22 @@ export function bouwContractverzoek(opdracht: {
         )
       : '',
     v.op_papier ? rij('Hoe', 'Op papier gegeven en door de werkgever vastgelegd') : '',
+    /* Bij een aanbod vaste uren: waarop het gemiddelde rustte. Zonder dit kan
+       later niemand nagaan waarom er dit aantal uren is aangeboden. */
+    v.gemiddelde_uren !== null && v.gemiddelde_uren !== undefined
+      ? rij(
+          'Gemiddelde waarop het aanbod rust',
+          `${veilig(uur(Number(v.gemiddelde_uren)))} uur per week` +
+            (v.gemiddelde_over ? `, over ${veilig(v.gemiddelde_over)}` : '') +
+            (v.gemiddelde_bron === 'loonbureau'
+              ? ' (opgave loonbureau)'
+              : v.gemiddelde_bron === 'deels_berekend'
+                ? ' (berekend uit de ingelezen uren; geen heel jaar)'
+                : v.gemiddelde_bron === 'berekend'
+                  ? ' (berekend uit twaalf maanden ingelezen uren)'
+                  : ''),
+        )
+      : '',
     rij('Soort voorstel', veilig(AARDNAAM[v.aard])),
   ].join('')
 

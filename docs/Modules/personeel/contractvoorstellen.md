@@ -101,6 +101,32 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
    uren (met uitleg wat vaste uren betekenen), plus ontvangstbevestiging en
    keuzestrook.
 
+## Het twaalfmaandsgemiddelde, stand 25 oktober 2026
+
+De gewerkte uren staan pas vanaf juli 2026 in de app. De uitdraai van Eitje
+droeg bovendien het etiket *1 januari – 31 december 2026* terwijl er alleen
+uren vanaf juli in zaten; zou de app dat etiket geloven, dan tellen januari tot
+en met juni als maanden zonder werk. Voor één medewerker scheelde dat 5,59
+tegen 14,24 uur per week — en een aanbod onder het echte gemiddelde blijft vijf
+jaar opeisbaar.
+
+Wat de app daarom doet:
+
+- Een maand telt pas als ingelezen als minstens twee medewerkers er uren in
+  hebben (`maanden_met_uren()`). De eigenaar en de oefenkaart tellen niet mee;
+  in mei 2026 stonden zes regels van Sander zelf, en één iemands uren maken
+  geen maand van de zaak.
+- Het gemiddelde wordt berekend over de maanden die er zijn, niet over twaalf.
+  Het voorstel onthoudt welke periode dat was (`gemiddelde_over`) en of het een
+  heel jaar beslaat (`gemiddelde_bron`: `berekend`, `deels_berekend` of
+  `loonbureau`).
+- Een aanbod op minder dan twaalf maanden mag de deur uit, met een
+  waarschuwing. Géén aanbod doen is duurder: dan loopt de vordering over álle
+  uren in plaats van over het verschil.
+- Het loonbureau weet de verloonde uren van het hele jaar exact — zij hebben ze
+  uitbetaald. Dat getal kan het berekende overschrijven, en komt dan met bron
+  en periode op het blad dat naar het loonbureau gaat.
+
 ## Afspraken
 
 - Het loonbureau maakt het contract, niet de app.

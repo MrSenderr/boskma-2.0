@@ -13,6 +13,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
+import type { Onderbouwing } from './gewerkteUren'
 import {
   KETEN_MAX_CONTRACTEN,
   urenTekst,
@@ -47,6 +48,10 @@ export type Voorstel = {
   uurloon: number | string | null
   functie: string | null
   gemiddelde_uren: number | string | null
+  /** Waar het gemiddelde vandaan komt, en of het een heel jaar beslaat. */
+  gemiddelde_bron: 'berekend' | 'deels_berekend' | 'loonbureau' | null
+  /** Over welke periode, in gewone taal: 'juli t/m oktober 2026'. */
+  gemiddelde_over: string | null
   uiterlijk: string | null
   toelichting: string | null
   opgesteld_op: string
@@ -105,17 +110,26 @@ export function vulVoorstelIn(opdracht: {
   aard: Aard
   huidig: Contract | null
   keten: Keten
-  /** Het gemiddelde over twaalf maanden, als dat bekend is. */
-  gemiddelde?: number | null
+  /** Het gemiddelde met de periode waarop het berust. */
+  gemiddelde?: Onderbouwing | null
   vandaag?: string
 }): Partial<Voorstel> {
-  const { aard, huidig, keten, gemiddelde = null } = opdracht
+  const { aard, huidig, keten } = opdracht
+  const onderbouwing = opdracht.gemiddelde ?? null
+  const gemiddelde = onderbouwing?.uren ?? null
   const vandaag = opdracht.vandaag ?? vandaagIso()
 
   const basis: Partial<Voorstel> = {
     aard,
     vorig_contract_id: huidig?.id ?? null,
     gemiddelde_uren: metVasteUren(aard) ? gemiddelde : null,
+    gemiddelde_bron:
+      metVasteUren(aard) && gemiddelde !== null
+        ? onderbouwing?.volledig
+          ? 'berekend'
+          : 'deels_berekend'
+        : null,
+    gemiddelde_over: metVasteUren(aard) ? (onderbouwing?.over ?? null) : null,
   }
 
   if (aard === 'stoppen') {
@@ -187,7 +201,11 @@ export function schoonVoorstel(v: Partial<Voorstel>): Partial<Voorstel> {
     uit.uren_max = null
   }
 
-  if (!metVasteUren(aard)) uit.gemiddelde_uren = null
+  if (!metVasteUren(aard)) {
+    uit.gemiddelde_uren = null
+    uit.gemiddelde_bron = null
+    uit.gemiddelde_over = null
+  }
 
   return uit
 }
@@ -241,16 +259,28 @@ export function controleer(v: Partial<Voorstel>, keten: Keten, vandaag = vandaag
     if (gemiddelde === null) {
       uit.push({
         ernst: 'fout',
-        wat: 'Het gemiddelde over twaalf maanden is niet bekend, en een aanbod moet daar minstens gelijk aan zijn. Zolang de gewerkte uren niet volledig zijn ingelezen kan de app dat niet vaststellen.',
+        wat: 'Er is geen gemiddelde bekend, en een aanbod moet daar minstens gelijk aan zijn. Vraag het op bij het loonbureau — zij hebben de verloonde uren uitbetaald — en vul het hieronder in.',
       })
     } else if (geboden === null) {
       uit.push({ ernst: 'fout', wat: 'Vul in hoeveel vaste uren je aanbiedt.' })
     } else if (geboden < gemiddelde) {
       uit.push({
         ernst: 'fout',
-        wat: `Je biedt ${uur(geboden)} uur aan terwijl het gemiddelde over twaalf maanden ${uur(gemiddelde)} uur is. Een aanbod moet minstens het gemiddelde zijn; het verschil kan tot vijf jaar terug worden opgeëist.`,
+        wat: `Je biedt ${uur(geboden)} uur aan terwijl het gemiddelde ${uur(gemiddelde)} uur is. Een aanbod moet minstens het gemiddelde zijn; het verschil kan tot vijf jaar terug worden opgeëist.`,
       })
     }
+  }
+
+  /* Berust het gemiddelde niet op twaalf maanden, dan mag het aanbod wel de
+     deur uit maar moet je weten waar je op bouwt. Tegenhouden zou betekenen
+     dat er helemaal geen aanbod komt zolang Eitje nog geen jaar heeft
+     geleverd, en géén aanbod doen is duurder dan een aanbod met een
+     kanttekening: dan loopt de vordering over álle uren. */
+  if (metVasteUren(aard) && v.gemiddelde_bron === 'deels_berekend') {
+    uit.push({
+      ernst: 'letop',
+      wat: `Dit gemiddelde gaat over ${v.gemiddelde_over ?? 'een deel van het jaar'}, niet over twaalf maanden. Het loonbureau weet de verloonde uren van het hele jaar; vraag het daar na als je zeker wilt zitten.`,
+    })
   }
 
   const min = getal(v.uren_min ?? null)
@@ -318,12 +348,16 @@ export function samenvatting(v: Partial<Voorstel>): string[] {
       /* Het gemiddelde is de onderbouwing van het aanbod. Maar je mag het
          aanbod alleen zó noemen als het er ook op uitkomt — anders staat er
          een onwaarheid in een brief die later bewijs kan worden. */
-      if (gem !== null)
+      if (gem !== null) {
+        /* Niet "de afgelopen twaalf maanden" opschrijven als het over vier
+           maanden gaat. Dit is een brief die later bewijs kan worden. */
+        const over = v.gemiddelde_over ?? 'de afgelopen twaalf maanden'
         regels.push(
           uren === gem
-            ? 'Dat is het gemiddelde over de afgelopen twaalf maanden.'
-            : `Het gemiddelde over de afgelopen twaalf maanden is ${uur(gem)} uur.`,
+            ? `Dat is het gemiddelde over ${over}.`
+            : `Het gemiddelde over ${over} is ${uur(gem)} uur.`,
         )
+      }
     }
     regels.push('Dit aanbod mag je weigeren; dan blijf je oproepkracht.')
   } else if (metVerlenging(aard) && v.soort) {

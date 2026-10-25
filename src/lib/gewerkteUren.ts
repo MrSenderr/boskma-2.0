@@ -70,6 +70,54 @@ export function voegSamen(periodes: Periode[]): Periode[] {
   return uit
 }
 
+/* Maanden waarin érgens in de zaak uren zijn verloond, als 'JJJJ-MM'.
+ *
+ * Waarom dit nodig is: de uitdraai van Eitje draagt een etiket met een periode,
+ * en dat etiket klopt niet altijd. De uitdraai van 25 oktober 2026 was gelabeld
+ * als heel 2026 terwijl er alleen uren vanaf juli in zaten. Zou de app dat
+ * etiket geloven, dan tellen januari tot en met juni als maanden zonder werk,
+ * en komt er een gemiddelde uit dat veel te laag is — precies het getal dat
+ * vijf jaar lang opeisbaar blijft.
+ *
+ * Dat één medewerker een maand niet werkt is normaal; dat de héle zaak een
+ * maand stilligt niet. Staat er van niemand iets in een maand, dan is dat een
+ * gat in de uitdraai. */
+export function maandenVan(regels: { datum: string }[]): Set<string> {
+  return new Set(regels.map((r) => r.datum.slice(0, 7)))
+}
+
+/* Een ingelezen periode terugbrengen tot de maanden waarin werkelijk uren
+   staan. Wat de uitdraai claimt maar niet bevat, geldt als niet ingelezen. */
+export function beperkTotMaanden(periodes: Periode[], maanden: Set<string>): Periode[] {
+  const uit: Periode[] = []
+  for (const p of periodes) {
+    let maand = p.van.slice(0, 7)
+    while (maand <= p.tot.slice(0, 7)) {
+      if (maanden.has(maand)) {
+        const eersteVanDeMaand = `${maand}-01`
+        const laatsteVanDeMaand = laatsteDagVan(maand)
+        uit.push({
+          van: p.van > eersteVanDeMaand ? p.van : eersteVanDeMaand,
+          tot: p.tot < laatsteVanDeMaand ? p.tot : laatsteVanDeMaand,
+        })
+      }
+      maand = volgendeMaand(maand)
+    }
+  }
+  return voegSamen(uit)
+}
+
+function volgendeMaand(maand: string): string {
+  const [jaar, nr] = maand.split('-').map(Number)
+  return nr === 12 ? `${jaar + 1}-01` : `${jaar}-${String(nr + 1).padStart(2, '0')}`
+}
+
+function laatsteDagVan(maand: string): string {
+  const [jaar, nr] = maand.split('-').map(Number)
+  // Dag 0 van de volgende maand is de laatste dag van deze.
+  return new Date(Date.UTC(jaar, nr, 0)).toISOString().slice(0, 10)
+}
+
 export type Dekking = {
   /** Wat er binnen het venster is ingelezen, samengevoegd. */
   gedekt: Periode[]
@@ -115,9 +163,14 @@ const volgendeDag = (d: string) => schuif(d, 1)
 /* ------------------------------------------------------------ gemiddelde --- */
 
 export type Gemiddelde = {
-  /** Null als de gegevens het niet dragen; kijk dan naar `dekking`. */
+  /* Het gemiddelde over de maanden die zijn ingelezen. Null als er niets is
+     ingelezen; kijk naar `volledig` of dat de volle twaalf maanden zijn. */
   urenPerWeek: number | null
   urenPerMaand: number | null
+  /** Berust dit op de hele twaalf maanden? */
+  volledig: boolean
+  /** Hoeveel maanden het gemiddelde beslaat, afgerond op één cijfer. */
+  maandenGedekt: number
   /** Wat er in de ingelezen weken daadwerkelijk is verloond. */
   totaalUren: number
   /** Uren die buiten de meetelling vielen, met hun soort. */
@@ -148,14 +201,18 @@ export function gemiddeldeUren(opdracht: {
   }
 
   const totaalUren = rond(totaalMinuten / 60)
-  const weken = dekking.dagenTotaal / 7
-  const maanden = dekking.dagenTotaal / 30.44
+  /* Delen door wat er ís ingelezen, niet door twaalf maanden. Anders telt een
+     ontbrekende maand als een maand zonder werk en komt het gemiddelde te laag
+     uit. Of het genoeg is om een aanbod op te baseren zegt `volledig`, niet
+     dit getal. */
+  const weken = dekking.dagenGedekt / 7
+  const maanden = dekking.dagenGedekt / 30.44
 
   return {
-    // Alleen een getal als het hele venster is ingelezen. Anders zou een
-    // ontbrekende maand als een maand zonder werk tellen.
-    urenPerWeek: dekking.volledig ? rond(totaalUren / weken) : null,
-    urenPerMaand: dekking.volledig ? rond(totaalUren / maanden) : null,
+    urenPerWeek: dekking.dagenGedekt > 0 ? rond(totaalUren / weken) : null,
+    urenPerMaand: dekking.dagenGedekt > 0 ? rond(totaalUren / maanden) : null,
+    volledig: dekking.volledig,
+    maandenGedekt: Math.round(maanden * 10) / 10,
     totaalUren,
     nietMeegeteld: [...buiten].map(([soort, min]) => ({ soort, uren: rond(min / 60) })),
     venster,
@@ -189,14 +246,83 @@ export function useGemiddeldeUren(medewerkerId: string | null | undefined, tot?:
         .not('periode_van', 'is', null)
       if (fout) throw new Error(fout.message)
 
+      /* In welke maanden er érgens in de zaak uren staan. Het etiket van een
+         uitdraai klopt niet altijd — die van 25 oktober 2026 claimde heel 2026
+         terwijl er alleen uren vanaf juli in zaten — en wat geclaimd maar niet
+         geleverd is mag niet als "nul uur gewerkt" meetellen. */
+      const { data: maanden, error: mfout } = await supabase.rpc('maanden_met_uren')
+      if (mfout) throw new Error(mfout.message)
+
+      const geclaimd = (imports ?? []).map((i) => ({
+        van: String(i.periode_van),
+        tot: String(i.periode_tot ?? i.periode_van),
+      }))
+      const echt = new Set(
+        ((maanden ?? []) as { maand: string }[] | string[]).map((m) =>
+          typeof m === 'string' ? m : m.maand,
+        ),
+      )
+
       return gemiddeldeUren({
         regels: (regels ?? []) as unknown as Urenregel[],
-        periodes: (imports ?? []).map((i) => ({
-          van: String(i.periode_van),
-          tot: String(i.periode_tot ?? i.periode_van),
-        })),
+        periodes: beperkTotMaanden(geclaimd, echt),
         venster,
       })
     },
   })
+}
+
+/* ----------------------------------------------------- waarop het berust --- */
+
+const MAANDNAAM = [
+  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+  'juli', 'augustus', 'september', 'oktober', 'november', 'december',
+]
+
+const maandTekst = (maand: string, metJaar = true) => {
+  const [jaar, nr] = maand.split('-')
+  return metJaar ? `${MAANDNAAM[Number(nr) - 1]} ${jaar}` : MAANDNAAM[Number(nr) - 1]
+}
+
+/* De ingelezen periode in gewone taal: "juli t/m oktober 2026".
+ *
+ * Dit komt in de brief aan de medewerker en op het blad voor het loonbureau te
+ * staan. "Het gemiddelde over de afgelopen twaalf maanden" opschrijven terwijl
+ * het over vier maanden gaat, is een onwaarheid in een stuk dat later bewijs
+ * kan worden. */
+export function periodeTekst(g: Gemiddelde): string | null {
+  if (g.dekking.gedekt.length === 0) return null
+  const eerste = g.dekking.gedekt[0].van.slice(0, 7)
+  const laatste = g.dekking.gedekt[g.dekking.gedekt.length - 1].tot.slice(0, 7)
+  const reeks =
+    eerste === laatste
+      ? maandTekst(eerste)
+      : eerste.slice(0, 4) === laatste.slice(0, 4)
+        ? `${maandTekst(eerste, false)} t/m ${maandTekst(laatste)}`
+        : `${maandTekst(eerste)} t/m ${maandTekst(laatste)}`
+
+  // Alleen "twaalf maanden" opschrijven als het er ook twaalf zijn.
+  if (g.volledig) return `de twaalf maanden tot ${maandTekst(laatste)}`
+  /* Zit er een gat middenin, dan is "juli t/m oktober" te mooi gezegd: dan
+     ontbreekt er een maand tussenin en hoort dat erbij te staan. */
+  return g.dekking.gedekt.length > 1 ? `${reeks} (met onderbrekingen)` : reeks
+}
+
+/** Het gemiddelde zoals een voorstel het meekrijgt: getal, periode en of het
+ *  de volle twaalf maanden beslaat. Die drie horen bij elkaar. */
+export type Onderbouwing = {
+  uren: number | null
+  over: string | null
+  volledig: boolean
+  maandenGedekt: number
+}
+
+export function onderbouwingVan(g: Gemiddelde | undefined | null): Onderbouwing {
+  if (!g) return { uren: null, over: null, volledig: false, maandenGedekt: 0 }
+  return {
+    uren: g.urenPerWeek,
+    over: periodeTekst(g),
+    volledig: g.volledig,
+    maandenGedekt: g.maandenGedekt,
+  }
 }

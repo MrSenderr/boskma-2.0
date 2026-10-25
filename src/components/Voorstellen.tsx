@@ -7,10 +7,11 @@ import {
   useContracten,
   lopendContract,
   type Contract,
+  uur,
   type Duur,
   type Soort,
 } from '../lib/contracten'
-import { useGemiddeldeUren } from '../lib/gewerkteUren'
+import { useGemiddeldeUren, onderbouwingVan, type Onderbouwing } from '../lib/gewerkteUren'
 import {
   bouwContractverzoek,
   klaarVoorLoonbureau,
@@ -89,6 +90,94 @@ function Keuze<T extends string>({
   )
 }
 
+/* Waarop het aanbod vaste uren rust.
+ *
+ * De app rekent met de maanden die zijn ingelezen; staat er nog geen heel jaar
+ * in, dan zegt dit blok dat erbij. Het loonbureau weet het wél precies — zij
+ * hebben de verloonde uren uitbetaald — en dat getal mag hier in de plaats.
+ * Wat er gebruikt is reist mee naar de brief en naar het blad voor het
+ * loonbureau, zodat later te zien is waarop het aanbod rustte. */
+function Gemiddelde({
+  v,
+  setV,
+  berekend,
+}: {
+  v: Partial<Voorstel>
+  setV: (v: Partial<Voorstel>) => void
+  berekend: Onderbouwing
+}) {
+  const eigen = v.gemiddelde_bron === 'loonbureau'
+
+  return (
+    <Kaart className="flex flex-col gap-3 p-4">
+      <Kopje>Het gemiddelde</Kopje>
+
+      {berekend.uren === null ? (
+        <p className="text-sm text-muted">
+          Er zijn nog geen uren ingelezen, dus de app kan niets uitrekenen. Vraag het gemiddelde op
+          bij het loonbureau en vul het hieronder in.
+        </p>
+      ) : (
+        <p className="text-sm text-muted">
+          Uit de ingelezen uren: <strong>{uur(berekend.uren)} uur per week</strong>, over{' '}
+          {berekend.over ?? 'de ingelezen periode'}.
+          {!berekend.volledig &&
+            ' Dat is geen heel jaar. Het loonbureau kent de verloonde uren over twaalf maanden wel.'}
+        </p>
+      )}
+
+      <label className="flex items-start gap-2.5">
+        <input
+          type="checkbox"
+          checked={eigen}
+          onChange={(e) =>
+            setV(
+              e.target.checked
+                ? { ...v, gemiddelde_bron: 'loonbureau', gemiddelde_uren: null, gemiddelde_over: '' }
+                : {
+                    ...v,
+                    gemiddelde_bron:
+                      berekend.uren === null
+                        ? null
+                        : berekend.volledig
+                          ? 'berekend'
+                          : 'deels_berekend',
+                    gemiddelde_uren: berekend.uren,
+                    gemiddelde_over: berekend.over,
+                  },
+            )
+          }
+          className="mt-1 size-5 shrink-0 accent-accent"
+        />
+        <span>Ik vul het gemiddelde van het loonbureau in</span>
+      </label>
+
+      {eigen && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Veld
+            label="Uren per week volgens het loonbureau"
+            type="number"
+            step="0.01"
+            value={String(v.gemiddelde_uren ?? '')}
+            onChange={(e) =>
+              setV({
+                ...v,
+                gemiddelde_uren: e.target.value === '' ? null : Number(e.target.value),
+              })
+            }
+          />
+          <Veld
+            label="Over welke periode"
+            value={v.gemiddelde_over ?? ''}
+            placeholder="november 2025 t/m oktober 2026"
+            onChange={(e) => setV({ ...v, gemiddelde_over: e.target.value || null })}
+          />
+        </div>
+      )}
+    </Kaart>
+  )
+}
+
 function Opstellen({
   persoon,
   huidig,
@@ -99,7 +188,7 @@ function Opstellen({
   persoon: Persoon
   huidig: Contract | null
   keten: ReturnType<typeof ketenVan>
-  gemiddelde: number | null
+  gemiddelde: Onderbouwing
   onKlaar: () => void
 }) {
   /* Elke vorm heeft zijn eigen vooringevulde waarden: verlengen sluit aan op
@@ -235,12 +324,7 @@ function Opstellen({
         onChange={(e) => setV({ ...v, toelichting: e.target.value || null })}
       />
 
-      {metVasteUren(aard) && gemiddelde === null && (
-        <p className="text-sm text-muted">
-          Het gemiddelde over twaalf maanden is niet bekend, dus de app kan niet nakijken of dit
-          aanbod hoog genoeg is.
-        </p>
-      )}
+      {metVasteUren(aard) && <Gemiddelde v={v} setV={setV} berekend={gemiddelde} />}
 
       {/* Wat de medewerker straks leest. */}
       <div className="flex flex-col gap-2">
@@ -616,7 +700,7 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
 
   const keten = ketenVan(contracten)
   const huidig = lopendContract(contracten)
-  const gemiddelde = uren?.urenPerWeek ?? null
+  const gemiddelde = onderbouwingVan(uren)
 
   return (
     <section className="flex flex-col gap-3">

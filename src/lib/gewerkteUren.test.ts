@@ -7,13 +7,16 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  beperkTotMaanden,
   dekkingVan,
   gemiddeldeUren,
+  maandenVan,
+  periodeTekst,
   telMee,
   twaalfMaandenVoor,
-  voegSamen,
   type Periode,
   type Urenregel,
+  voegSamen,
 } from './gewerkteUren'
 
 const heelJaar: Periode = { van: '2025-10-25', tot: '2026-10-25' }
@@ -119,21 +122,46 @@ describe('het gemiddelde zelf', () => {
     expect(uit.nietMeegeteld).toEqual([{ soort: 'onbetaald verlof', uren: 4 }])
   })
 
-  /* De kern. Eén week ingelezen is geen jaar, en dan hoort er geen getal uit
-     te komen — ook niet een laag getal. Dat zou als "gemiddeld 2 uur per week"
-     in een aanbod belanden terwijl iemand er misschien twintig werkt. */
-  it('geeft géén gemiddelde als niet het hele jaar is ingelezen', () => {
+  /* De kern. Eén week ingelezen is geen jaar, en dat moet eraf te lezen zijn.
+     Het getal wordt wél berekend — over die ene week, niet over het jaar —
+     zodat er iets te zien is, maar `volledig` zegt dat je er geen aanbod op
+     kunt baseren. Delen door twaalf maanden zou "gemiddeld 0,3 uur per week"
+     opleveren terwijl iemand er zestien werkte, en dát getal zou vijf jaar
+     lang opeisbaar blijven.
+
+     Veranderd op 25 oktober 2026: tot dan gaf dit null. Dat klopte, maar het
+     betekende ook dat er geen enkel aanbod gedaan kon worden zolang Eitje nog
+     geen twaalf maanden had geleverd — en géén aanbod doen is duurder dan een
+     aanbod met een zichtbare kanttekening. */
+  it('rekent over wat er is ingelezen en zegt dat het niet het hele jaar is', () => {
     const uit = gemiddeldeUren({
       regels: [uur('2026-10-06', 8), uur('2026-10-07', 8)],
       periodes: [{ van: '2026-10-05', tot: '2026-10-11' }],
       venster: heelJaar,
     })
-    expect(uit.urenPerWeek).toBeNull()
-    expect(uit.urenPerMaand).toBeNull()
-    // Wat er wél bekend is blijft zichtbaar.
+    expect(uit.volledig).toBe(false)
+    // 16 uur in één ingelezen week.
+    expect(uit.urenPerWeek).toBe(16)
     expect(uit.totaalUren).toBe(16)
     expect(uit.dekking.dagenGedekt).toBe(7)
     expect(uit.dekking.dagenTotaal).toBe(366)
+  })
+
+  it('zegt bij een volledig jaar dat het volledig is', () => {
+    const uit = gemiddeldeUren({
+      regels: [uur('2026-01-05', 8)],
+      periodes: [heelJaar],
+      venster: heelJaar,
+    })
+    expect(uit.volledig).toBe(true)
+    expect(uit.maandenGedekt).toBeCloseTo(12, 0)
+  })
+
+  it('geeft niets als er helemaal niets is ingelezen', () => {
+    const uit = gemiddeldeUren({ regels: [], periodes: [], venster: heelJaar })
+    expect(uit.urenPerWeek).toBeNull()
+    expect(uit.volledig).toBe(false)
+    expect(uit.maandenGedekt).toBe(0)
   })
 
   it('negeert uren van buiten het venster', () => {
@@ -154,5 +182,82 @@ describe('het gemiddelde zelf', () => {
 describe('het venster', () => {
   it('loopt twaalf maanden terug', () => {
     expect(twaalfMaandenVoor('2026-10-25')).toEqual({ van: '2025-10-25', tot: '2026-10-25' })
+  })
+})
+
+describe('wat de uitdraai claimt maar niet bevat', () => {
+  /* Op 25 oktober 2026 leverde Eitje een uitdraai met het etiket
+     1 januari – 31 december 2026, terwijl er alleen uren vanaf juli in zaten.
+     Zou de app dat etiket geloven, dan tellen januari tot en met juni als
+     maanden zonder werk en komt het gemiddelde veel te laag uit. */
+  it('laat alleen de maanden over waar werkelijk uren in staan', () => {
+    const maanden = maandenVan([{ datum: '2026-07-04' }, { datum: '2026-08-11' }])
+    const uit = beperkTotMaanden([{ van: '2026-01-01', tot: '2026-12-31' }], maanden)
+    expect(uit).toEqual([{ van: '2026-07-01', tot: '2026-08-31' }])
+  })
+
+  it('knipt niet buiten de ingelezen periode', () => {
+    const maanden = maandenVan([{ datum: '2026-07-20' }])
+    const uit = beperkTotMaanden([{ van: '2026-07-13', tot: '2026-07-19' }], maanden)
+    expect(uit).toEqual([{ van: '2026-07-13', tot: '2026-07-19' }])
+  })
+
+  it('houdt niets over als er van niemand uren zijn', () => {
+    expect(beperkTotMaanden([{ van: '2026-01-01', tot: '2026-12-31' }], new Set())).toEqual([])
+  })
+
+  /* Het gevolg waar het om gaat: met het etiket geloofd zou het gemiddelde
+     over twaalf maanden gaan en dus door zes worden gedeeld; nu gaat het over
+     de twee maanden die er werkelijk zijn. */
+  it('houdt het gemiddelde eerlijk bij een te ruim etiket', () => {
+    const regels = [
+      { datum: '2026-07-06', minuten: 600, soort: 'gewerkte uren' },
+      { datum: '2026-08-10', minuten: 600, soort: 'gewerkte uren' },
+    ]
+    const geclaimd = [{ van: '2026-01-01', tot: '2026-12-31' }]
+    const venster = { van: '2026-01-01', tot: '2026-12-31' }
+
+    const geloofd = gemiddeldeUren({ regels, periodes: geclaimd, venster })
+    const eerlijk = gemiddeldeUren({
+      regels,
+      periodes: beperkTotMaanden(geclaimd, maandenVan(regels)),
+      venster,
+    })
+
+    expect(eerlijk.urenPerWeek! > geloofd.urenPerWeek!).toBe(true)
+    expect(eerlijk.volledig).toBe(false)
+    expect(Math.round(eerlijk.maandenGedekt)).toBe(2)
+  })
+})
+
+describe('waarop het gemiddelde berust', () => {
+  const met = (periodes: { van: string; tot: string }[], venster: { van: string; tot: string }) =>
+    gemiddeldeUren({ regels: [], periodes, venster })
+
+  it('schrijft een aaneengesloten reeks binnen één jaar kort op', () => {
+    const uit = met([{ van: '2026-07-01', tot: '2026-10-31' }], { van: '2025-11-01', tot: '2026-10-31' })
+    expect(periodeTekst(uit)).toBe('juli t/m oktober 2026')
+  })
+
+  it('noemt alleen twaalf maanden als het er twaalf zijn', () => {
+    const heel = { van: '2026-01-01', tot: '2026-12-31' }
+    expect(periodeTekst(met([heel], heel))).toMatch(/twaalf maanden/)
+  })
+
+  /* "juli t/m oktober" terwijl augustus ontbreekt is te mooi gezegd, en dit
+     komt in een brief die later bewijs kan worden. */
+  it('zegt het als er een maand tussenuit valt', () => {
+    const uit = met(
+      [
+        { van: '2026-07-01', tot: '2026-07-31' },
+        { van: '2026-09-01', tot: '2026-10-31' },
+      ],
+      { van: '2025-11-01', tot: '2026-10-31' },
+    )
+    expect(periodeTekst(uit)).toBe('juli t/m oktober 2026 (met onderbrekingen)')
+  })
+
+  it('geeft niets terug als er niets is ingelezen', () => {
+    expect(periodeTekst(met([], { van: '2026-01-01', tot: '2026-12-31' }))).toBeNull()
   })
 })
