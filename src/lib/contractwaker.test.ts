@@ -7,11 +7,12 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  aanbodStand,
   dagenTussen,
+  ketenTekst,
   plusMaanden,
   signalen,
   signalenVoor,
-  ketenTekst,
   voorstelSignalen,
 } from './contractwaker'
 import type { Voorstel } from './contractvoorstellen'
@@ -449,5 +450,49 @@ describe('na een beantwoord aanbod vaste uren', () => {
   it('vraagt zonder aanbod gewoon om aan te zeggen', () => {
     const s = signalenVoor(thijmen, [loopt], '2026-11-20').find((x) => x.soort === 'aanzeggen')
     expect(s?.wat).toMatch(/laten weten of je verlengt/)
+  })
+})
+
+describe('wanneer een aanbod vaste uren verschuldigd is', () => {
+  const oproep = (anders: Partial<Contract> = {}) =>
+    contract({ id: 'c1', soort: 'nuluren', begint: '2025-06-01', eindigt: '2026-12-31', ...anders })
+  const p = (sinds: string | null) =>
+    persoon({ voornaam: 'Test', in_dienst_sinds: sinds })
+
+  it('is verplicht na twaalf maanden op afroep', () => {
+    const s = aanbodStand(p('2025-06-01'), [oproep()], [], '2026-10-25')
+    expect(s.verplicht).toBe(true)
+    expect(s.reden).toBe('verplicht')
+    expect(s.maanden).toBe(16)
+  })
+
+  it('is nog niet verplicht binnen het eerste jaar, en zegt vanaf wanneer', () => {
+    const s = aanbodStand(p('2026-06-01'), [oproep({ begint: '2026-06-01' })], [], '2026-10-25')
+    expect(s.verplicht).toBe(false)
+    expect(s.reden).toBe('nog_geen_jaar')
+    expect(s.vanaf).toBe('2027-06-01')
+  })
+
+  /* De plicht is het aanbod dóén. Een geweigerd aanbod telt dus ook: dan is
+     eraan voldaan en komt er over twaalf maanden een nieuw. */
+  it('is voldaan als er het afgelopen jaar een aanbod is gedaan, ook een geweigerd', () => {
+    const gedaan = {
+      id: 'a1',
+      aard: 'vaste_uren',
+      verstuurd_op: '2026-05-01T09:00:00Z',
+      ingetrokken_op: null,
+      keuze_vaste_uren: 'geweigerd',
+    } as unknown as Voorstel
+    expect(aanbodStand(p('2025-06-01'), [oproep()], [gedaan], '2026-10-25').reden).toBe('al_gedaan')
+  })
+
+  it('geldt niet voor wie geen oproepkracht is', () => {
+    const vast = contract({ id: 'c1', soort: 'vaste_uren', begint: '2025-06-01', eindigt: '2026-12-31' })
+    expect(aanbodStand(p('2025-06-01'), [vast], [], '2026-10-25').reden).toBe('geen_oproepkracht')
+  })
+
+  it('geldt niet als het contract niet meer loopt', () => {
+    const voorbij = oproep({ eindigt: '2026-06-30' })
+    expect(aanbodStand(p('2025-06-01'), [voorbij], [], '2026-10-25').reden).toBe('geen_oproepkracht')
   })
 })

@@ -13,6 +13,7 @@ import {
 } from '../lib/contracten'
 import { useGemiddeldeUren, onderbouwingVan, type Onderbouwing } from '../lib/gewerkteUren'
 import { bewaarAls, bouwPrintbrief, brieftekst, printbriefOphalen } from '../lib/brieven'
+import { aanbodStand, type AanbodStand } from '../lib/contractwaker'
 import { ouderNodig } from '../lib/ondertekenen'
 import { Brief } from './Brief'
 import {
@@ -24,7 +25,6 @@ import {
 import {
   AARDNAAM,
   KEUZENAAM,
-  TE_KIEZEN,
   aanbodWachtOpVerlenging,
   STANDNAAM,
   herinnering,
@@ -92,6 +92,129 @@ function Keuze<T extends string>({
         ))}
       </select>
     </label>
+  )
+}
+
+/* Wat stel je voor — in twee stappen.
+ *
+ * Eerst de vraag die alles bepaalt: ga je door of niet. Pas als je doorgaat
+ * komt de vraag langs welke weg, en dan laat de app zien welke van de twee
+ * hier geldt.
+ *
+ * Dat onderscheid is geen smaak. Werkt iemand twaalf maanden als oproepkracht,
+ * dan móét er een aanbod vaste uren komen (art. 7:628a lid 5 BW); doorgaan op
+ * afroep is dan geen weg die jij kiest, maar wat er overblijft als hij het
+ * aanbod weigert. Is die twaalf maanden nog niet vol, dan zijn het wél twee
+ * gelijkwaardige wegen.
+ *
+ * Beide wegen staan er altijd, ook de weg die nu niet mag. Alleen de geldende
+ * tonen zou korter zijn, maar dan zie je niet dát er een andere bestaat — en
+ * dus ook niet waarom deze er nu is. */
+function Weg({
+  gekozen,
+  titel,
+  uitleg,
+  onKies,
+}: {
+  gekozen: boolean
+  titel: string
+  uitleg: string
+  onKies: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onKies}
+      className={`flex flex-col gap-1 rounded-card border-[1.5px] p-4 text-left transition-colors ${
+        gekozen
+          ? 'border-accent bg-surface-2'
+          : 'border-line-strong hover:border-accent hover:bg-surface-2'
+      }`}
+    >
+      <span className="font-semibold">{titel}</span>
+      <span className="text-sm text-muted">{uitleg}</span>
+    </button>
+  )
+}
+
+function WatStelJeVoor({
+  aard,
+  huidig,
+  aanbod,
+  onKies,
+}: {
+  aard: Aard
+  huidig: Contract | null
+  aanbod: AanbodStand
+  onKies: (a: Aard) => void
+}) {
+  const verlengt = aard !== 'stoppen'
+  const opAfroep = huidig?.soort === 'nuluren'
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-semibold text-muted">Ga je door met deze medewerker?</span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Weg
+            gekozen={verlengt}
+            titel="Ja, verlengen"
+            uitleg="Het dienstverband gaat door."
+            onKies={() => onKies('verlengen')}
+          />
+          <Weg
+            gekozen={aard === 'stoppen'}
+            titel="Nee, niet verlengen"
+            uitleg="Het contract loopt af op de einddatum."
+            onKies={() => onKies('stoppen')}
+          />
+        </div>
+      </div>
+
+      {verlengt && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-semibold text-muted">Langs welke weg?</span>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Weg
+              gekozen={aard === 'vaste_uren'}
+              titel="Aanbod vaste uren"
+              uitleg={
+                aanbod.verplicht
+                  ? `Verplicht: hij werkt ${aanbod.maanden ?? 12} maanden op afroep.`
+                  : aanbod.reden === 'nog_geen_jaar'
+                    ? `Mag nu al; verplicht wordt het pas vanaf ${korteDatum(aanbod.vanaf)}.`
+                    : aanbod.reden === 'al_gedaan'
+                      ? 'Mag; je hebt het afgelopen jaar al een aanbod gedaan.'
+                      : 'Een aanbod voor een vast aantal uren per week.'
+              }
+              onKies={() => onKies('vaste_uren')}
+            />
+            <Weg
+              gekozen={aard === 'verlengen'}
+              titel={opAfroep ? 'Doorgaan op oproepbasis' : 'Doorgaan zoals nu'}
+              uitleg={
+                aanbod.verplicht
+                  ? 'Kan pas als hij het aanbod vaste uren weigert.'
+                  : opAfroep
+                    ? 'Zelfde afspraak als nu: geen vaste uren.'
+                    : 'Zelfde afspraak als het contract dat nu loopt.'
+              }
+              onKies={() => onKies('verlengen')}
+            />
+          </div>
+
+          {aanbod.verplicht && (
+            <p className="flex items-start gap-2 text-sm text-warn">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                Hij werkt {aanbod.maanden ?? 12} maanden als oproepkracht. Een aanbod vaste uren is
+                dan verplicht. Doorgaan op oproepbasis kan pas nadat hij dat aanbod heeft geweigerd.
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -189,6 +312,7 @@ function Opstellen({
   keten,
   gemiddelde,
   beantwoordAanbod,
+  aanbod,
   onKlaar,
 }: {
   persoon: Persoon
@@ -196,6 +320,7 @@ function Opstellen({
   keten: ReturnType<typeof ketenVan>
   gemiddelde: Onderbouwing
   beantwoordAanbod: Voorstel | null
+  aanbod: AanbodStand
   onKlaar: () => void
 }) {
   /* Elke vorm heeft zijn eigen vooringevulde waarden: verlengen sluit aan op
@@ -204,7 +329,12 @@ function Opstellen({
      laten staan — die horen bij een voorstel dat je niet meer doet. */
   const vul = (a: Aard) =>
     vulVoorstelIn({ aard: a, huidig, keten, gemiddelde, beantwoordAanbod })
-  const [v, setV] = useState<Partial<Voorstel>>(() => vul('verlengen'))
+  /* Begin op de weg die geldt. Is een aanbod vaste uren verplicht, dan is dát
+     de eerste stap — beginnen op 'doorgaan op oproepbasis' zou de app de
+     verkeerde kant op laten wijzen. */
+  const [v, setV] = useState<Partial<Voorstel>>(() =>
+    vul(aanbod.verplicht ? 'vaste_uren' : 'verlengen'),
+  )
   const opslaan = useVoorstelOpslaan(persoon.id)
   const [fout, setFout] = useState<string | null>(null)
 
@@ -212,8 +342,8 @@ function Opstellen({
      opslaan. Anders kijk je naar iets anders dan je bewaart. */
   const schoon = useMemo(() => schoonVoorstel(v), [v])
   const bezwaren = useMemo(
-    () => controleer(schoon, keten, undefined, huidig),
-    [schoon, keten, huidig],
+    () => controleer(schoon, keten, undefined, huidig, aanbod.verplicht),
+    [schoon, keten, huidig, aanbod.verplicht],
   )
   const brief = useMemo(
     () => brieftekst({ voorstel: schoon, voornaam: persoon.voornaam, huidig }),
@@ -224,10 +354,10 @@ function Opstellen({
 
   return (
     <Kaart className="flex flex-col gap-4 p-4">
-      <Keuze<Aard>
-        label="Wat stel je voor"
-        waarde={aard}
-        opties={TE_KIEZEN.map((a) => ({ waarde: a, label: AARDNAAM[a] }))}
+      <WatStelJeVoor
+        aard={aard}
+        huidig={huidig}
+        aanbod={aanbod}
         onKies={(nieuw) => setV({ ...vul(nieuw), toelichting: v.toelichting })}
       />
 
@@ -760,6 +890,9 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
   /* Een beantwoord aanbod vaste uren waar nog geen verlenging op volgde. De
      uitkomst daarvan vult de verlenging voor. */
   const beantwoordAanbod = aanbodWachtOpVerlenging(voorstellen)
+  /* Moet er een aanbod vaste uren komen? Dat bepaalt welke van de twee wegen
+     je kunt kiezen bij het verlengen. */
+  const aanbod = aanbodStand(persoon, contracten, voorstellen)
 
   return (
     <section className="flex flex-col gap-3">
@@ -786,6 +919,7 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
           keten={keten}
           gemiddelde={gemiddelde}
           beantwoordAanbod={beantwoordAanbod}
+          aanbod={aanbod}
           onKlaar={() => setOpstellen(false)}
         />
       ) : (

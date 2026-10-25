@@ -721,3 +721,40 @@ describe('de klok bij twee stappen', () => {
     expect(bezwaren.some((b) => /aanzeggen moet uiterlijk/.test(b.wat))).toBe(false)
   })
 })
+
+describe('verlengen terwijl er een aanbod moet komen', () => {
+  const verlengen = (verplicht: boolean) =>
+    controleer(
+      { aard: 'verlengen', soort: 'nuluren', duur: 'bepaalde', begint: '2027-01-01', eindigt: '2027-12-31' },
+      leegKeten,
+      vandaag,
+      null,
+      verplicht,
+    )
+
+  /* De plicht verdwijnt niet door hem over te slaan: hij blijft staan, en het
+     verschil in uren kan vijf jaar terug worden opgeëist. Tegenhouden doet de
+     app niet — er zijn redenen die hij niet kan overzien. */
+  it('waarschuwt, maar houdt niet tegen', () => {
+    const bezwaren = verlengen(true)
+    expect(bezwaren.some((b) => b.ernst === 'letop' && /aanbod vaste uren/.test(b.wat))).toBe(true)
+    expect(magVerstuurd(bezwaren)).toBe(true)
+  })
+
+  it('zwijgt als er geen aanbod verschuldigd is', () => {
+    expect(verlengen(false).some((b) => /aanbod vaste uren/.test(b.wat))).toBe(false)
+  })
+
+  /* Verleng je met vaste uren, dan is er niets overgeslagen: dan krijgt hij
+     die uren juist. */
+  it('zwijgt bij een verlenging met vaste uren', () => {
+    const bezwaren = controleer(
+      { aard: 'verlengen', soort: 'vaste_uren', uren_vast: 14, duur: 'bepaalde', begint: '2027-01-01', eindigt: '2027-12-31' },
+      leegKeten,
+      vandaag,
+      null,
+      true,
+    )
+    expect(bezwaren.some((b) => /aanbod vaste uren/.test(b.wat))).toBe(false)
+  })
+})

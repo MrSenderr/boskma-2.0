@@ -269,6 +269,8 @@ export function controleer(
   keten: Keten,
   vandaag = vandaagIso(),
   huidig: Contract | null = null,
+  /** Of er een aanbod vaste uren verschuldigd is; zie aanbodStand(). */
+  aanbodVerplicht = false,
 ): Bezwaar[] {
   const uit: Bezwaar[] = []
   const aard = v.aard
@@ -338,6 +340,19 @@ export function controleer(
     uit.push({
       ernst: 'letop',
       wat: `Dit gemiddelde gaat over ${v.gemiddelde_over ?? 'een deel van het jaar'}, niet over twaalf maanden. Het loonbureau weet de verloonde uren van het hele jaar; vraag het daar na als je zeker wilt zitten.`,
+    })
+  }
+
+  /* Verlengen op afroep terwijl er een aanbod vaste uren moet komen.
+   *
+   * De plicht verdwijnt niet door hem over te slaan: hij blijft staan, en de
+   * medewerker kan het verschil in uren tot vijf jaar terug opeisen. Toch
+   * houdt dit niets tegen — er zijn redenen die de app niet kan overzien, en
+   * dan wil je niet klemzitten. */
+  if (aard === 'verlengen' && aanbodVerplicht && (v.soort ?? 'nuluren') === 'nuluren') {
+    uit.push({
+      ernst: 'letop',
+      wat: 'Er moet eerst een aanbod vaste uren komen; hij werkt al meer dan twaalf maanden op afroep. Verleng je nu op oproepbasis, dan blijft dat aanbod verschuldigd en kan het verschil in uren tot vijf jaar terug worden opgeëist.',
     })
   }
 

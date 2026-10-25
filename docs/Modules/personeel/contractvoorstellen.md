@@ -151,6 +151,32 @@ Wat de app daarom doet:
   uitbetaald. Dat getal kan het berekende overschrijven, en komt dan met bron
   en periode op het blad dat naar het loonbureau gaat.
 
+## Het verlengproces in twee stappen — 25 oktober 2026
+
+Een voorstel opstellen begon met een keuzelijst van drie soorten. Dat zette de
+drie naast elkaar alsof het gelijkwaardige smaken zijn, en dat zijn ze niet.
+
+Nu staan er twee vragen. Eerst: ga je door met deze medewerker, ja of nee. Pas
+bij ja komt de tweede: langs welke weg — een aanbod vaste uren, of doorgaan
+zoals het contract nu loopt.
+
+Bij die tweede vraag zegt de app welke weg hier geldt. Werkt iemand twaalf
+maanden als oproepkracht, dan is een aanbod vaste uren verplicht (art. 7:628a
+lid 5 BW) en is doorgaan op afroep geen keuze van de werkgever: dat wordt het
+pas als de medewerker het aanbod weigert. Is die twaalf maanden nog niet vol,
+of is er het afgelopen jaar al een aanbod gedaan, dan zijn het wél twee
+gelijkwaardige wegen — en dat staat er dan ook bij, met vanaf wanneer het
+verandert.
+
+Beide wegen staan er altijd, ook de weg die nu niet mag. Alleen de geldende
+tonen zou korter zijn, maar dan zie je niet dát er een andere bestaat en dus
+ook niet waarom deze er nu is. Het formulier begint wel op de weg die geldt.
+
+Kies je toch de andere, dan waarschuwt de app en houdt hij niets tegen: er zijn
+redenen die de app niet kan overzien. `aanbodStand()` in contractwaker.ts
+beantwoordt de vraag of een aanbod verschuldigd is — dezelfde regel als waar
+het seintje op het startscherm op rust, zodat de twee niet uit elkaar lopen.
+
 ## Eerst het aanbod, dan de verlenging — 25 oktober 2026
 
 Bij de eerste proef kwam er "akkoord met verlengen, vaste uren geweigerd" uit

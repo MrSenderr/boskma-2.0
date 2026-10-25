@@ -471,3 +471,54 @@ export function useContractwaker() {
     },
   })
 }
+
+/* ------------------------------------------------- het aanbod vaste uren --- */
+
+export type AanbodStand = {
+  /** Moet er een aanbod vaste uren komen? */
+  verplicht: boolean
+  /** Hoeveel maanden iemand al als oproepkracht werkt, als dat bekend is. */
+  maanden: number | null
+  /** Waarom er (nog) geen aanbod hoeft. */
+  reden: 'verplicht' | 'geen_oproepkracht' | 'nog_geen_jaar' | 'al_gedaan' | 'onbekend'
+  /** Bij 'nog_geen_jaar': vanaf wanneer het moet. */
+  vanaf?: string
+}
+
+/* Of een aanbod vaste uren verschuldigd is, en waarom wel of niet.
+ *
+ * Dezelfde regel als waar de waker zijn seintje op baseert — hier apart, omdat
+ * het scherm waar je een voorstel opstelt het ook moet weten. Twee keer
+ * opschrijven zou betekenen dat ze een keer uit elkaar lopen, en dan zegt het
+ * ene scherm dat het moet terwijl het andere zwijgt.
+ *
+ * De plicht ontstaat na twaalf maanden op een oproepovereenkomst, en het aanbod
+ * moet binnen een maand daarna (art. 7:628a lid 5 BW). Is er in het afgelopen
+ * jaar al een aanbod gedaan, dan is eraan voldaan — ook als het is geweigerd. */
+export function aanbodStand(
+  p: Persoon,
+  contracten: Contract[],
+  voorstellen: Voorstel[],
+  vandaag = vandaagIso(),
+): AanbodStand {
+  const gevonden = lopendContract(contracten, vandaag)
+  const huidig = gevonden && looptOp(gevonden, vandaag) ? gevonden : null
+
+  if (!huidig || huidig.soort !== 'nuluren') {
+    return { verplicht: false, maanden: null, reden: 'geen_oproepkracht' }
+  }
+  if (aanbodGedaan(voorstellen, vandaag)) {
+    return { verplicht: false, maanden: null, reden: 'al_gedaan' }
+  }
+
+  const start = startVan(p, contracten)
+  if (!start) return { verplicht: false, maanden: null, reden: 'onbekend' }
+
+  const jaar = plusMaanden(start, 12)
+  const maanden = Math.floor(dagenTussen(start, vandaag) / 30.44)
+
+  if (vandaag < jaar) {
+    return { verplicht: false, maanden, reden: 'nog_geen_jaar', vanaf: jaar }
+  }
+  return { verplicht: true, maanden, reden: 'verplicht' }
+}
