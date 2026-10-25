@@ -9,6 +9,7 @@ import {
   useInkoopFacturen,
   type Factuuroverzicht,
 } from '../lib/inkoop'
+import { Breed } from '../lib/breedte'
 
 /* Alle inkoopfacturen op een rij.
 
@@ -73,6 +74,8 @@ export function InkoopDocumenten() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Een tabel wordt beter van ruimte. */}
+      <Breed />
       <div>
         <p className="text-sm text-muted">
           {facturen.length} facturen, samen {euro(totaal)} inclusief btw

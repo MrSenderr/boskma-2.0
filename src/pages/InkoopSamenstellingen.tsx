@@ -5,6 +5,7 @@ import { Kaart, Knop, Laden, Leeg, Mislukt, Veld } from '../components/ui'
 import { euro } from '../lib/inkoop'
 import { useNieuweSamenstelling, useSamenstellingen } from '../lib/samenstellingen'
 import type { Berekend } from '../lib/foodcost'
+import { Breed } from '../lib/breedte'
 
 /* Wat kost een portie, en wat vraag je ervoor.
 
@@ -109,6 +110,8 @@ export function InkoopSamenstellingen() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Een tabel wordt beter van ruimte. */}
+      <Breed />
       <p className="text-sm text-muted">
         Foodcost is je kostprijs gedeeld door de verkoopprijs zonder btw. Je algemene doel staat op{' '}
         {(doelen.algemeen * 100).toFixed(0)}%; per groep en per product kan daarvan afgeweken

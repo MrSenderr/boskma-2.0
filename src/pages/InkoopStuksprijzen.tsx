@@ -13,6 +13,7 @@ import {
   type Doelen,
 } from '../lib/stuksprijzen'
 import { adviesprijs } from '../lib/verpakking'
+import { Breed } from '../lib/breedte'
 
 /* Wat kost één stuk, één kilo, één liter — op de laatst betaalde prijs.
 
@@ -122,6 +123,8 @@ export function InkoopStuksprijzen() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Een tabel wordt beter van ruimte. */}
+      <Breed />
       <div className="grid gap-3 sm:grid-cols-3">
         <Cijfer waarde={String(bekend.length)} bij="artikelen omgerekend" />
         <Cijfer waarde={String(bekend.filter((a) => a.perKilo).length)} bij="met een kiloprijs" />

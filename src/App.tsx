@@ -100,7 +100,11 @@ function Poort() {
         {/* Inkoop: de facturen van de groothandel. Het scherm komt uit de losse
             inkoop-app en wordt hier stuk voor stuk opnieuw opgebouwd. */}
         <Route path="inkoop" element={<Inkoop />}>
-          <Route index element={<Navigate to="documenten" replace />} />
+          {/* Je komt binnen op de prijsontwikkeling, niet op een platte lijst
+              facturen: dat is waar je op kunt sturen. Zie de prijsmutatiepagina
+              zelf — daar staat het overzicht al, dus hier geen tweede pagina
+              die hetzelfde zegt. */}
+          <Route index element={<Navigate to="prijzen" replace />} />
           <Route path="documenten" element={<InkoopDocumenten />} />
           <Route path="documenten/:levId/:nummer" element={<InkoopFactuur />} />
           <Route path="prijzen" element={<InkoopPrijsmutaties />} />

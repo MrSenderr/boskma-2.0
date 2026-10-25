@@ -2,13 +2,20 @@ import { Link } from 'react-router-dom'
 import { Kaart, Laden, Leeg, Mislukt } from '../components/ui'
 import { euro, getal } from '../lib/inkoop'
 import { procent, usePrijsmutaties, verdeel, type Prijsmutatie } from '../lib/prijzen'
+import { Breed } from '../lib/breedte'
 
 /* Welke artikelen duurder werden, op volgorde van wat het je kost.
 
    Niet op percentage: een artikel dat 40% duurder wordt maar dat je zelden
    koopt staat lager dan frites die een dubbeltje stijgen. */
 
-const RIJ = 'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_6rem_6rem_4rem_7rem] items-baseline gap-x-3 gap-y-1'
+/* Op een breed scherm passen er twee kolommen bij die er anders niet in
+   konden: van wie je het koopt, en hoe vaak. Allebei veranderen ze wat een
+   stijging betekent — dezelfde vijftig cent is iets anders bij één keer per
+   jaar dan bij elke week. */
+const RIJ =
+  'grid grid-cols-[1fr_auto] md:grid-cols-[1fr_6rem_6rem_4rem_7rem] ' +
+  'xl:grid-cols-[1fr_9rem_6rem_6rem_4rem_5rem_7rem] items-baseline gap-x-3 gap-y-1'
 
 function Actie() {
   return (
@@ -34,6 +41,8 @@ function Rij({ m }: { m: Prijsmutatie }) {
           {[m.merk, m.artikelnr].filter(Boolean).join(' · ')}
         </span>
       </span>
+
+      <span className="hidden truncate text-muted xl:block">{m.leveranciernaam}</span>
 
       <span className={`text-right font-semibold tabular-nums md:order-last ${kleur}`}>
         {op ? '+' : ''}
@@ -66,6 +75,8 @@ function Rij({ m }: { m: Prijsmutatie }) {
         {pct.toFixed(0)}%
       </span>
 
+      <span className="hidden text-right tabular-nums text-muted xl:block">{m.keer_gekocht}×</span>
+
       {/* Op de telefoon is er geen ruimte voor kolommen, dus hier het verhaal
           in één regel: van wat naar wat, en hoe vaak je het kocht.
 
@@ -88,9 +99,11 @@ function Kop() {
       className={`${RIJ} hidden border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted md:grid`}
     >
       <span>Artikel</span>
+      <span className="hidden xl:block">Leverancier</span>
       <span className="text-right">Eerst</span>
       <span className="text-right">Nu</span>
       <span className="text-right">Verschil</span>
+      <span className="hidden text-right xl:block">Gekocht</span>
       <span className="text-right">Kost je</span>
     </div>
   )
@@ -124,6 +137,7 @@ export function InkoopPrijsmutaties() {
 
   return (
     <div className="flex flex-col gap-6">
+      <Breed />
       <div className="grid gap-3 sm:grid-cols-3">
         <Cijfer waarde={String(omhoog.length)} bij="duurder geworden" kleur="text-bad" />
         <Cijfer waarde={String(omlaag.length)} bij="goedkoper geworden" kleur="text-good" />

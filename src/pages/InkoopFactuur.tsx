@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, FileText } from 'lucide-react'
 import { Kaart, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { Factuurverslag } from '../components/Factuurverslag'
+import { Breed } from '../lib/breedte'
 import {
   aantalTekst,
   dagEnDatum,
@@ -170,6 +171,7 @@ export function InkoopFactuur() {
 
   return (
     <div className="flex flex-col gap-5">
+      <Breed />
       <div>
         <Link
           to="/inkoop/documenten"
@@ -194,13 +196,28 @@ export function InkoopFactuur() {
         </div>
       </div>
 
-      <Totalen kop={kop} />
+      {/* Links de factuur zelf, rechts wat de app erover zegt. De regels zijn
+          het stuk waar je doorheen leest; de totalen en het verslag kijk je
+          ernaast. Onder elkaar stond het verslag tussen de kop en de regels in,
+          en dan moet je eroverheen scrollen om bij de regels te komen. */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
+          {blokken.map((b) => (
+            <Levering key={b.sleutel} blok={b} />
+          ))}
+        </div>
 
-      <Factuurverslag documentId={kop.id} leverancierId={kop.leverancier_id} datum={kop.datum} />
-
-      {blokken.map((b) => (
-        <Levering key={b.sleutel} blok={b} />
-      ))}
+        {/* Niet sticky: een verslag kan langer zijn dan het scherm, en dan
+            kun je bij het onderste deel niet meer komen. */}
+        <div className="flex min-w-0 flex-col gap-5">
+          <Totalen kop={kop} />
+          <Factuurverslag
+            documentId={kop.id}
+            leverancierId={kop.leverancier_id}
+            datum={kop.datum}
+          />
+        </div>
+      </div>
     </div>
   )
 }
