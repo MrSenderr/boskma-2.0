@@ -1,6 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { naamVan, urensoortVan, type Persoon } from './personeel'
+import { dagenTussen, plusMaanden, vandaagIso } from './datums'
+
+/* De datumhulpjes staan sinds 25 oktober 2026 in datums.ts, omdat de
+   contractgeschiedenis met dezelfde maanden rekent. Hier blijven ze
+   beschikbaar voor wie ze al gebruikte. */
+export { dagenTussen, plusMaanden, vandaagIso }
+
+/** Een datum die er als JJJJ-MM-DD uitziet; de database geeft soms meer mee. */
+const ISO = /^\d{4}-\d{2}-\d{2}/
 
 /* De contractwaker: wat er rond een contract op een datum moet gebeuren, zodat
    het niet pas opvalt als het al te laat is.
@@ -45,37 +54,6 @@ export type Signaal = {
 const WAKER_VELDEN =
   'id,voornaam,achternaam,status,fase,uit_dienst_op,is_eigenaar,' +
   'geboortedatum,contracttype,contractduur,ingangsdatum,einddatum'
-
-/* ------------------------------------------------------------------ datums --- */
-
-const ISO = /^\d{4}-\d{2}-\d{2}/
-
-/** Twaalf uur 's middags, zodat zomertijd de datum niet verschuift. */
-function alsDag(s: string) {
-  return new Date(`${s.slice(0, 10)}T12:00:00`)
-}
-
-function iso(d: Date) {
-  const j = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const dag = String(d.getDate()).padStart(2, '0')
-  return `${j}-${m}-${dag}`
-}
-
-/** Zoveel maanden erbij; bestaat de dag niet (31 → februari), dan de laatste. */
-export function plusMaanden(s: string, maanden: number) {
-  const d = alsDag(s)
-  const dag = d.getDate()
-  d.setDate(1)
-  d.setMonth(d.getMonth() + maanden)
-  const laatste = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12).getDate()
-  d.setDate(Math.min(dag, laatste))
-  return iso(d)
-}
-
-export function dagenTussen(van: string, tot: string) {
-  return Math.round((alsDag(tot).getTime() - alsDag(van).getTime()) / 86_400_000)
-}
 
 /* ------------------------------------------------------------------ regels --- */
 
@@ -191,10 +169,6 @@ export function signalen(personen: Persoon[], vandaag: string): Signaal[] {
   return personen
     .flatMap((p) => signalenVoor(p, vandaag))
     .sort((a, b) => a.dagen - b.dagen || a.naam.localeCompare(b.naam, 'nl'))
-}
-
-export function vandaagIso() {
-  return iso(new Date())
 }
 
 /* ------------------------------------------------------------------ query --- */

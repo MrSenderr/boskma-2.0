@@ -20,6 +20,7 @@ function persoon(extra: Partial<Persoon>): Persoon {
     loonbureau_bevestigd_op: null,
     uit_dienst_op: null,
     is_eigenaar: false,
+    in_dienst_sinds: null,
     ...extra,
   }
 }

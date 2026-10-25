@@ -14,6 +14,7 @@ function persoon(anders: Partial<Persoon> = {}): Persoon {
     status: 'aangenomen',
     fase: 'medewerker',
     is_eigenaar: false,
+    in_dienst_sinds: null,
     aangemeld_op: '2026-09-01',
     aangenomen_op: '2026-09-01',
     onboarding_verstuurd_op: null,

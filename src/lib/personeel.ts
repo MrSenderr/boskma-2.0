@@ -6,7 +6,7 @@ import { supabase } from './supabase'
 const LIJST_VELDEN =
   'id,voornaam,achternaam,status,fase,aangemeld_op,aangenomen_op,' +
   'onboarding_verstuurd_op,onboarding_ingevuld_op,' +
-  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op,is_eigenaar'
+  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op,is_eigenaar,in_dienst_sinds'
 
 const KAART_VELDEN =
   LIJST_VELDEN +
@@ -32,6 +32,10 @@ export type Persoon = {
   /** Meewerkend eigenaar: doet mee in rooster en spits, maar niet in de
    *  onboarding, het loonbureau of de vergelijking met eitje. */
   is_eigenaar: boolean
+  /** De dag dat deze persoon bij Boskma begon, ook als dat onder de vorige
+   *  eigenaar was. Telt voor de ketenregeling en de twaalf maanden oproep;
+   *  de begindatum van een los contract staat in public.contracten. */
+  in_dienst_sinds: string | null
   // alleen op de kaart
   geboortedatum?: string | null
   telefoonnummer?: string | null
