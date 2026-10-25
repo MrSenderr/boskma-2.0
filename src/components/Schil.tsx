@@ -9,6 +9,7 @@ import { useModus, zetModus, type Modus } from '../lib/modus'
 import { MENU, titelVoor } from '../lib/menu'
 import { useMeldAanwezig } from '../lib/bezoek'
 import { useWieBenIk } from '../lib/wie'
+import { useBreedte } from '../lib/breedte'
 
 
 
@@ -83,6 +84,7 @@ export function Schil() {
   const [modus, zetModusState] = useModus()
   const { data: wie } = useWieBenIk()
   const locatie = useLocation()
+  const breedte = useBreedte()
 
   // Een medewerker komt nooit in het beheergezicht, ook niet via de schakelaar.
   // De echte grens ligt in de database; dit is alleen het scherm.
@@ -209,7 +211,11 @@ export function Schil() {
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
+        {/* De breedte komt van de pagina zelf; zie lib/breedte.tsx. */}
+        <main
+          className="mx-auto w-full flex-1 p-4 transition-[max-width] duration-200 sm:p-6"
+          style={{ maxWidth: breedte }}
+        >
           <Outlet />
         </main>
 

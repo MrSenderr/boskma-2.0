@@ -382,6 +382,20 @@ export function voorstelSignalen(
   return uit
 }
 
+/* Hoe dringend iets is, in woorden. Stond in Vandaag.tsx; sinds de
+   personeelslijst hetzelfde laat zien hoort het bij de waker, anders staan er
+   twee manieren om hetzelfde te zeggen. */
+export function wanneer(dagen: number, datum: string): string {
+  if (dagen < 0) return `${-dagen} dg te laat`
+  if (dagen === 0) return 'vandaag'
+  if (dagen === 1) return 'morgen'
+  if (dagen <= 14) return `over ${dagen} dagen`
+  return new Date(`${datum}T12:00:00`).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 /** "Contract 2 van 3", als dat bekend is. */
 export function ketenTekst(s: Signaal): string | null {
   return s.ketenNummer ? `Contract ${s.ketenNummer} van ${KETEN_MAX_CONTRACTEN}` : null

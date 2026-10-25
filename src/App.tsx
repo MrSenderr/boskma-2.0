@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from './lib/auth'
 import { Schil } from './components/Schil'
+import { BreedteProvider } from './lib/breedte'
 import { Inloggen } from './pages/Inloggen'
 import { Vandaag } from './pages/Vandaag'
 import { Personeel } from './pages/Personeel'
@@ -141,7 +142,10 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <Poort />
+          {/* Pagina's die ruimte nodig hebben zeggen dat zelf; zie lib/breedte.tsx. */}
+          <BreedteProvider>
+            <Poort />
+          </BreedteProvider>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

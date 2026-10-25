@@ -6,7 +6,7 @@ import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
 import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
 import { dagnaam, getal } from '../lib/opmaak'
-import { ketenTekst, useContractwaker } from '../lib/contractwaker'
+import { ketenTekst, useContractwaker, wanneer } from '../lib/contractwaker'
 import { useContractStanden, type ContractStand } from '../lib/getekendContract'
 import { useState } from 'react'
 
@@ -178,14 +178,6 @@ function GetekendeContracten() {
       </Kaart>
     </section>
   )
-}
-
-function wanneer(dagen: number, datum: string) {
-  if (dagen < 0) return `${-dagen} dg te laat`
-  if (dagen === 0) return 'vandaag'
-  if (dagen === 1) return 'morgen'
-  if (dagen <= 14) return `over ${dagen} dagen`
-  return new Date(`${datum}T12:00:00`).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
 }
 
 function Weerreeks() {

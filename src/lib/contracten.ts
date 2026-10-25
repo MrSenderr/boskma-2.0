@@ -274,3 +274,35 @@ export function useContractWeg(medewerkerId: string) {
     },
   })
 }
+
+/* Het lopende contract van iedereen, in één vraag.
+ *
+ * Voor de personeelslijst: daar wil je per regel zien tot wanneer iemands
+ * contract loopt, zonder per persoon een vraag te stellen. De view
+ * huidig_contract kiest per medewerker het contract dat loopt, en anders het
+ * laatste — met `loopt` erbij, zodat je het verschil ziet. */
+export type HuidigContract = {
+  medewerker_id: string
+  contract_id: string
+  soort: Soort
+  duur: Duur
+  begint: string
+  eindigt: string | null
+  loopt: boolean
+}
+
+export function useHuidigeContracten() {
+  return useQuery({
+    queryKey: ['huidig-contract'],
+    staleTime: 60 * 60 * 1000,
+    queryFn: async (): Promise<Map<string, HuidigContract>> => {
+      const { data, error } = await supabase
+        .from('huidig_contract')
+        .select('medewerker_id,contract_id,soort,duur,begint,eindigt,loopt')
+      if (error) throw new Error(error.message)
+      return new Map(
+        ((data ?? []) as unknown as HuidigContract[]).map((c) => [c.medewerker_id, c]),
+      )
+    },
+  })
+}

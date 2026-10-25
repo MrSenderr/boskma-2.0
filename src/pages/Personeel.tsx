@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronRight, UserPlus, Users } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
+import { Breed, useBreedScherm } from '../lib/breedte'
+import { useContractwaker, wanneer, type Signaal } from '../lib/contractwaker'
+import { KETEN_MAX_CONTRACTEN, useHuidigeContracten, type HuidigContract } from '../lib/contracten'
 import {
   inArchief,
   naamVan,
@@ -114,27 +117,124 @@ function Toevoegen({ sluit }: { sluit: () => void }) {
   )
 }
 
-function Regel({ p, inDeApp }: { p: Persoon; inDeApp?: string }) {
+/* Hoe lang een contract nog loopt, in één regel. Alleen bij een contract voor
+   bepaalde tijd dat nog loopt: bij onbepaalde tijd valt er niets af te tellen,
+   en bij een afgelopen contract zegt het seintje het al. */
+function contracttekst(c: HuidigContract | undefined, nummer?: number): string | null {
+  if (!c || !c.loopt || c.duur !== 'bepaalde' || !c.eindigt) return null
+  const tot = new Date(`${c.eindigt}T12:00:00`).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  return nummer
+    ? `tot ${tot} · contract ${nummer} van ${KETEN_MAX_CONTRACTEN}`
+    : `tot ${tot}`
+}
+
+/* Eén regel in de lijst.
+ *
+ * Sinds 25 oktober 2026 staat hier ook wát er met iemand moet gebeuren. Dat
+ * rekende de contractwaker al uit, maar het stond alleen op het startscherm —
+ * en dan moet je elke kaart openklikken om te zien of er iets speelt.
+ *
+ * Speelt er niets, dan staat er niets. Lege ruimte zegt dan: hier hoef je
+ * niets. Wie wel aandacht vraagt springt eruit juist omdat de rest stil is. */
+function Regel({
+  p,
+  inDeApp,
+  signaal,
+  contract,
+}: {
+  p: Persoon
+  inDeApp?: string
+  signaal?: Signaal
+  contract?: HuidigContract
+}) {
   const toestand = toestandVan(p)
+  const contractregel = signaal ? contracttekst(contract, signaal.ketenNummer) : null
+
   return (
     <Link
       to={`/personeel/${p.id}`}
       data-touch
       className="flex items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
     >
-      <span className="min-w-0 flex-1 truncate">
-        <span className="font-semibold">{naamVan(p)}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{naamVan(p)}</span>
+        {/* Twee regels mag: wat er moet gebeuren halverwege afkappen maakt het
+            onleesbaar, en dat is juist de regel waar het om gaat. */}
+        {signaal && (
+          <span
+            className={`block text-sm ${signaal.ernst === 'fout' ? 'text-bad' : 'text-warn'}`}
+          >
+            {signaal.wat}
+          </span>
+        )}
+        {contractregel && (
+          <span className="block truncate text-xs text-muted">{contractregel}</span>
+        )}
         {/* Alleen bij medewerkers: een sollicitant hoort nog niet in de app. */}
         {p.fase === 'medewerker' && (
           <span className="block text-xs text-muted">in de app: {geledenTekst(inDeApp)}</span>
         )}
       </span>
-      <Pil soort={toestand.soort}>{toestand.label}</Pil>
+      {signaal ? (
+        <Pil soort={signaal.ernst}>{wanneer(signaal.dagen, signaal.uiterlijk)}</Pil>
+      ) : (
+        <Pil soort={toestand.soort}>{toestand.label}</Pil>
+      )}
       <span className="hidden w-20 shrink-0 text-right text-sm tabular-nums text-muted sm:block">
         {sinds(p.aangemeld_op)}
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
     </Link>
+  )
+}
+
+/* Een lijst in twee kolommen als het scherm er ruimte voor heeft.
+ *
+ * Kolomsgewijs geknipt, niet om en om: de eerste helft links, de tweede
+ * rechts. Dan lees je alfabetisch van boven naar beneden, zoals in een
+ * telefoonboek. Om en om zou je oog bij elke naam moeten overspringen.
+ *
+ * Onder de vier namen gebeurt er niets: twee kolommen van twee regels is geen
+ * overzicht maar versnippering. */
+function Kolommen({
+  mensen,
+  inDeApp,
+  signalen,
+  contracten,
+}: {
+  mensen: Persoon[]
+  inDeApp?: Map<string, string>
+  signalen?: Map<string, Signaal>
+  contracten?: Map<string, HuidigContract>
+}) {
+  const breed = useBreedScherm()
+  const tweeKolommen = breed && mensen.length >= 4
+  const helft = Math.ceil(mensen.length / 2)
+  const delen = tweeKolommen ? [mensen.slice(0, helft), mensen.slice(helft)] : [mensen]
+
+  return (
+    /* Eén kolom blijft beperkt in breedte: een naam links en een pil helemaal
+       rechts op een breed scherm laat je oog te ver reizen. Op een telefoon
+       doet deze grens niets, daar is het scherm toch smaller. */
+    <div className={tweeKolommen ? 'grid grid-cols-2 gap-4' : 'max-w-3xl'}>
+      {delen.map((deel, i) => (
+        <Kaart key={i}>
+          {deel.map((p) => (
+            <Regel
+              key={p.id}
+              p={p}
+              inDeApp={inDeApp?.get(p.id)}
+              signaal={signalen?.get(p.id)}
+              contract={contracten?.get(p.id)}
+            />
+          ))}
+        </Kaart>
+      ))}
+    </div>
   )
 }
 
@@ -144,12 +244,16 @@ function Groep({
   mensen,
   leeg,
   inDeApp,
+  signalen,
+  contracten,
 }: {
   titel: string
   aantal: number
   mensen: Persoon[]
   leeg: string
   inDeApp?: Map<string, string>
+  signalen?: Map<string, Signaal>
+  contracten?: Map<string, HuidigContract>
 }) {
   return (
     <section className="flex flex-col gap-3">
@@ -160,11 +264,12 @@ function Groep({
       {mensen.length === 0 ? (
         <Kaart className="p-6 text-sm text-muted">{leeg}</Kaart>
       ) : (
-        <Kaart>
-          {mensen.map((p) => (
-            <Regel key={p.id} p={p} inDeApp={inDeApp?.get(p.id)} />
-          ))}
-        </Kaart>
+        <Kolommen
+          mensen={mensen}
+          inDeApp={inDeApp}
+          signalen={signalen}
+          contracten={contracten}
+        />
       )}
     </section>
   )
@@ -173,6 +278,8 @@ function Groep({
 export function Personeel() {
   const { data, isPending, error, refetch } = usePersonen()
   const bezoek = useAppBezoek()
+  const waker = useContractwaker()
+  const { data: contracten } = useHuidigeContracten()
   const [toonArchief, setToonArchief] = useState(false)
   const [toevoegen, setToevoegen] = useState(false)
 
@@ -184,10 +291,19 @@ export function Personeel() {
   const medewerkers = lopend.filter((p) => p.fase === 'medewerker')
   const archief = data.filter(inArchief)
   const inDeApp = new Map((bezoek.data ?? []).map((b) => [b.persoon_id, b.laatst_gezien]))
+
+  /* Het dringendste seintje per persoon. De waker levert ze al op volgorde van
+     dringendheid, dus de eerste die je tegenkomt is de juiste. */
+  const dringendste = new Map<string, Signaal>()
+  for (const s of waker.data ?? []) {
+    if (!dringendste.has(s.persoonId)) dringendste.set(s.persoonId, s)
+  }
   const gebruiken = medewerkers.filter((p) => inDeApp.has(p.id)).length
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Twee kolommen in de lijsten; die hebben ruimte nodig. */}
+      <Breed />
       {toevoegen ? (
         <Toevoegen sluit={() => setToevoegen(false)} />
       ) : (
@@ -212,6 +328,8 @@ export function Personeel() {
         mensen={medewerkers}
         leeg="Nog geen medewerkers. Neem een sollicitant aan, of voeg iemand toe."
         inDeApp={inDeApp}
+        signalen={dringendste}
+        contracten={contracten}
       />
 
       {medewerkers.length > 0 && (
@@ -235,13 +353,7 @@ export function Personeel() {
             Archief ({archief.length})
             <span aria-hidden>{toonArchief ? '▾' : '▸'}</span>
           </button>
-          {toonArchief && (
-            <Kaart>
-              {archief.map((p) => (
-                <Regel key={p.id} p={p} inDeApp={inDeApp?.get(p.id)} />
-              ))}
-            </Kaart>
-          )}
+          {toonArchief && <Kolommen mensen={archief} inDeApp={inDeApp} />}
         </section>
       )}
     </div>

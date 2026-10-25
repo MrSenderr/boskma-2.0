@@ -12,6 +12,7 @@ import { Werkplekken } from '../components/Werkplekken'
 import { Contracten } from '../components/Contracten'
 import { Voorstellen } from '../components/Voorstellen'
 import { Ondertekenen } from '../components/Ondertekenen'
+import { Breed } from '../lib/breedte'
 import {
   aannemen,
   afwijzen,
@@ -95,6 +96,8 @@ export function Persoon() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Deze pagina werkt met twee kolommen en heeft daar ruimte voor nodig. */}
+      <Breed />
       <div className="flex flex-col gap-3">
         <Link
           to="/personeel"
@@ -171,15 +174,6 @@ export function Persoon() {
         </section>
       )}
 
-      {/* Zolang er nog iets moet, staat het bovenaan. Is alles rond, dan is
-          dit archief en gaat het dagelijkse werk voor. */}
-      {!lopend && !eigenaar && p.fase === 'medewerker' && !p.uit_dienst_op && (
-        <>
-          <Invullink persoon={p} />
-          <Loonbureau persoon={p} />
-        </>
-      )}
-
       {eigenaar && (
         <Kaart className="p-4">
           <p className="text-sm">
@@ -189,63 +183,78 @@ export function Persoon() {
         </Kaart>
       )}
 
+      {/* Twee kolommen op een breed scherm, en onder elkaar op een telefoon.
+          Links de werklijn: hoe het contract ervoor staat en wat er met deze
+          persoon loopt. Rechts het naslagwerk: wat vastligt en af en toe
+          nagekeken wordt. Zo zie je in één oogopslag hoe iemand ervoor staat,
+          in plaats van te moeten scrollen om te onthouden wat erboven stond. */}
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="flex min-w-0 flex-col gap-8">
+          {/* Zolang er nog iets moet, staat het bovenaan. Is alles rond, dan is
+              dit archief en gaat het dagelijkse werk voor. */}
+          {!lopend && !eigenaar && p.fase === 'medewerker' && !p.uit_dienst_op && (
+            <>
+              <Invullink persoon={p} />
+              <Loonbureau persoon={p} />
+            </>
+          )}
 
-      {p.fase === 'medewerker' && <Contracten persoon={p} />}
+          {p.fase === 'medewerker' && <Contracten persoon={p} />}
+          {p.fase === 'medewerker' && !p.uit_dienst_op && <Voorstellen persoon={p} />}
+          {p.fase === 'medewerker' && <Ondertekenen persoon={p} />}
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Voorstellen persoon={p} />}
+          {lopend && (
+            <>
+              <Loonbureau persoon={p} />
+              <Invullink persoon={p} />
+            </>
+          )}
+        </div>
 
-      {p.fase === 'medewerker' && <Ondertekenen persoon={p} />}
+        <div className="flex min-w-0 flex-col gap-8">
+          {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
+          {p.fase === 'medewerker' && !p.uit_dienst_op && !eigenaar && <VasteDagen persoon={p} />}
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
+          <section className="flex flex-col gap-3">
+            <Kopje>Van de sollicitatie</Kopje>
+            <Kaart>
+              <Rij
+                label="Geboortedatum"
+                waarde={
+                  leeftijd(p.geboortedatum) === null
+                    ? korteDatum(p.geboortedatum)
+                    : `${korteDatum(p.geboortedatum)} — ${leeftijd(p.geboortedatum)} jaar`
+                }
+              />
+              <Rij label="Telefoon" waarde={toonWaarde(p.telefoonnummer)} />
+              <Rij label="E-mail" waarde={toonWaarde(p.email)} />
+            </Kaart>
+            {p.motivatie && (
+              <Kaart className="p-4">
+                <p className="mb-1 text-sm text-muted">Motivatie</p>
+                <p className="whitespace-pre-wrap text-sm">{p.motivatie}</p>
+              </Kaart>
+            )}
+          </section>
 
-      {p.fase === 'medewerker' && !p.uit_dienst_op && !eigenaar && <VasteDagen persoon={p} />}
+          {/* Bij een medewerker altijd, ook als er nog niets is ingevuld: anders
+              is er geen plek om het alsnog te doen. */}
+          {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
 
+          <Tijdlijn p={p} />
+
+          {p.fase === 'medewerker' && !eigenaar && <UitDienst persoon={p} />}
+        </div>
+      </div>
+
+      {/* Over de volle breedte: het dossier is zijn eigen onderwerp, met
+          verslagen en documenten die ruimte nodig hebben. */}
       {p.fase === 'medewerker' && (
         <section className="flex flex-col gap-4">
           <h3 className="font-display text-xl">Dossier</h3>
           <Dossier persoon={p} />
         </section>
       )}
-
-      {/* ---------------------------------------------------- sollicitatie --- */}
-      <section className="flex flex-col gap-3">
-        <Kopje>Van de sollicitatie</Kopje>
-        <Kaart>
-          <Rij
-            label="Geboortedatum"
-            waarde={
-              leeftijd(p.geboortedatum) === null
-                ? korteDatum(p.geboortedatum)
-                : `${korteDatum(p.geboortedatum)} — ${leeftijd(p.geboortedatum)} jaar`
-            }
-          />
-          <Rij label="Telefoon" waarde={toonWaarde(p.telefoonnummer)} />
-          <Rij label="E-mail" waarde={toonWaarde(p.email)} />
-        </Kaart>
-        {p.motivatie && (
-          <Kaart className="p-4">
-            <p className="mb-1 text-sm text-muted">Motivatie</p>
-            <p className="whitespace-pre-wrap text-sm">{p.motivatie}</p>
-          </Kaart>
-        )}
-      </section>
-
-      {/* Bij een medewerker altijd, ook als er nog niets is ingevuld: anders is
-          er geen plek om het alsnog te doen. */}
-      {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
-
-      {lopend && (
-        <>
-          <Loonbureau persoon={p} />
-          <Invullink persoon={p} />
-        </>
-      )}
-
-      <Tijdlijn p={p} />
-
-
-
-      {p.fase === 'medewerker' && !eigenaar && <UitDienst persoon={p} />}
 
       {/* Zelden nodig, dus niet bovenaan in de weg. */}
       {p.fase === 'medewerker' && !eigenaar && (!p.aangenomen_op || !p.onboarding_verstuurd_op) && (
