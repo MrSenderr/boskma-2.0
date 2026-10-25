@@ -208,6 +208,9 @@ export function schoonVoorstel(v: Partial<Voorstel>): Partial<Voorstel> {
     uit.gemiddelde_uren = null
     uit.gemiddelde_bron = null
     uit.gemiddelde_over = null
+  } else {
+    // Een leeg veld is geen periode; anders staat er '' in de tabel.
+    uit.gemiddelde_over = uit.gemiddelde_over?.trim() || null
   }
 
   return uit
@@ -279,6 +282,19 @@ export function controleer(v: Partial<Voorstel>, keten: Keten, vandaag = vandaag
      dat er helemaal geen aanbod komt zolang Eitje nog geen jaar heeft
      geleverd, en géén aanbod doen is duurder dan een aanbod met een
      kanttekening: dan loopt de vordering over álle uren. */
+  /* Een gemiddelde dat met de hand is ingevuld zonder periode is later niet na
+     te gaan: je weet dan niet waarover het ging. De brief laat die zin dan ook
+     weg, en dat is precies de stilte die je bij een aanbod vaste uren niet
+     wilt. */
+  if (metVasteUren(aard) && v.gemiddelde_bron === 'loonbureau') {
+    if (!v.gemiddelde_over?.trim()) {
+      uit.push({
+        ernst: 'fout',
+        wat: 'Vul erbij over welke periode het gemiddelde van het loonbureau gaat. Zonder die periode is later niet na te gaan waarop het aanbod rustte.',
+      })
+    }
+  }
+
   if (metVasteUren(aard) && v.gemiddelde_bron === 'deels_berekend') {
     uit.push({
       ernst: 'letop',

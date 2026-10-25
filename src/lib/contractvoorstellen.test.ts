@@ -343,7 +343,36 @@ describe('een gemiddelde dat geen heel jaar beslaat', () => {
     expect(bezwaren).toEqual([])
   })
 
-  /* Het getal van het loonbureau is de bron zelf; daar hoeft niets bij
+  /* Op 25 oktober 2026 bij de eerste proef: het getal met de hand ingevuld,
+     het periodeveld leeg gelaten, en de app liet het door. In de brief viel de
+     zin over waarop het aanbod rust dan stilletjes weg. */
+  it('vraagt om de periode als het getal met de hand is ingevuld', () => {
+    const bezwaren = controleer(
+      {
+        aard: 'vaste_uren',
+        uren_vast: 5,
+        gemiddelde_uren: 5,
+        gemiddelde_bron: 'loonbureau',
+        gemiddelde_over: '',
+      },
+      leegKeten,
+      vandaag,
+    )
+    expect(magVerstuurd(bezwaren)).toBe(false)
+    expect(bezwaren.some((b) => /over welke periode/i.test(b.wat))).toBe(true)
+  })
+
+  it('maakt van een leeg periodeveld geen lege tekst in de tabel', () => {
+    const uit = schoonVoorstel({
+      aard: 'vaste_uren',
+      gemiddelde_uren: 5,
+      gemiddelde_bron: 'loonbureau',
+      gemiddelde_over: '   ',
+    })
+    expect(uit.gemiddelde_over).toBeNull()
+  })
+
+  /* Het getal van het loonbureau is de bron zelf; daar hoeft verder niets bij
      gezegd te worden. */
   it('zwijgt bij een opgave van het loonbureau', () => {
     const bezwaren = controleer(
