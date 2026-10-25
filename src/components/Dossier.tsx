@@ -191,7 +191,19 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
   const [fout, setFout] = useState<string | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
   // Stelt het loonbureau het contract op, dan gaat de getekende versie terug.
-  const terugNaarLoonbureau = Boolean(persoon.contract_door_loonbureau)
+  /* Twee verschillende vragen, die tot 25 oktober 2026 aan dezelfde vlag
+     hingen.
+     
+     "Verwacht het loonbureau dit terug?" — alleen als zij het contract hebben
+     opgesteld. Daar hangt het rode seintje aan en de telling op het
+     startscherm.
+     
+     "Mag ik het versturen?" — altijd. Een getekend arbeidscontract is voor de
+     loonadministratie van belang, wie het ook heeft getypt. Dat die twee aan
+     één vlag hingen betekende dat je bij Evi Dudink een getekend contract kon
+     uploaden en daarna helemaal niets kreeg: geen knop, geen melding, geen
+     uitleg waarom niet. */
+  const verwachtTerug = Boolean(persoon.contract_door_loonbureau)
 
   function stuur(documentId: number, naUpload = false) {
     setFout(null)
@@ -246,7 +258,7 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
   }
 
   function loonbureauRegel(d: Document) {
-    if (d.soort !== 'contract_getekend' || !terugNaarLoonbureau) return null
+    if (d.soort !== 'contract_getekend') return null
     if (d.naar_loonbureau_op) {
       return (
         <span className="mt-1 block">
@@ -256,7 +268,11 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
     }
     return (
       <span className="mt-1 flex flex-wrap items-center gap-2">
-        <Pil soort="fout">Nog niet naar loonbureau</Pil>
+        {/* Rood alleen als ze het terugverwachten; anders is het geen verzuim
+            maar een keuze die je zelf hebt gemaakt. */}
+        <Pil soort={verwachtTerug ? 'fout' : 'neutraal'}>
+          {verwachtTerug ? 'Nog niet naar loonbureau' : 'Niet naar het loonbureau gestuurd'}
+        </Pil>
         {d.naar_loonbureau_fout && <span className="text-sm text-bad">{d.naar_loonbureau_fout}</span>}
       </span>
     )
@@ -296,7 +312,7 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
               }
               actie={
                 <>
-                {d.soort === 'contract_getekend' && terugNaarLoonbureau && !d.naar_loonbureau_op && (
+                {d.soort === 'contract_getekend' && !d.naar_loonbureau_op && (
                   <>
                     <Knop soort="primair" bezig={versturen.isPending} onClick={() => stuur(d.id)}>
                       <Send className="size-4" aria-hidden />
@@ -382,7 +398,10 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
                 // Een getekend contract dat het loonbureau opstelde gaat
                 // meteen terug; daar hoef je niet nog eens aan te denken.
                 onSuccess: (id) => {
-                  if (soort === 'contract_getekend' && terugNaarLoonbureau) stuur(id, true)
+                  /* Alleen vanzelf versturen als ze het terugverwachten. Een
+                     contract dat jij zelf opstelde hoort niet buiten je om de
+                     deur uit te gaan. */
+                  if (soort === 'contract_getekend' && verwachtTerug) stuur(id, true)
                   /* Een getekend contract dat op papier binnenkomt hoort net zo
                      goed in de contractgeschiedenis als een dat in de app is
                      getekend. Anders blijft de app rekenen met het contract dat
