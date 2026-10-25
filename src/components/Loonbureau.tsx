@@ -18,6 +18,7 @@ import {
   type Persoon,
 } from '../lib/personeel'
 import { bijlagenStand, bijlagenVan, bouwMutatieformulier } from '../lib/mutatieformulier'
+import { lopendContract, urenTekst, SOORTNAAM, useContracten, type Contract } from '../lib/contracten'
 import { useTestmodus } from '../lib/instellingen'
 import { supabase } from '../lib/supabase'
 
@@ -82,6 +83,15 @@ function Keuze({
   )
 }
 
+/** Het contract in één regel, zoals het ook in de contractgeschiedenis staat. */
+function contractregel(c: Contract): string {
+  const tot =
+    c.duur === 'onbepaalde'
+      ? 'onbepaalde tijd'
+      : `tot en met ${korteDatum(c.eindigt)}`
+  return `${SOORTNAAM[c.soort]}, ${korteDatum(c.begint)} ${tot}, ${urenTekst(c)}`
+}
+
 export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
   const wijzig = usePersoonWijzigen(p.id)
   const { data: testmodus } = useTestmodus()
@@ -91,8 +101,26 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
   const [fout, setFout] = useState<string | null>(null)
   const [bevestigen, setBevestigen] = useState(false)
   const [bewerken, setBewerken] = useState(false)
+  /* Het contract uit de contractgeschiedenis. Staat dat er, dan is het de
+     afspraak — op het scherm én in het mutatieformulier. */
+  const { data: contracten } = useContracten(p.id)
+  const lopendcontract = lopendContract(contracten ?? [])
 
-  const mist = ontbrekendeContractvelden(p)
+  /* Wat er nog moet worden ingevuld voordat het formulier klopt.
+   *
+   * Staat het contract in de contractgeschiedenis, dan komt de afspraak daar
+   * vandaan en zeggen de losse velden op de kaart niets meer. Ze dan nog
+   * nakijken zou het versturen blokkeren terwijl het formulier compleet is.
+   * Van het contract zelf kunnen uurloon en functie leeg zijn; de rest houdt
+   * de database al tegen. */
+  const mist = lopendcontract
+    ? [
+        ...(lopendcontract.uurloon === null || lopendcontract.uurloon === undefined
+          ? ['uurloon']
+          : []),
+        ...(lopendcontract.functie ? [] : ['functie']),
+      ]
+    : ontbrekendeContractvelden(p)
   const bijlagen = bijlagenVan(p)
   const alVerstuurd = Boolean(p.loonbureau_verstuurd_op)
   // Zolang het nog niet weg is, vul je in. Daarna is het vastgelegd en lees je
@@ -109,7 +137,7 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
     try {
       const { data, error } = await supabase.functions.invoke('stuur-loonbureau', {
         body: {
-          mutatie_html: bouwMutatieformulier(p),
+          mutatie_html: bouwMutatieformulier(p, lopendcontract),
           files: bijlagen,
           emp_naam: naamVan(p),
           // Hiermee kan de server zien dat het om een oefenkaart gaat en de
@@ -336,6 +364,18 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
           </>
         ) : (
           <>
+            {/* Staat het contract in de contractgeschiedenis, dan is dát de
+                afspraak en hoort hij hier niet nog een keer te staan. Twee
+                lijstjes met dezelfde voorwaarden lopen uit elkaar zodra je er
+                één bijwerkt, en dan gaat er iets anders naar het loonbureau dan
+                je denkt. Eén regel is genoeg: die zegt waar het vandaan komt. */}
+            {lopendcontract ? (
+              <div>
+                <Rij label="Voorwaarden" waarde={contractregel(lopendcontract)} />
+                <Rij label="Contract door loonbureau" waarde={jaNee(p.contract_door_loonbureau)} />
+              </div>
+            ) : (
+            <>
             <Kopje>Contractgegevens</Kopje>
             <div>
               <Rij label="Contracttype" waarde={p.contracttype} />
@@ -366,10 +406,14 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
               <Rij label="Proefperiode" waarde={jaNee(p.proefperiode)} />
               <Rij label="Contract door loonbureau" waarde={jaNee(p.contract_door_loonbureau)} />
             </div>
+            {/* Alleen te wijzigen zolang de velden op de kaart de bron zijn.
+                Staat het contract in de tabel, dan wijzig je het daar. */}
             <Knop soort="rustig" className="w-fit" onClick={() => setBewerken(true)}>
               <Pencil className="size-4" aria-hidden />
               Wijzigen
             </Knop>
+            </>
+            )}
           </>
         )}
       </Kaart>
@@ -416,7 +460,7 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Knop soort="rustig" onClick={() => setVoorbeeld(bouwMutatieformulier(p))}>
+          <Knop soort="rustig" onClick={() => setVoorbeeld(bouwMutatieformulier(p, lopendcontract))}>
             <FileText className="size-4" aria-hidden />
             Formulier bekijken
           </Knop>

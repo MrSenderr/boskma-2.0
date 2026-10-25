@@ -17,7 +17,6 @@ import {
   aannemen,
   afwijzen,
   korteDatum,
-  leeftijd,
   naamVan,
   terugNaarSollicitant,
   toestandVan,
@@ -33,12 +32,6 @@ function Rij({ label, waarde }: { label: string; waarde: React.ReactNode }) {
       <span className="font-medium tabular-nums">{waarde}</span>
     </div>
   )
-}
-
-function toonWaarde(v: unknown): string {
-  if (v === null || v === undefined || v === '') return '—'
-  if (typeof v === 'boolean') return v ? 'Ja' : 'Nee'
-  return String(v)
 }
 
 function Tijdlijn({ p }: { p: PersoonType }) {
@@ -202,44 +195,34 @@ export function Persoon() {
           {p.fase === 'medewerker' && <Contracten persoon={p} />}
           {p.fase === 'medewerker' && !p.uit_dienst_op && <Voorstellen persoon={p} />}
           {p.fase === 'medewerker' && <Ondertekenen persoon={p} />}
+        </div>
 
+        <div className="flex min-w-0 flex-col gap-8">
+          {/* Is alles rond, dan zijn dit geen taken meer maar naslag: iets wat
+              je af en toe nakijkt. Moet er nog iets, dan staan ze bovenaan in
+              de linkerkolom. */}
           {lopend && (
             <>
               <Loonbureau persoon={p} />
               <Invullink persoon={p} />
             </>
           )}
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-8">
           {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
           {p.fase === 'medewerker' && !p.uit_dienst_op && !eigenaar && <VasteDagen persoon={p} />}
 
-          <section className="flex flex-col gap-3">
-            <Kopje>Van de sollicitatie</Kopje>
-            <Kaart>
-              <Rij
-                label="Geboortedatum"
-                waarde={
-                  leeftijd(p.geboortedatum) === null
-                    ? korteDatum(p.geboortedatum)
-                    : `${korteDatum(p.geboortedatum)} — ${leeftijd(p.geboortedatum)} jaar`
-                }
-              />
-              <Rij label="Telefoon" waarde={toonWaarde(p.telefoonnummer)} />
-              <Rij label="E-mail" waarde={toonWaarde(p.email)} />
-            </Kaart>
-            {p.motivatie && (
+          {/* Bij een medewerker altijd, ook als er nog niets is ingevuld:
+              anders is er geen plek om het alsnog te doen. */}
+          {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
+
+          {p.motivatie && (
+            <section className="flex flex-col gap-3">
+              <Kopje>Motivatie</Kopje>
               <Kaart className="p-4">
-                <p className="mb-1 text-sm text-muted">Motivatie</p>
                 <p className="whitespace-pre-wrap text-sm">{p.motivatie}</p>
               </Kaart>
-            )}
-          </section>
-
-          {/* Bij een medewerker altijd, ook als er nog niets is ingevuld: anders
-              is er geen plek om het alsnog te doen. */}
-          {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
+            </section>
+          )}
 
           <Tijdlijn p={p} />
 

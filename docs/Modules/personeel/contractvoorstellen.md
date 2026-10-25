@@ -198,6 +198,23 @@ Let op de klok: aanzeggen moet uiterlijk een maand voor de einddatum, en op een
 aanbod heeft iemand een maand om te antwoorden. Twee stappen passen alleen als
 je op tijd met het aanbod begint.
 
+## Eén contract, één bron — 25 oktober 2026
+
+De contractafspraak stond op twee plekken: in `public.contracten` (waar de app
+mee rekent — de keten, de aanzegtermijn, de voorstellen) en in losse velden op
+de persoonskaart (`contracttype`, `ingangsdatum`, `uurloon`, …), waaruit het
+mutatieformulier voor het loonbureau werd gebouwd. Op het scherm stonden ze
+onder elkaar; wie er één bijwerkte, verstuurde de andere.
+
+Nu geldt: staat het contract in de tabel, dan is dát de afspraak, ook voor het
+loonbureau. Het blok met losse contractgegevens is van het scherm verdwenen en
+vervangen door één regel die zegt waar de voorwaarden vandaan komen.
+
+De velden op de kaart blijven bestaan, maar alleen voor het geval waarin ze het
+enige zijn wat er is: een nieuw dienstverband, waarbij het loonbureau het
+contract nog moet opstellen en er dus nog niets in de tabel staat. Dan is het
+geen restant maar de bron van dat moment.
+
 ## Afspraken
 
 - Het loonbureau maakt het contract, niet de app.

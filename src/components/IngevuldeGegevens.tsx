@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Eye, EyeOff, Pencil } from 'lucide-react'
 import { Kaart, Knop, Kopje, Veld } from './ui'
-import { useIngevuldWijzigen, type Persoon } from '../lib/personeel'
+import { korteDatum, leeftijd, useIngevuldWijzigen, type Persoon } from '../lib/personeel'
 import { NAAR_LOONBUREAU } from '../lib/mijngegevens'
 
 /* Wat de medewerker via de link invult — en wat Sander kan rechtzetten.
@@ -80,7 +80,7 @@ export function IngevuldeGegevens({ persoon: p }: { persoon: Persoon }) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Kopje>Zelf ingevuld</Kopje>
+        <Kopje>Gegevens</Kopje>
         <button
           type="button"
           onClick={() => setToonGevoelig((v) => !v)}
@@ -180,6 +180,21 @@ export function IngevuldeGegevens({ persoon: p }: { persoon: Persoon }) {
       ) : (
         <>
           <Kaart>
+            {/* Geboortedatum, telefoon en mail stonden in een eigen kaart
+                'Van de sollicitatie'. Twee kaarten met persoonsgegevens naast
+                elkaar laat je twee keer zoeken; het is één persoon. Deze drie
+                staan op de kaart zelf en niet in het invulformulier, dus ze
+                zijn hier alleen te lezen. */}
+            <Rij
+              label="Geboortedatum"
+              waarde={
+                leeftijd(p.geboortedatum) === null
+                  ? toonWaarde(korteDatum(p.geboortedatum))
+                  : `${korteDatum(p.geboortedatum)} — ${leeftijd(p.geboortedatum)} jaar`
+              }
+            />
+            <Rij label="Telefoon" waarde={toonWaarde(p.telefoonnummer)} />
+            <Rij label="E-mail" waarde={toonWaarde(p.email)} />
             {INGEVULD.map(({ sleutel, label, gevoelig }) => (
               <Rij
                 key={sleutel}

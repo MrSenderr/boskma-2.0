@@ -1,4 +1,5 @@
 import { urenInWoorden, type Persoon } from './personeel'
+import { SOORTNAAM, urenTekst, type Contract } from './contracten'
 
 /* Het mutatieformulier zoals het loonbureau het gewend is. De indeling volgt
    het bestaande voorbeeld: kop, contractgegevens, medewerkergegevens, voet.
@@ -40,9 +41,51 @@ function rij(label: string, waarde: string) {
   return `<tr><td class="label">${label}</td><td class="waarde">${waarde}</td></tr>`
 }
 
-export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'): string {
+/* De contractafspraak voor dit formulier.
+ *
+ * Staat het contract in de contractentabel, dan is dát de afspraak. Die tabel
+ * is sinds 25 oktober 2026 de bron waar de app mee rekent — de keten, de
+ * aanzegtermijn, de voorstellen — en dan hoort het loonbureau dezelfde te
+ * krijgen. Tot die dag stonden de voorwaarden op twee plekken en kon wat je op
+ * het scherm zag iets anders zijn dan wat er werd verstuurd.
+ *
+ * Staat er nog geen contract, dan is dit een nieuw dienstverband: het
+ * loonbureau stelt het contract nog op, en de afspraak staat zolang in de
+ * velden op de kaart. Die blijven dus de terugval, niet als restant maar omdat
+ * ze dan het enige zijn wat er is. */
+function afspraakVan(p: Persoon, c: Contract | null) {
+  if (c) {
+    return {
+      contracttype: SOORTNAAM[c.soort],
+      duur: c.duur,
+      uren: urenTekst(c),
+      functie: c.functie ?? p.functie,
+      ingangsdatum: c.begint,
+      einddatum: c.eindigt,
+      uurloon: c.uurloon === null || c.uurloon === undefined ? null : Number(c.uurloon),
+      proefperiode: c.proefperiode,
+    }
+  }
+  return {
+    contracttype: p.contracttype,
+    duur: p.contractduur,
+    uren: urenInWoorden(p),
+    functie: p.functie,
+    ingangsdatum: p.ingangsdatum,
+    einddatum: p.einddatum,
+    uurloon: p.uurloon ?? null,
+    proefperiode: p.proefperiode,
+  }
+}
+
+export function bouwMutatieformulier(
+  p: Persoon,
+  contract: Contract | null = null,
+  soort = 'Nieuw dienstverband',
+): string {
   const o = (p.onboarding_data ?? {}) as Record<string, unknown>
   const naam = [p.voornaam, p.achternaam].filter(Boolean).join(' ')
+  const afspraak = afspraakVan(p, contract)
 
   const adres = [
     [o.straat, o.huisnummer].filter(Boolean).join(' '),
@@ -55,18 +98,18 @@ export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'):
     ? `${datum(p.geboortedatum)} (${veilig(o.geboorteplaats)})`
     : datum(p.geboortedatum)
 
-  const contract = [
+  const contractrijen = [
     rij('Medewerker', veilig(naam)),
-    rij('Contracttype', veilig(p.contracttype)),
+    rij('Contracttype', veilig(afspraak.contracttype)),
     // Het loonbureau kreeg tot nu toe geen urenaantal te zien, ook niet bij
     // vaste uren. Bij een min-max staan hier de onder- en bovengrens.
-    rij('Uren', veilig(urenInWoorden(p))),
-    rij('Functie', veilig(p.functie)),
-    rij('Ingangsdatum', datum(p.ingangsdatum)),
+    rij('Uren', veilig(afspraak.uren)),
+    rij('Functie', veilig(afspraak.functie)),
+    rij('Ingangsdatum', datum(afspraak.ingangsdatum)),
     // Einddatum staat er alleen bij een contract voor bepaalde tijd
-    p.contractduur === 'bepaalde' ? rij('Einddatum', datum(p.einddatum)) : '',
-    rij('Uurloon (bruto)', bedrag(p.uurloon)),
-    rij('Proefperiode', jaNee(p.proefperiode)),
+    afspraak.duur === 'bepaalde' ? rij('Einddatum', datum(afspraak.einddatum)) : '',
+    rij('Uurloon (bruto)', bedrag(afspraak.uurloon)),
+    rij('Proefperiode', jaNee(afspraak.proefperiode)),
     rij('Contract opstellen door loonbureau', jaNee(p.contract_door_loonbureau)),
   ].join('')
 
@@ -77,7 +120,7 @@ export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'):
     rij('Adres', veilig(adres)),
     rij('IBAN', veilig(o.iban)),
     rij('Loonheffingskorting', typeof o.loonheffingskorting === 'boolean' ? jaNee(o.loonheffingskorting) : veilig(o.loonheffingskorting)),
-    rij('In dienst sinds', datum(p.ingangsdatum ?? p.aangenomen_op)),
+    rij('In dienst sinds', datum(p.in_dienst_sinds ?? p.ingangsdatum ?? p.aangenomen_op)),
     rij('E-mail', veilig(p.email)),
     rij('Telefoon', veilig(p.telefoonnummer)),
   ].join('')
@@ -125,7 +168,7 @@ export function bouwMutatieformulier(p: Persoon, soort = 'Nieuw dienstverband'):
   <div class="badge">${veilig(soort)}</div>
 
   <div class="sectie">Contractgegevens</div>
-  <table>${contract}</table>
+  <table>${contractrijen}</table>
 
   <div class="sectie">Medewerkergegevens</div>
   <table>${medewerker}</table>
@@ -171,9 +214,22 @@ export function bijlagenVan(p: Persoon): Bijlage[] {
 export function bijlagenStand(p: Persoon) {
   const o = (p.onboarding_data ?? {}) as Record<string, unknown>
   const heeft = (sleutel: string) => typeof o[sleutel] === 'string' && (o[sleutel] as string).length > 0
+  const voor = heeft('id_kopie_url')
+  const achter = heeft('id_kopie_achterzijde')
+
+  /* Ontbreken allebei de kanten van het identiteitsbewijs, dan is dat één
+     bericht en geen twee. Tweemaal dezelfde uitleg onder elkaar leest als een
+     fout die je twee keer hebt gemaakt. */
+  const idkopie =
+    voor === achter
+      ? [{ label: voor ? 'ID-kopie (beide kanten)' : 'ID-kopie', aanwezig: voor, blijvend: false }]
+      : [
+          { label: 'ID-kopie voorzijde', aanwezig: voor, blijvend: false },
+          { label: 'ID-kopie achterzijde', aanwezig: achter, blijvend: false },
+        ]
+
   return [
     { label: 'Loonheffingsverklaring', aanwezig: heeft('loonheffing_pdf'), blijvend: true },
-    { label: 'ID-kopie voorzijde', aanwezig: heeft('id_kopie_url'), blijvend: false },
-    { label: 'ID-kopie achterzijde', aanwezig: heeft('id_kopie_achterzijde'), blijvend: false },
+    ...idkopie,
   ]
 }
