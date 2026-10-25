@@ -78,7 +78,12 @@ serve(async (req) => {
        door iemand die alleen de publieke sleutel uit de webapp heeft. */
     if (!(await wieBelt(req))) return jsonErr("hier mag je niet bij", 403);
 
-    const { mutatie_html, files, emp_naam, lb_contract } = await req.json();
+    /* onderwerp, bestandsnaam en bericht zijn er sinds 25 oktober 2026, voor
+       het verzoek om een contract bij een verlenging. Dat is geen
+       mutatieformulier en hoort ook niet zo in de inbox van het loonbureau te
+       staan. Blijven ze leeg, dan gaat alles zoals het ging. */
+    const { mutatie_html, files, emp_naam, lb_contract, onderwerp, bestandsnaam, bericht } =
+      await req.json();
     if (!mutatie_html || !emp_naam) return jsonErr("mutatie_html en emp_naam zijn vereist", 400);
 
     const attachments: { filename: string; content: string }[] = [];
@@ -98,7 +103,7 @@ serve(async (req) => {
       if (gRes.ok) {
         const pdfBuf = await gRes.arrayBuffer();
         attachments.push({
-          filename: `mutatieformulier_${safeName(emp_naam)}.pdf`,
+          filename: `${safeName(bestandsnaam || "mutatieformulier")}_${safeName(emp_naam)}.pdf`,
           content: bufToBase64(pdfBuf),
         });
       } else {
@@ -146,8 +151,16 @@ serve(async (req) => {
         from: FROM_EMAIL,
         to: [tm.aan ? tm.adres : naarLoonbureau],
         ...(tm.aan ? {} : { cc: [CC_EMAIL] }),
-        subject: `${tm.aan ? "[TEST] " : ""}Mutatieformulier + bijlagen — ${emp_naam}${lb_contract ? " (contract door loonbureau)" : ""}`,
-        html: (tm.aan ? testBalk(naarLoonbureau) : "") + buildMailBody(emp_naam, attachments.map(a => a.filename), lb_contract),
+        subject: `${tm.aan ? "[TEST] " : ""}${
+          onderwerp
+            ? `${onderwerp} — ${emp_naam}`
+            : `Mutatieformulier + bijlagen — ${emp_naam}${lb_contract ? " (contract door loonbureau)" : ""}`
+        }`,
+        html:
+          (tm.aan ? testBalk(naarLoonbureau) : "") +
+          (bericht
+            ? eigenMailBody(bericht, attachments.map((a) => a.filename))
+            : buildMailBody(emp_naam, attachments.map((a) => a.filename), lb_contract)),
         attachments,
       }),
     });
@@ -184,6 +197,17 @@ function buildMailBody(naam: string, bestanden: string[], lbContract: boolean): 
   return `<p>Hierbij de documenten voor de loonadministratie van <strong>${naam}</strong>.</p>
 <p>Bijgevoegd:</p><ul>${lijst}</ul>
 ${lbContract ? "<p><strong>Verzoek: loonbureau stelt het contract op.</strong></p>" : ""}
+<p style="color:#888;font-size:12px;margin-top:24px">Boskma Foodservice V.O.F. · Dorpsstraat 82, 1693 AH Wervershoof</p>`;
+}
+
+/* Een eigen begeleidend berichtje, met dezelfde bijlagenlijst eronder. De
+   tekst komt uit de app en wordt ontsnapt: het loonbureau hoort geen html uit
+   een invoerveld te krijgen. */
+function eigenMailBody(tekst: string, bestanden: string[]): string {
+  const veilig = String(tekst).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const lijst = bestanden.map(f => `<li>${f}</li>`).join("");
+  return `<p>${veilig}</p>
+<p>Bijgevoegd:</p><ul>${lijst}</ul>
 <p style="color:#888;font-size:12px;margin-top:24px">Boskma Foodservice V.O.F. · Dorpsstraat 82, 1693 AH Wervershoof</p>`;
 }
 

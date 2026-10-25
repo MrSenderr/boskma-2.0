@@ -4,6 +4,7 @@ import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
 import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, type Contract } from './contracten'
 import { herinnering, type Voorstel } from './contractvoorstellen'
+import { klaarVoorLoonbureau } from './contractverzoek'
 
 /* De datumhulpjes staan sinds 25 oktober 2026 in datums.ts, omdat de
    contractgeschiedenis met dezelfde maanden rekent. Hier blijven ze
@@ -49,14 +50,29 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
       niet uit een contract volgt maar uit iets wat de app zelf heeft gedaan:
       er is aangezegd, maar niet bewijsbaar aangekomen. Twee weken vooraf om
       hem erop aan te spreken, een week vooraf omdat het dan op papier mee
-      moet. Zie herinnering() in contractvoorstellen.ts. */
+      moet. Zie herinnering() in contractvoorstellen.ts.
+   7. Een afspraak die nog niet bij het loonbureau ligt. Zonder dit seintje
+      blijft een geaccepteerde verlenging liggen tot iemand het zich herinnert,
+      en komt het contract niet.
+
+   En wat de waker níet meer zegt: dat een contract afloopt terwijl er al een
+   antwoord op een voorstel ligt. Dat seintje bleef anders staan tot het nieuwe
+   contract getekend en vastgelegd is — weken waarin je elke dag ziet dat je
+   iets moet doen wat je al hebt gedaan. */
 
 export type Ernst = 'fout' | 'letop'
 
 export type Signaal = {
   persoonId: string
   naam: string
-  soort: 'geen_contract' | 'aanzeggen' | 'einde' | 'vaste_uren' | 'verjaardag' | 'voorstel_stil'
+  soort:
+    | 'geen_contract'
+    | 'aanzeggen'
+    | 'einde'
+    | 'vaste_uren'
+    | 'verjaardag'
+    | 'voorstel_stil'
+    | 'naar_loonbureau'
   /** Wat er moet gebeuren, in een paar woorden. */
   wat: string
   /** De datum waar het om draait (JJJJ-MM-DD). */
@@ -77,9 +93,10 @@ const WAKER_VELDEN =
 /** De velden van een contract die de waker gebruikt. */
 const CONTRACT_VELDEN = 'id,medewerker_id,werkgever,soort,duur,begint,eindigt,beeindigd_op'
 
-/** De velden die herinnering() nodig heeft. */
+/** De velden van een voorstel die de waker gebruikt. */
 const VOORSTEL_VELDEN =
-  'id,medewerker_id,uiterlijk,verstuurd_op,ingetrokken_op,ontvangst_bevestigd_op,op_papier'
+  'id,medewerker_id,vorig_contract_id,aard,begint,uiterlijk,verstuurd_op,ingetrokken_op,' +
+  'ontvangst_bevestigd_op,keuze_verlenging,keuze_vaste_uren,naar_loonbureau_op,op_papier'
 
 /* ------------------------------------------------------------------ regels --- */
 
@@ -108,7 +125,44 @@ function startVan(p: Persoon, contracten: Contract[]): string | null {
   return oudste?.begint ?? null
 }
 
-export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string): Signaal[] {
+/* Is er over dit contract al iets afgesproken? Dan hoeft de waker niet meer
+   te zeggen dat het afloopt. Een ingetrokken voorstel telt niet, en een
+   voorstel dat nog bij de medewerker ligt ook niet: dan is er nog niets. */
+function alGeregeld(voorstellen: Voorstel[], contractId: string | undefined): boolean {
+  if (!contractId) return false
+  return voorstellen.some(
+    (v) =>
+      v.vorig_contract_id === contractId &&
+      v.verstuurd_op &&
+      !v.ingetrokken_op &&
+      (v.keuze_verlenging !== null ||
+        v.keuze_vaste_uren !== null ||
+        (v.aard === 'stoppen' && v.ontvangst_bevestigd_op !== null)),
+  )
+}
+
+/* Is er in de afgelopen twaalf maanden een aanbod vaste uren gedaan? De plicht
+   is het aanbod te doen, niet dat het wordt aangenomen (art. 7:628a lid 5 BW).
+   Wordt het geweigerd, dan volgt er twaalf maanden later een nieuw aanbod — en
+   doordat hier met een venster van twaalf maanden wordt gerekend komt het
+   seintje dan vanzelf terug. */
+function aanbodGedaan(voorstellen: Voorstel[], vandaag: string): boolean {
+  const grens = plusMaanden(vandaag, -12)
+  return voorstellen.some(
+    (v) =>
+      (v.aard === 'vaste_uren' || v.aard === 'verlengen_en_vaste_uren') &&
+      v.verstuurd_op !== null &&
+      !v.ingetrokken_op &&
+      v.verstuurd_op.slice(0, 10) >= grens,
+  )
+}
+
+export function signalenVoor(
+  p: Persoon,
+  contracten: Contract[],
+  vandaag: string,
+  voorstellen: Voorstel[] = [],
+): Signaal[] {
   if (!telt(p)) return []
   const uit: Signaal[] = []
   const basis = { persoonId: p.id, naam: naamVan(p) }
@@ -138,7 +192,7 @@ export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string
       : {}
 
   // 2 en 3: aanzeggen en het einde zelf
-  if (huidig && huidig.duur === 'bepaalde' && huidig.eindigt) {
+  if (huidig && huidig.duur === 'bepaalde' && huidig.eindigt && !alGeregeld(voorstellen, huidig.id)) {
     const einde = huidig.eindigt.slice(0, 10)
     const totEinde = dagenTussen(vandaag, einde)
     // Zes maanden of langer. Een half jaar vanaf 1 november eindigt op
@@ -181,7 +235,7 @@ export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string
      Gemeten vanaf de dag dat iemand begon, niet vanaf zijn huidige contract:
      bij een overname telt de tijd bij de vorige eigenaar mee. */
   const start = startVan(p, contracten)
-  if (huidig && huidig.soort === 'nuluren' && start) {
+  if (huidig && huidig.soort === 'nuluren' && start && !aanbodGedaan(voorstellen, vandaag)) {
     const jaar = plusMaanden(start, 12)
     const aanbod = plusMaanden(jaar, 1)
     const totJaar = dagenTussen(vandaag, jaar)
@@ -240,9 +294,10 @@ export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string
   return uit
 }
 
-/* Voorstellen die bij de medewerker blijven liggen. Staat los van
-   signalenVoor, omdat het niets met de contracttabel te maken heeft: het gaat
-   om post die de app heeft verstuurd. */
+/* Wat er rond een verstuurd voorstel te doen is. Staat los van signalenVoor,
+   omdat het niet uit de contracttabel komt maar uit post die de app zelf heeft
+   verstuurd: ligt het stil bij de medewerker, of ligt het antwoord hier en moet
+   het loonbureau nog aan de slag? */
 export function voorstelSignalen(
   personen: Persoon[],
   voorstellen: Voorstel[],
@@ -253,11 +308,29 @@ export function voorstelSignalen(
   for (const v of voorstellen) {
     const naam = namen.get(v.medewerker_id)
     if (!naam) continue
+    const basis = { persoonId: v.medewerker_id, naam }
+
+    /* Het antwoord is binnen en het loonbureau weet nog niets. Dit wordt met de
+       dag dringender: het contract moet er zijn voordat het ingaat, en daar
+       zitten de feestdagen nog tussen. */
+    if (klaarVoorLoonbureau(v)) {
+      const ingaand = (v.begint ?? v.uiterlijk ?? vandaag).slice(0, 10)
+      const dagen = dagenTussen(vandaag, ingaand)
+      uit.push({
+        ...basis,
+        soort: 'naar_loonbureau',
+        wat: 'Afgesproken — nog niet naar het loonbureau',
+        uiterlijk: ingaand,
+        dagen,
+        ernst: dagen <= DRINGEND ? 'fout' : 'letop',
+      })
+      continue
+    }
+
     const s = herinnering(v, vandaag)
     if (!s) continue
     uit.push({
-      persoonId: v.medewerker_id,
-      naam,
+      ...basis,
       soort: 'voorstel_stil',
       wat:
         s.dagen < 0
@@ -283,9 +356,12 @@ export function signalen(
   personen: Persoon[],
   contractenPer: Map<string, Contract[]>,
   vandaag: string,
+  voorstellenPer: Map<string, Voorstel[]> = new Map(),
 ): Signaal[] {
   return personen
-    .flatMap((p) => signalenVoor(p, contractenPer.get(p.id) ?? [], vandaag))
+    .flatMap((p) =>
+      signalenVoor(p, contractenPer.get(p.id) ?? [], vandaag, voorstellenPer.get(p.id) ?? []),
+    )
     .sort((a, b) => a.dagen - b.dagen || a.naam.localeCompare(b.naam, 'nl'))
 }
 
@@ -309,14 +385,14 @@ export function useContractwaker() {
         .select(CONTRACT_VELDEN)
       if (fout) throw new Error(fout.message)
 
-      /* Verstuurde voorstellen die nog niet zijn gelezen. Alleen de velden die
-         herinnering() nodig heeft. */
+      /* Alle verstuurde voorstellen die niet zijn ingetrokken — ook de
+         beantwoorde. Die zijn nodig om te weten dat een contract al geregeld
+         is, en om te zien wat er nog naar het loonbureau moet. */
       const { data: voorstellen, error: vfout } = await supabase
         .from('contractvoorstellen')
         .select(VOORSTEL_VELDEN)
         .not('verstuurd_op', 'is', null)
         .is('ingetrokken_op', null)
-        .is('ontvangst_bevestigd_op', null)
       if (vfout) throw new Error(vfout.message)
 
       const per = new Map<string, Contract[]>()
@@ -326,11 +402,19 @@ export function useContractwaker() {
         per.set(c.medewerker_id, lijst)
       }
 
+      const alle = (voorstellen ?? []) as unknown as Voorstel[]
+      const voorstelPer = new Map<string, Voorstel[]>()
+      for (const v of alle) {
+        const lijst = voorstelPer.get(v.medewerker_id) ?? []
+        lijst.push(v)
+        voorstelPer.set(v.medewerker_id, lijst)
+      }
+
       const vandaag = vandaagIso()
       const lijst = (personen ?? []) as unknown as Persoon[]
       return [
-        ...signalen(lijst, per, vandaag),
-        ...voorstelSignalen(lijst, (voorstellen ?? []) as unknown as Voorstel[], vandaag),
+        ...signalen(lijst, per, vandaag, voorstelPer),
+        ...voorstelSignalen(lijst, alle, vandaag),
       ].sort((a, b) => a.dagen - b.dagen || a.naam.localeCompare(b.naam, 'nl'))
     },
   })

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, FileText, Info, Plus, Send } from 'lucide-react'
+import { AlertTriangle, Building2, FileText, Info, Plus, Send, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import { korteDatum, naamVan, type Persoon } from '../lib/personeel'
 import {
@@ -11,6 +11,12 @@ import {
   type Soort,
 } from '../lib/contracten'
 import { useGemiddeldeUren } from '../lib/gewerkteUren'
+import {
+  bouwContractverzoek,
+  klaarVoorLoonbureau,
+  uitkomstVan,
+  useNaarLoonbureau,
+} from '../lib/contractverzoek'
 import {
   AARDNAAM,
   KEUZENAAM,
@@ -303,19 +309,30 @@ function Opstellen({
 function Regel({
   v,
   persoon,
+  contracten,
   intrekken,
 }: {
   v: Voorstel
   persoon: Persoon
+  contracten: Contract[]
   intrekken: ReturnType<typeof useVoorstelIntrekken>
 }) {
   const versturen = useVoorstelVersturen(persoon.id)
   const opPapier = useVoorstelOpPapier(persoon.id)
+  const naarLoonbureau = useNaarLoonbureau(persoon.id)
   const [fout, setFout] = useState<string | null>(null)
   const [papier, setPapier] = useState(false)
+  const [blad, setBlad] = useState<string | null>(null)
   const stand = standVan(v)
   const open = openstaand(v)
   const seintje = herinnering(v)
+
+  /* Het contract waar dit voorstel op volgt. Nodig voor de laatste dag van het
+     dienstverband als er niet verlengd wordt: die staat in het oude contract,
+     niet in het voorstel. */
+  const vorig = contracten.find((c) => c.id === v.vorig_contract_id) ?? null
+  const uitkomst = uitkomstVan(v, vorig)
+  const magNaarLoonbureau = klaarVoorLoonbureau(v)
 
   return (
     <div className="border-b border-line px-4 py-3 last:border-0">
@@ -377,10 +394,70 @@ function Regel({
         </p>
       )}
 
+      {/* Wat er uit het antwoord volgt, en wie er nu aan zet is. */}
+      {uitkomst && !v.ingetrokken_op && (
+        <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{uitkomst.titel}</span>
+            {v.naar_loonbureau_op ? (
+              <Pil soort="goed">Bij het loonbureau</Pil>
+            ) : (
+              <Pil soort={uitkomst.contractNodig ? 'letop' : 'neutraal'}>
+                {uitkomst.contractNodig ? 'Contract nodig' : 'Geen contract nodig'}
+              </Pil>
+            )}
+          </span>
+          {uitkomst.regels.map((r) => (
+            <p key={r} className="text-sm text-muted">
+              {r}
+            </p>
+          ))}
+          {v.naar_loonbureau_op && (
+            <p className="text-sm text-muted">
+              Naar het loonbureau op {korteDatum(v.naar_loonbureau_op)} — het contract komt van
+              hen terug en hoort dan bij de documenten.
+            </p>
+          )}
+        </div>
+      )}
+
       {fout && <p className="mt-2 text-sm text-bad">{fout}</p>}
 
       {!v.ingetrokken_op && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          {magNaarLoonbureau && uitkomst && (
+            <>
+              <Knop
+                bezig={naarLoonbureau.isPending}
+                onClick={() =>
+                  naarLoonbureau.mutate(
+                    { persoon, voorstel: v, vorig },
+                    {
+                      onSuccess: (uit) =>
+                        setFout(
+                          uit?.testmodus
+                            ? `Testmodus staat aan: de mail ging naar ${uit.verstuurd_naar}, niet naar het loonbureau.`
+                            : null,
+                        ),
+                      onError: (e) => setFout(e.message),
+                    },
+                  )
+                }
+              >
+                <Building2 className="size-4" aria-hidden />
+                {uitkomst.contractNodig ? 'Naar het loonbureau' : 'Melden bij het loonbureau'}
+              </Knop>
+              <button
+                type="button"
+                className="text-sm text-muted underline hover:text-text"
+                onClick={() =>
+                  setBlad(bouwContractverzoek({ persoon, voorstel: v, vorig, uitkomst }))
+                }
+              >
+                eerst bekijken
+              </button>
+            </>
+          )}
           {!v.verstuurd_op && (
             <Knop
               bezig={versturen.isPending}
@@ -494,6 +571,34 @@ function Regel({
           </button>
         </div>
       )}
+
+      {blad && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-black/60 p-2 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Voorbeeld van het verzoek aan het loonbureau"
+        >
+          <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-card bg-surface">
+            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
+              <span className="font-display text-base">Wijziging dienstverband</span>
+              <button
+                type="button"
+                onClick={() => setBlad(null)}
+                aria-label="Sluiten"
+                className="flex size-11 items-center justify-center rounded-[4px] text-muted hover:bg-surface-2 hover:text-text"
+              >
+                <X className="size-5" aria-hidden />
+              </button>
+            </div>
+            <iframe
+              title="Wijziging dienstverband"
+              srcDoc={blad}
+              className="min-h-0 flex-1 bg-white"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -518,7 +623,13 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
       {voorstellen.length > 0 && (
         <Kaart className="flex flex-col py-2">
           {voorstellen.map((v) => (
-            <Regel key={v.id} v={v} persoon={persoon} intrekken={intrekken} />
+            <Regel
+              key={v.id}
+              v={v}
+              persoon={persoon}
+              contracten={contracten}
+              intrekken={intrekken}
+            />
           ))}
         </Kaart>
       )}

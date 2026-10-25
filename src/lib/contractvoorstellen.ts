@@ -409,6 +409,10 @@ export function herinnering(
 ): { dagen: number; dringend: boolean } | null {
   if (!v.verstuurd_op || v.ingetrokken_op || v.op_papier) return null
   if (v.ontvangst_bevestigd_op) return null
+  /* Een gegeven antwoord bewíjst de ontvangst. Normaal zet het antwoorden de
+     bevestiging mee, maar daarop vertrouwen zou betekenen dat één rij zonder
+     bevestiging een seintje oplevert over een voorstel dat al beantwoord is. */
+  if (v.keuze_verlenging || v.keuze_vaste_uren) return null
   if (!v.uiterlijk) return null
   const dagen = dagenTussen(vandaag, v.uiterlijk.slice(0, 10))
   if (dagen > HERINNER.vroeg) return null

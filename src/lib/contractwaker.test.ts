@@ -283,3 +283,89 @@ describe('voorstellen die blijven liggen', () => {
     expect(voorstelSignalen([], [v()], '2026-11-25')).toEqual([])
   })
 })
+
+describe('de waker en de voorstellen', () => {
+  const thijmen = persoon({ voornaam: 'Thijmen', achternaam: 'Bakker' })
+  const loopt = contract({ id: 'c1', begint: '2026-01-01', eindigt: '2026-12-31' })
+  const vs = (anders: Partial<Voorstel> = {}): Voorstel =>
+    ({
+      id: 'v1',
+      medewerker_id: 'p1',
+      vorig_contract_id: 'c1',
+      aard: 'verlengen',
+      begint: '2027-01-01',
+      uiterlijk: '2026-11-30',
+      verstuurd_op: '2026-10-20T09:00:00Z',
+      ingetrokken_op: null,
+      ontvangst_bevestigd_op: null,
+      keuze_verlenging: null,
+      keuze_vaste_uren: null,
+      naar_loonbureau_op: null,
+      op_papier: false,
+      ...anders,
+    }) as Voorstel
+
+  /* Zonder deze regel bleef er "schriftelijk laten weten of je verlengt"
+     staan tot het nieuwe contract getekend was: weken waarin je elke dag ziet
+     dat je iets moet doen wat al gedaan is. */
+  it('zwijgt over een contract waarover al iets is afgesproken', () => {
+    const zonder = signalenVoor(thijmen, [loopt], '2026-11-20')
+    expect(zonder.some((s) => s.soort === 'aanzeggen')).toBe(true)
+
+    const met = signalenVoor(thijmen, [loopt], '2026-11-20', [
+      vs({ keuze_verlenging: 'akkoord' }),
+    ])
+    expect(met.some((s) => s.soort === 'aanzeggen')).toBe(false)
+  })
+
+  it('blijft aanzeggen zolang het voorstel nog bij de medewerker ligt', () => {
+    const met = signalenVoor(thijmen, [loopt], '2026-11-20', [vs()])
+    expect(met.some((s) => s.soort === 'aanzeggen')).toBe(true)
+  })
+
+  it('laat een ingetrokken voorstel niet voor een afspraak doorgaan', () => {
+    const met = signalenVoor(thijmen, [loopt], '2026-11-20', [
+      vs({ keuze_verlenging: 'akkoord', ingetrokken_op: '2026-11-01T09:00:00Z' }),
+    ])
+    expect(met.some((s) => s.soort === 'aanzeggen')).toBe(true)
+  })
+
+  /* De plicht is het aanbod doen, niet dat het wordt aangenomen. Een gedaan
+     aanbod haalt het seintje weg; twaalf maanden later komt het terug. */
+  it('zwijgt over het aanbod vaste uren zodra er een aanbod is gedaan', () => {
+    const oproep = contract({ id: 'c1', begint: '2026-01-01', eindigt: '2026-12-31', soort: 'nuluren' })
+    const p = persoon({ voornaam: 'Thijmen', achternaam: 'Bakker', in_dienst_sinds: '2026-01-01' })
+
+    const zonder = signalenVoor(p, [oproep], '2026-12-20')
+    expect(zonder.some((s) => s.soort === 'vaste_uren')).toBe(true)
+
+    const met = signalenVoor(p, [oproep], '2026-12-20', [
+      vs({ aard: 'vaste_uren', verstuurd_op: '2026-12-01T09:00:00Z', keuze_vaste_uren: 'geweigerd' }),
+    ])
+    expect(met.some((s) => s.soort === 'vaste_uren')).toBe(false)
+
+    // Twaalf maanden na dat aanbod is er een nieuw aanbod verschuldigd.
+    const later = signalenVoor(p, [oproep], '2027-12-20', [
+      vs({ aard: 'vaste_uren', verstuurd_op: '2026-12-01T09:00:00Z', keuze_vaste_uren: 'geweigerd' }),
+    ])
+    expect(later.some((s) => s.soort === 'vaste_uren')).toBe(true)
+  })
+
+  it('zegt dat een afspraak nog naar het loonbureau moet', () => {
+    const uit = voorstelSignalen([thijmen], [vs({ keuze_verlenging: 'akkoord' })], '2026-11-20')
+    expect(uit).toHaveLength(1)
+    expect(uit[0].soort).toBe('naar_loonbureau')
+    expect(uit[0].wat).toMatch(/nog niet naar het loonbureau/)
+    // Vlak voor de ingangsdatum wordt het rood: het contract moet er zijn.
+    expect(voorstelSignalen([thijmen], [vs({ keuze_verlenging: 'akkoord' })], '2026-12-28')[0].ernst).toBe('fout')
+  })
+
+  it('zwijgt zodra het verzoek de deur uit is', () => {
+    const uit = voorstelSignalen(
+      [thijmen],
+      [vs({ keuze_verlenging: 'akkoord', naar_loonbureau_op: '2026-11-21T09:00:00Z' })],
+      '2026-11-20',
+    )
+    expect(uit).toEqual([])
+  })
+})

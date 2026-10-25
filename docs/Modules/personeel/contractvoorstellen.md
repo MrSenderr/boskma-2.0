@@ -1,6 +1,6 @@
 # Contractvoorstellen — verlengen, stoppen, vaste uren
 
-Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 5 is gebouwd; 6 tot en
+Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 6 is gebouwd; 7 tot en
 met 9 nog niet.
 
 ## Doel
@@ -70,7 +70,15 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
    antwoord schrijven.
 6. **Naar het loonbureau.** Aangenomen of verlengd: verzoek om het contract op
    te stellen, met de afgesproken duur, uren en loon. Stoppen of "blijft
-   oproepkracht": alleen een melding.
+   oproepkracht": alleen een melding. *Gebouwd 25 oktober 2026.* Het blad heet
+   *Wijziging dienstverband* en gaat over dezelfde weg als het
+   mutatieformulier (`stuur-loonbureau`), zonder BSN, adres of
+   identiteitsbewijs — die heeft het loonbureau al. Er staat bij wanneer de
+   medewerker akkoord gaf en op welke tekst, zodat zij opstellen wat er is
+   aangeboden. Sander drukt zelf af; de app zegt het als er een verzoek
+   klaarligt. Het nieuwe contract komt pas in `contracten` als het getekend is
+   (stap 7 en 8); tot die tijd zwijgt de contractwaker over een contract
+   waarover al iets is afgesproken.
 7. **Digitaal tekenen.** Sander uploadt de PDF van het loonbureau als
    *Contract*. De medewerker tekent in de app (naam typen, handtekening met de
    vinger), daarna Sander. De app maakt de getekende PDF met een extra pagina:

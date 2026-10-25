@@ -437,6 +437,14 @@ describe('het seintje dat een voorstel blijft liggen', () => {
     expect(herinnering(v({ op_papier: true }), '2026-11-23')).toBeNull()
   })
 
+  /* Normaal zet het antwoorden de bevestiging mee. Toch ook hierop toetsen:
+     een antwoord bewijst de ontvangst, en één rij waar dat niet samenloopt
+     hoort geen seintje op te leveren over iets wat al beantwoord is. */
+  it('zwijgt zodra er een antwoord ligt', () => {
+    expect(herinnering(v({ keuze_verlenging: 'akkoord' }), '2026-11-23')).toBeNull()
+    expect(herinnering(v({ keuze_vaste_uren: 'geweigerd' }), '2026-11-23')).toBeNull()
+  })
+
   it('zwijgt bij een concept en bij een ingetrokken voorstel', () => {
     expect(herinnering(v({ verstuurd_op: null }), '2026-11-23')).toBeNull()
     expect(herinnering(v({ ingetrokken_op: '2026-10-22T10:00:00Z' }), '2026-11-23')).toBeNull()
