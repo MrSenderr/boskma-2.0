@@ -6,7 +6,7 @@ import { Wijzigingen } from '../components/Wijzigingen'
 import { Reacties } from '../components/Reacties'
 import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
 import { dagnaam, getal } from '../lib/opmaak'
-import { useContractwaker } from '../lib/contractwaker'
+import { ketenTekst, useContractwaker } from '../lib/contractwaker'
 import { useContractStanden, type ContractStand } from '../lib/getekendContract'
 import { useState } from 'react'
 
@@ -92,6 +92,14 @@ function Contracten() {
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">{s.naam}</span>
               <span className="block text-sm text-muted">{s.wat}</span>
+              {/* Hoeveelste contract het is bepaalt wat je kúnt aanbieden: na
+                  de derde is een volgend tijdelijk contract er geen. */}
+              {ketenTekst(s) && (
+                <span className="block text-sm text-muted">
+                  {ketenTekst(s)}
+                  {s.volgendeWordtVast && ' — een volgend tijdelijk contract wordt vanzelf vast'}
+                </span>
+              )}
             </span>
             <Pil soort={s.ernst}>{wanneer(s.dagen, s.uiterlijk)}</Pil>
           </Link>

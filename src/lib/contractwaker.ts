@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
-import { naamVan, urensoortVan, type Persoon } from './personeel'
+import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
+import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, type Contract } from './contracten'
 
 /* De datumhulpjes staan sinds 25 oktober 2026 in datums.ts, omdat de
    contractgeschiedenis met dezelfde maanden rekent. Hier blijven ze
@@ -14,33 +15,42 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
 /* De contractwaker: wat er rond een contract op een datum moet gebeuren, zodat
    het niet pas opvalt als het al te laat is.
 
-   Alles wordt afgeleid uit wat er al op de kaart staat (ingangsdatum,
-   einddatum, contracttype, geboortedatum). Er wordt niets opgeslagen, dus een
-   melding verdwijnt vanzelf zodra de datum voorbij is of de kaart is bijgewerkt.
+   Rekent sinds 25 oktober 2026 met de contracttabel in plaats van met de losse
+   velden op de persoonskaart. Dat moest, om twee redenen:
 
-   Drie regels:
+   - De aanzegtermijn hoort bij een contract, niet bij een persoon. Wie drie
+     contracten heeft gehad, heeft drie aanzegmomenten gehad.
+   - Bij een overgenomen medewerker begon de telling voor het aanbod vaste uren
+     al bij de vorige eigenaar. De kaart kende alleen de contractdatum, en
+     daardoor zweeg de waker bij Ilona (in dienst sinds 2019) en Denzel (2023)
+     terwijl het aanbod bij allebei jaren over tijd is.
 
-   1. Aanzeggen — bij een contract voor bepaalde tijd van zes maanden of langer
+   Er wordt niets opgeslagen: een melding verdwijnt zodra de datum voorbij is
+   of er een contract bij komt.
+
+   Vijf regels:
+
+   1. Geen contract vastgelegd — dan valt er niets te rekenen, en dat hoort te
+      blijken in plaats van stil te blijven. Deze regel is er omdat de waker
+      nu uit een tabel leest die leeg kan zijn; de kaartvelden waren altijd
+      gevuld.
+   2. Aanzeggen — bij een contract voor bepaalde tijd van zes maanden of langer
       moet je uiterlijk een maand vóór de einddatum schriftelijk laten weten of
-      je verlengt, en zo ja onder welke voorwaarden. Te laat of niet: de
-      medewerker kan een vergoeding van maximaal een maandloon vragen.
-   2. Oproepkracht twaalf maanden — na twaalf maanden op een nulurencontract
-      moet je binnen een maand een aanbod doen voor vaste uren (het gemiddelde
-      van die twaalf maanden).
-   3. Verjaardag onder de 21 — het (jeugd)minimumloon gaat omhoog, en bij 16 en
-      18 veranderen ook de regels voor werktijden. Alleen een seintje; het
-      uurloon zelf wordt bewust niet getoetst (besluit 22 augustus 2026).
-
-   Let op bij overgenomen medewerkers: de ingangsdatum is die van hun contract
-   bij Boskma, maar bij een overname tellen de jaren bij de vorige eigenaar mee.
-   Wie al langer oproepkracht is, kan de twaalf maanden dus al voorbij zijn. */
+      je verlengt. Te laat of niet: tot een maandloon vergoeding.
+   3. Einde — bij een kort contract geen aanzegplicht, wel een einddatum.
+   4. Oproepkracht twaalf maanden — na twaalf maanden een aanbod voor vaste
+      uren, binnen een maand. Gaat die maand voorbij, dan blijft de melding
+      staan: de verplichting verdwijnt niet, hij wordt alleen duurder.
+   5. Verjaardag onder de 21 — het jeugdloon gaat omhoog, en bij 16 en 18
+      veranderen ook de werktijden. Alleen een seintje; het uurloon zelf wordt
+      bewust niet getoetst (besluit 22 augustus 2026). */
 
 export type Ernst = 'fout' | 'letop'
 
 export type Signaal = {
   persoonId: string
   naam: string
-  soort: 'aanzeggen' | 'einde' | 'vaste_uren' | 'verjaardag'
+  soort: 'geen_contract' | 'aanzeggen' | 'einde' | 'vaste_uren' | 'verjaardag'
   /** Wat er moet gebeuren, in een paar woorden. */
   wat: string
   /** De datum waar het om draait (JJJJ-MM-DD). */
@@ -48,12 +58,18 @@ export type Signaal = {
   /** Dagen tot `uiterlijk`; negatief = voorbij. */
   dagen: number
   ernst: Ernst
+  /** Bij een tijdelijk contract: hoeveelste van de drie. */
+  ketenNummer?: number
+  /** Een volgend tijdelijk contract wordt vanzelf een vast contract. */
+  volgendeWordtVast?: boolean
 }
 
 /** Velden die de waker nodig heeft — geen onboarding_data. */
 const WAKER_VELDEN =
-  'id,voornaam,achternaam,status,fase,uit_dienst_op,is_eigenaar,' +
-  'geboortedatum,contracttype,contractduur,ingangsdatum,einddatum'
+  'id,voornaam,achternaam,status,fase,uit_dienst_op,is_eigenaar,geboortedatum,in_dienst_sinds'
+
+/** De velden van een contract die de waker gebruikt. */
+const CONTRACT_VELDEN = 'id,medewerker_id,werkgever,soort,duur,begint,eindigt,beeindigd_op'
 
 /* ------------------------------------------------------------------ regels --- */
 
@@ -75,21 +91,49 @@ function telt(p: Persoon) {
   return p.fase === 'medewerker' && !p.uit_dienst_op && !p.is_eigenaar
 }
 
-export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
+/** De dag waarop deze persoon begon, ook als dat bij de vorige eigenaar was. */
+function startVan(p: Persoon, contracten: Contract[]): string | null {
+  if (p.in_dienst_sinds && ISO.test(p.in_dienst_sinds)) return p.in_dienst_sinds.slice(0, 10)
+  const oudste = [...contracten].sort((a, b) => a.begint.localeCompare(b.begint))[0]
+  return oudste?.begint ?? null
+}
+
+export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string): Signaal[] {
   if (!telt(p)) return []
   const uit: Signaal[] = []
   const basis = { persoonId: p.id, naam: naamVan(p) }
 
-  // 1 en 2: aanzeggen en het einde zelf
-  if (p.contractduur === 'bepaalde' && p.einddatum && ISO.test(p.einddatum)) {
-    const einde = p.einddatum.slice(0, 10)
+  // 1: niets vastgelegd
+  if (contracten.length === 0) {
+    return [
+      {
+        ...basis,
+        soort: 'geen_contract',
+        wat: 'Geen contract vastgelegd — de app kan niets rekenen',
+        uiterlijk: vandaag,
+        dagen: 0,
+        ernst: 'letop',
+      },
+    ]
+  }
+
+  const huidig = lopendContract(contracten, vandaag)
+  const keten = ketenVan(contracten, vandaag)
+  const ketenInfo =
+    huidig && huidig.duur === 'bepaalde'
+      ? {
+          ketenNummer: keten.schakels.find((s) => s.contract.id === huidig.id)?.nummer,
+          volgendeWordtVast: keten.volgendeWordtVast,
+        }
+      : {}
+
+  // 2 en 3: aanzeggen en het einde zelf
+  if (huidig && huidig.duur === 'bepaalde' && huidig.eindigt) {
+    const einde = huidig.eindigt.slice(0, 10)
     const totEinde = dagenTussen(vandaag, einde)
     // Zes maanden of langer. Een half jaar vanaf 1 november eindigt op
     // 30 april, dus een dag vóór "zes maanden later" telt nog mee.
-    const lang =
-      p.ingangsdatum && ISO.test(p.ingangsdatum)
-        ? dagenTussen(plusMaanden(p.ingangsdatum, 6), einde) >= -1
-        : true // onbekend: liever een keer te veel gewaarschuwd
+    const lang = dagenTussen(plusMaanden(huidig.begint, 6), einde) >= -1
 
     if (totEinde >= 0) {
       if (lang) {
@@ -98,6 +142,7 @@ export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
         if (totAanzeg <= VOORUIT.aanzeggen) {
           uit.push({
             ...basis,
+            ...ketenInfo,
             soort: 'aanzeggen',
             wat:
               totAanzeg < 0
@@ -111,6 +156,7 @@ export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
       } else if (totEinde <= VOORUIT.einde) {
         uit.push({
           ...basis,
+          ...ketenInfo,
           soort: 'einde',
           wat: 'Contract loopt af — verlengen of afronden',
           uiterlijk: einde,
@@ -121,13 +167,33 @@ export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
     }
   }
 
-  // 3: twaalf maanden oproep
-  if (urensoortVan(p.contracttype) === 'geen' && p.contracttype && p.ingangsdatum && ISO.test(p.ingangsdatum)) {
-    const jaar = plusMaanden(p.ingangsdatum, 12)
+  /* 4: twaalf maanden oproep.
+     Gemeten vanaf de dag dat iemand begon, niet vanaf zijn huidige contract:
+     bij een overname telt de tijd bij de vorige eigenaar mee. */
+  const start = startVan(p, contracten)
+  if (huidig && huidig.soort === 'nuluren' && start) {
+    const jaar = plusMaanden(start, 12)
     const aanbod = plusMaanden(jaar, 1)
     const totJaar = dagenTussen(vandaag, jaar)
     const totAanbod = dagenTussen(vandaag, aanbod)
-    if (totJaar <= VOORUIT.vaste_uren && totAanbod >= 0) {
+
+    if (totAanbod < 0) {
+      /* Over tijd. Blijft staan tot er een aanbod ligt: de verplichting gaat
+         niet weg, en de medewerker kan het verschil tot vijf jaar terug
+         opeisen. Dit is de melding die er vóór vandaag nooit uitkwam. */
+      const maanden = Math.round(-totAanbod / 30.44)
+      uit.push({
+        ...basis,
+        soort: 'vaste_uren',
+        wat:
+          maanden >= 1
+            ? `Aanbod vaste uren is over tijd — ${maanden} ${maanden === 1 ? 'maand' : 'maanden'} geleden al verplicht`
+            : 'Aanbod vaste uren is over tijd',
+        uiterlijk: aanbod,
+        dagen: totAanbod,
+        ernst: 'fout',
+      })
+    } else if (totJaar <= VOORUIT.vaste_uren) {
       uit.push({
         ...basis,
         soort: 'vaste_uren',
@@ -139,7 +205,7 @@ export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
     }
   }
 
-  // 4: verjaardag onder de 21
+  // 5: verjaardag onder de 21
   if (p.geboortedatum && ISO.test(p.geboortedatum)) {
     const geb = p.geboortedatum.slice(0, 10)
     const jaarNu = Number(vandaag.slice(0, 4))
@@ -164,10 +230,19 @@ export function signalenVoor(p: Persoon, vandaag: string): Signaal[] {
   return uit
 }
 
+/** "Contract 2 van 3", als dat bekend is. */
+export function ketenTekst(s: Signaal): string | null {
+  return s.ketenNummer ? `Contract ${s.ketenNummer} van ${KETEN_MAX_CONTRACTEN}` : null
+}
+
 /** Alle signalen, het dringendst bovenaan. */
-export function signalen(personen: Persoon[], vandaag: string): Signaal[] {
+export function signalen(
+  personen: Persoon[],
+  contractenPer: Map<string, Contract[]>,
+  vandaag: string,
+): Signaal[] {
   return personen
-    .flatMap((p) => signalenVoor(p, vandaag))
+    .flatMap((p) => signalenVoor(p, contractenPer.get(p.id) ?? [], vandaag))
     .sort((a, b) => a.dagen - b.dagen || a.naam.localeCompare(b.naam, 'nl'))
 }
 
@@ -178,14 +253,27 @@ export function useContractwaker() {
     queryKey: ['contractwaker'],
     staleTime: 60 * 60 * 1000,
     queryFn: async (): Promise<Signaal[]> => {
-      const { data, error } = await supabase
+      const { data: personen, error } = await supabase
         .from('sollicitaties')
         .select(WAKER_VELDEN)
         .eq('fase', 'medewerker')
         .eq('is_apparaat', false)
         .is('uit_dienst_op', null)
       if (error) throw new Error(error.message)
-      return signalen((data ?? []) as unknown as Persoon[], vandaagIso())
+
+      const { data: contracten, error: fout } = await supabase
+        .from('contracten')
+        .select(CONTRACT_VELDEN)
+      if (fout) throw new Error(fout.message)
+
+      const per = new Map<string, Contract[]>()
+      for (const c of (contracten ?? []) as unknown as Contract[]) {
+        const lijst = per.get(c.medewerker_id) ?? []
+        lijst.push(c)
+        per.set(c.medewerker_id, lijst)
+      }
+
+      return signalen((personen ?? []) as unknown as Persoon[], per, vandaagIso())
     },
   })
 }

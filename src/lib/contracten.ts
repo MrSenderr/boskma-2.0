@@ -90,6 +90,16 @@ export function eindeVan(c: Contract): string | null {
   return c.duur === 'bepaalde' ? c.eindigt : null
 }
 
+/** Het contract dat vandaag loopt, of anders het laatst bekende. Dezelfde
+ *  keuze als de view huidig_contract in de database maakt. */
+export function lopendContract(contracten: Contract[], vandaag = vandaagIso()): Contract | null {
+  if (contracten.length === 0) return null
+  const loopt = (c: Contract) =>
+    c.begint <= vandaag && (!c.eindigt || c.eindigt >= vandaag) && !c.beeindigd_op
+  const op = [...contracten].sort((a, b) => b.begint.localeCompare(a.begint))
+  return op.find(loopt) ?? op[0]
+}
+
 /* ------------------------------------------------------------------ keten --- */
 
 export type Schakel = {

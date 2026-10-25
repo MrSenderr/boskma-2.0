@@ -1,8 +1,13 @@
 /* De contractwaker. Een dag ernaast betekent een aanzegging die te laat komt,
-   en dat kost een maandloon. */
+   en dat kost een maandloon.
+
+   Rekent sinds 25 oktober 2026 met de contracttabel. De oude toetsen staan er
+   nog, nu met contracten in plaats van kaartvelden; daar zijn de gevallen bij
+   gekomen die vóór die omzetting stil bleven. */
 
 import { describe, expect, it } from 'vitest'
-import { dagenTussen, plusMaanden, signalen, signalenVoor } from './contractwaker'
+import { dagenTussen, plusMaanden, signalen, signalenVoor, ketenTekst } from './contractwaker'
+import type { Contract } from './contracten'
 import type { Persoon } from './personeel'
 
 function persoon(extra: Partial<Persoon>): Persoon {
@@ -25,111 +30,209 @@ function persoon(extra: Partial<Persoon>): Persoon {
   }
 }
 
+let teller = 0
+function contract(extra: Partial<Contract>): Contract {
+  return {
+    id: `c${++teller}`,
+    medewerker_id: 'p1',
+    werkgever: 'boskma',
+    soort: 'vaste_uren',
+    duur: 'bepaalde',
+    begint: '2026-01-01',
+    eindigt: '2026-12-31',
+    uren_vast: null,
+    uren_min: null,
+    uren_max: null,
+    uurloon: null,
+    functie: null,
+    proefperiode: null,
+    beeindigd_op: null,
+    beeindigd_reden: null,
+    document_id: null,
+    bron: 'handmatig',
+    opmerking: null,
+    ...extra,
+  }
+}
+
 describe('datums', () => {
   it('telt maanden op en houdt het einde van de maand heel', () => {
     expect(plusMaanden('2026-01-31', 1)).toBe('2026-02-28')
-    expect(plusMaanden('2027-07-15', -1)).toBe('2027-06-15')
-    expect(plusMaanden('2026-03-31', -1)).toBe('2026-02-28')
+    expect(plusMaanden('2026-03-15', -1)).toBe('2026-02-15')
   })
 
   it('telt dagen over de zomertijd heen', () => {
-    expect(dagenTussen('2026-10-24', '2026-10-26')).toBe(2)
     expect(dagenTussen('2026-03-28', '2026-03-30')).toBe(2)
   })
 })
 
 describe('aanzeggen', () => {
-  const jaarcontract = persoon({
-    contractduur: 'bepaalde',
-    ingangsdatum: '2026-01-01',
-    einddatum: '2026-12-31',
-    contracttype: 'Vaste uren',
-  })
+  const p = persoon({})
+  const jaarcontract = [contract({ begint: '2026-01-01', eindigt: '2026-12-31' })]
 
   it('verschijnt zes weken voor de aanzegdatum', () => {
-    expect(signalenVoor(jaarcontract, '2026-10-18')).toHaveLength(0)
-    const [s] = signalenVoor(jaarcontract, '2026-10-19')
+    expect(signalenVoor(p, jaarcontract, '2026-10-18')).toHaveLength(0)
+    const [s] = signalenVoor(p, jaarcontract, '2026-10-19')
     expect(s.soort).toBe('aanzeggen')
     expect(s.uiterlijk).toBe('2026-11-30')
     expect(s.ernst).toBe('letop')
   })
 
   it('wordt rood in de laatste week en blijft staan tot de einddatum', () => {
-    expect(signalenVoor(jaarcontract, '2026-11-25')[0].ernst).toBe('fout')
-    const te_laat = signalenVoor(jaarcontract, '2026-12-10')[0]
-    expect(te_laat.dagen).toBeLessThan(0)
-    expect(te_laat.wat).toMatch(/voorbij/)
-    expect(signalenVoor(jaarcontract, '2027-01-01')).toHaveLength(0)
+    expect(signalenVoor(p, jaarcontract, '2026-11-25')[0].ernst).toBe('fout')
+    const teLaat = signalenVoor(p, jaarcontract, '2026-12-10')[0]
+    expect(teLaat.dagen).toBeLessThan(0)
+    expect(teLaat.wat).toMatch(/voorbij/)
+    expect(signalenVoor(p, jaarcontract, '2027-01-01')).toHaveLength(0)
   })
 
   it('telt een half jaar als zes maanden', () => {
-    const half = persoon({ contractduur: 'bepaalde', ingangsdatum: '2026-11-01', einddatum: '2027-04-30' })
-    expect(signalenVoor(half, '2027-03-15')[0].soort).toBe('aanzeggen')
+    const half = [contract({ begint: '2026-11-01', eindigt: '2027-04-30' })]
+    expect(signalenVoor(p, half, '2027-03-15')[0].soort).toBe('aanzeggen')
   })
 
   it('geeft bij een kort contract alleen het einde', () => {
-    const kort = persoon({ contractduur: 'bepaalde', ingangsdatum: '2026-11-01', einddatum: '2027-01-31' })
-    const [s] = signalenVoor(kort, '2027-01-01')
+    const kort = [contract({ begint: '2026-11-01', eindigt: '2027-01-31' })]
+    const [s] = signalenVoor(p, kort, '2027-01-01')
     expect(s.soort).toBe('einde')
     expect(s.dagen).toBe(30)
   })
 
   it('negeert onbepaalde tijd', () => {
-    const vast = persoon({ contractduur: 'onbepaalde', ingangsdatum: '2026-01-01', einddatum: null })
-    expect(signalenVoor(vast, '2026-12-01')).toHaveLength(0)
+    const vast = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null })]
+    expect(signalenVoor(p, vast, '2026-12-01')).toHaveLength(0)
+  })
+
+  /* De aanzegtermijn hoort bij het lopende contract. Een afgelopen contract
+     uit 2025 mag geen melding meer geven. */
+  it('kijkt naar het contract dat nu loopt, niet naar een oud', () => {
+    const twee = [
+      contract({ begint: '2025-01-01', eindigt: '2025-12-31' }),
+      contract({ begint: '2026-01-01', eindigt: '2026-12-31' }),
+    ]
+    const uit = signalenVoor(p, twee, '2026-11-25')
+    expect(uit).toHaveLength(1)
+    expect(uit[0].uiterlijk).toBe('2026-11-30')
+  })
+
+  it('zegt bij het seintje hoeveelste contract het is', () => {
+    const drie = [
+      contract({ begint: '2024-01-01', eindigt: '2024-12-31' }),
+      contract({ begint: '2025-01-01', eindigt: '2025-12-31' }),
+      contract({ begint: '2026-01-01', eindigt: '2026-12-31' }),
+    ]
+    const [s] = signalenVoor(p, drie, '2026-11-25')
+    expect(s.ketenNummer).toBe(3)
+    expect(s.volgendeWordtVast).toBe(true)
+    expect(ketenTekst(s)).toBe('Contract 3 van 3')
   })
 })
 
 describe('twaalf maanden oproep', () => {
-  const oproep = persoon({
-    contracttype: 'Nuluren-overeenkomst (oproep)',
-    contractduur: 'onbepaalde',
-    ingangsdatum: '2026-07-16',
-  })
+  const oproep = [contract({ soort: 'nuluren', duur: 'onbepaalde', begint: '2026-07-16', eindigt: null })]
+  const p = persoon({ in_dienst_sinds: '2026-07-16' })
 
-  it('verschijnt vier weken voor het jaar en loopt tot een maand erna', () => {
-    expect(signalenVoor(oproep, '2027-06-17')).toHaveLength(0)
-    const [s] = signalenVoor(oproep, '2027-06-18')
+  it('verschijnt vier weken voor het jaar', () => {
+    expect(signalenVoor(p, oproep, '2027-06-17')).toHaveLength(0)
+    const [s] = signalenVoor(p, oproep, '2027-06-18')
     expect(s.soort).toBe('vaste_uren')
     expect(s.uiterlijk).toBe('2027-08-16')
-    expect(signalenVoor(oproep, '2027-08-17')).toHaveLength(0)
   })
 
   it('geldt niet voor vaste uren', () => {
-    const vast = persoon({ ...oproep, contracttype: 'Vaste uren' })
-    expect(signalenVoor(vast, '2027-07-01')).toHaveLength(0)
+    const vast = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null })]
+    expect(signalenVoor(p, vast, '2027-07-01')).toHaveLength(0)
+  })
+
+  /* Hier zweeg de waker vóór 25 oktober 2026. Het raam van één maand viel
+     dicht en daarna hoorde je er nooit meer iets over, terwijl de
+     verplichting gewoon bleef staan — bij Ilona al sinds 2020. */
+  it('blijft melden als de maand voorbij is, en wordt rood', () => {
+    const [s] = signalenVoor(p, oproep, '2027-10-16')
+    expect(s.soort).toBe('vaste_uren')
+    expect(s.ernst).toBe('fout')
+    expect(s.dagen).toBeLessThan(0)
+    expect(s.wat).toMatch(/over tijd/)
+  })
+
+  it('zegt hoeveel maanden het al over tijd is', () => {
+    const [s] = signalenVoor(p, oproep, '2028-08-16')
+    expect(s.wat).toMatch(/12 maanden geleden al verplicht/)
+  })
+
+  /* Bij een overgenomen medewerker begon de telling bij de vorige eigenaar.
+     Denzel is in dienst sinds 2023; zijn Kai-contract is van 2026. */
+  it('rekent vanaf de dag dat iemand begon, niet vanaf zijn contract', () => {
+    const denzel = persoon({ in_dienst_sinds: '2023-03-15' })
+    const kai = [
+      contract({ werkgever: 'kai', soort: 'nuluren', duur: 'onbepaalde', begint: '2026-03-25', eindigt: null }),
+    ]
+    const [s] = signalenVoor(denzel, kai, '2026-10-25')
+    expect(s.soort).toBe('vaste_uren')
+    expect(s.ernst).toBe('fout')
+    expect(s.uiterlijk).toBe('2024-04-15')
+  })
+
+  it('valt terug op het oudste contract als in dienst sinds leeg is', () => {
+    const zonder = persoon({ in_dienst_sinds: null })
+    const [s] = signalenVoor(zonder, oproep, '2027-10-16')
+    expect(s.uiterlijk).toBe('2027-08-16')
+  })
+})
+
+describe('geen contract vastgelegd', () => {
+  /* De waker leest nu uit een tabel die leeg kan zijn. Stil blijven zou
+     betekenen dat juist de slechtst bijgehouden medewerker geen seintje
+     oplevert. */
+  it('meldt dat er niets te rekenen valt', () => {
+    const [s] = signalenVoor(persoon({}), [], '2026-10-25')
+    expect(s.soort).toBe('geen_contract')
+    expect(s.ernst).toBe('letop')
+  })
+
+  it('meldt verder niets, ook geen verjaardag', () => {
+    const p = persoon({ geboortedatum: '2010-11-05' })
+    expect(signalenVoor(p, [], '2026-10-25')).toHaveLength(1)
   })
 })
 
 describe('verjaardag', () => {
+  const vast = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null })]
+
   it('seint twee weken vooruit tot en met 21', () => {
     const p = persoon({ geboortedatum: '2010-11-05' })
-    expect(signalenVoor(p, '2026-10-21')).toHaveLength(0)
-    const [s] = signalenVoor(p, '2026-10-22')
+    expect(signalenVoor(p, vast, '2026-10-21')).toHaveLength(0)
+    const [s] = signalenVoor(p, vast, '2026-10-22')
     expect(s.wat).toBe('Wordt 16 — uurloon en werktijden nakijken')
   })
 
   it('gaat over de jaargrens', () => {
     const p = persoon({ geboortedatum: '2008-01-03' })
-    expect(signalenVoor(p, '2026-12-25')[0].wat).toBe('Wordt 19 — uurloon nakijken')
+    expect(signalenVoor(p, vast, '2026-12-25')[0].wat).toBe('Wordt 19 — uurloon nakijken')
   })
 
   it('zwijgt vanaf 22', () => {
-    expect(signalenVoor(persoon({ geboortedatum: '2004-11-05' }), '2026-11-01')).toHaveLength(0)
+    expect(signalenVoor(persoon({ geboortedatum: '2004-11-05' }), vast, '2026-11-01')).toHaveLength(0)
   })
 })
 
 describe('wie meetelt', () => {
+  const vast = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null })]
+
   it('slaat sollicitanten, uit dienst en de eigenaar over', () => {
     const basis = { geboortedatum: '2010-11-05' }
-    expect(signalenVoor(persoon({ ...basis, fase: 'sollicitant' }), '2026-11-01')).toHaveLength(0)
-    expect(signalenVoor(persoon({ ...basis, uit_dienst_op: '2026-10-01' }), '2026-11-01')).toHaveLength(0)
-    expect(signalenVoor(persoon({ ...basis, is_eigenaar: true }), '2026-11-01')).toHaveLength(0)
+    expect(signalenVoor(persoon({ ...basis, fase: 'sollicitant' }), vast, '2026-11-01')).toHaveLength(0)
+    expect(signalenVoor(persoon({ ...basis, uit_dienst_op: '2026-10-01' }), vast, '2026-11-01')).toHaveLength(0)
+    expect(signalenVoor(persoon({ ...basis, is_eigenaar: true }), vast, '2026-11-01')).toHaveLength(0)
   })
 
   it('zet het dringendste bovenaan', () => {
     const a = persoon({ id: 'a', voornaam: 'A', geboortedatum: '2010-11-10' })
     const b = persoon({ id: 'b', voornaam: 'B', geboortedatum: '2010-11-03' })
-    expect(signalen([a, b], '2026-11-01').map((s) => s.persoonId)).toEqual(['b', 'a'])
+    const per = new Map([
+      ['a', [contract({ medewerker_id: 'a', duur: 'onbepaalde', eindigt: null })]],
+      ['b', [contract({ medewerker_id: 'b', duur: 'onbepaalde', eindigt: null })]],
+    ])
+    expect(signalen([a, b], per, '2026-11-01').map((s) => s.persoonId)).toEqual(['b', 'a'])
   })
 })
