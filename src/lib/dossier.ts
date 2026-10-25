@@ -42,6 +42,9 @@ export type Document = {
   vervallen_op: string | null
   /** Gevuld als er een opvolger is, leeg als het gewoon weggehaald is. */
   vervangen_door: number | null
+  /** Alleen bij een getekend contract: wanneer het naar het loonbureau ging. */
+  naar_loonbureau_op: string | null
+  naar_loonbureau_fout: string | null
 }
 
 /* Wat er in een dossier mag. De ID-kopie staat er bewust niet bij: die gaat na
@@ -151,7 +154,8 @@ export function useVerslagReageren() {
 
 const DOC_VELDEN =
   'id,medewerker_id,soort,naam,pad,toegevoegd_op,toegevoegd_door,' +
-  'mime_type,bytes,sha256,notitie,vervallen_op,vervangen_door'
+  'mime_type,bytes,sha256,notitie,vervallen_op,vervangen_door,' +
+  'naar_loonbureau_op,naar_loonbureau_fout'
 
 export function useDocumenten(medewerkerId: string | null | undefined) {
   return useQuery({
@@ -220,7 +224,8 @@ async function vingerafdruk(bestand: File) {
 export function useDocumentToevoegen(medewerkerId: string) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ bestand, soort }: { bestand: File; soort: string }) => {
+    /** Geeft het nummer van het nieuwe document terug. */
+    mutationFn: async ({ bestand, soort }: { bestand: File; soort: string }): Promise<number> => {
       if (bestand.size === 0) throw new Error('Dit bestand is leeg.')
       if (bestand.size > MAX_BYTES) {
         const mb = (bestand.size / 1024 / 1024).toFixed(1)
@@ -261,24 +266,32 @@ export function useDocumentToevoegen(medewerkerId: string) {
       if (opslagFout) throw new Error(opslagFout.message)
 
       const { data: gebruiker } = await supabase.auth.getUser()
-      const { error } = await supabase.from('dossier_documenten').insert({
-        medewerker_id: medewerkerId,
-        soort,
-        naam: bestand.name,
-        pad,
-        mime_type: mimeType,
-        bytes: bestand.size,
-        sha256,
-        toegevoegd_door: gebruiker.user?.email ?? null,
-      })
+      const { data: nieuw, error } = await supabase
+        .from('dossier_documenten')
+        .insert({
+          medewerker_id: medewerkerId,
+          soort,
+          naam: bestand.name,
+          pad,
+          mime_type: mimeType,
+          bytes: bestand.size,
+          sha256,
+          toegevoegd_door: gebruiker.user?.email ?? null,
+        })
+        .select('id')
+        .single()
       if (error) {
         // Geen losse bestanden achterlaten waar niets naar verwijst.
         await supabase.storage.from('Documenten').remove([pad])
         if (error.code === '23505') throw new Error('Dit bestand staat er al in het dossier.')
         throw new Error(error.message)
       }
+      return (nieuw as { id: number }).id
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['dossier-documenten'] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['dossier-documenten'] })
+      client.invalidateQueries({ queryKey: ['contract-standen'] })
+    },
   })
 }
 

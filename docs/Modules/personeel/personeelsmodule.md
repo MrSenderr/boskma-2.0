@@ -294,3 +294,27 @@ testmedewerker voordat testmodus uit gaat.
 - In het archief blijft alles zichtbaar, ook BSN en IBAN
 - ID-kopie veertien dagen bewaren, daarna automatisch weg
 - Testmodus staat standaard aan en gaat pas uit als Sander dat zegt
+
+## Getekende contracten
+
+Vastgelegd op 25 oktober 2026.
+
+**Loonbureau stelt het contract op.** Staat *contract door loonbureau* aan en is
+het mutatieformulier weg, dan verschijnt de medewerker op het startscherm onder
+*Getekende contracten* met **Uploaden**. Zodra de getekende versie in het dossier
+staat (soort *Getekend contract*), stuurt de app hem meteen door naar het
+loonbureau via `stuur-getekend-contract`. Lukt dat niet, dan staat hij er met
+**Versturen** en de foutmelding, en kan het opnieuw vanaf het dossier.
+
+**Een contract dat je zelf opstelde** gaat niet naar het loonbureau; dat blijft
+in het dossier.
+
+**Controle.** Iedereen in dienst zonder actueel getekend contract staat als één
+regel op het startscherm, open te klappen tot namen.
+
+**Testmodus** stuurt naar het testadres en laat het contract op *nog niet naar
+loonbureau* staan — het loonbureau heeft dan niets.
+
+Er is geen takenlijst: wat er moet gebeuren volgt uit de kaart en het dossier
+(`naar_loonbureau_op` op `dossier_documenten`), en verdwijnt vanzelf als het
+gedaan is.

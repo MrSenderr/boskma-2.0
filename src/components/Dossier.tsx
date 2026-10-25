@@ -19,6 +19,7 @@ import {
 } from '../lib/dossier'
 import { korteDatum, type Persoon } from '../lib/personeel'
 import { DocumentLink } from './DocumentLink'
+import { uitkomstTekst, useGetekendVersturen } from '../lib/getekendContract'
 
 /* Het dossier zoals Sander het ziet. Zie
    docs/modules/personeel/personeelsmodule.md. */
@@ -123,10 +124,13 @@ function Regel({
   doc,
   vervallen,
   actie,
+  onder,
 }: {
   doc: Document
   vervallen?: boolean
   actie: React.ReactNode
+  /** Een extra regel onder de naam, zoals de stand bij het loonbureau. */
+  onder?: React.ReactNode
 }) {
   const grootte = leesbareGrootte(doc.bytes)
   return (
@@ -142,6 +146,7 @@ function Regel({
           {vervallen && doc.vervallen_op ? ` — vervallen op ${korteDatum(doc.vervallen_op)}` : ''}
         </span>
         {doc.notitie && <span className="block text-sm text-muted">{doc.notitie}</span>}
+        {onder}
       </span>
       <DocumentLink pad={doc.pad}>Openen</DocumentLink>
       {actie}
@@ -159,10 +164,45 @@ function Documenten({ persoon }: { persoon: Persoon }) {
   const toevoegen = useDocumentToevoegen(persoon.id)
   const latenVervallen = useDocumentLatenVervallen()
   const terughalen = useDocumentTerughalen()
+  const versturen = useGetekendVersturen()
   const invoerRef = useRef<HTMLInputElement>(null)
   const [soort, setSoort] = useState('contract')
   const [toonVervallen, setToonVervallen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
+  const [melding, setMelding] = useState<string | null>(null)
+  // Stelt het loonbureau het contract op, dan gaat de getekende versie terug.
+  const terugNaarLoonbureau = Boolean(persoon.contract_door_loonbureau)
+
+  function stuur(documentId: number, naUpload = false) {
+    setFout(null)
+    setMelding(null)
+    versturen.mutate(documentId, {
+      onSuccess: (r) => setMelding(uitkomstTekst(r)),
+      onError: (e) =>
+        setFout(
+          naUpload
+            ? `Geüpload, maar naar het loonbureau sturen lukte niet: ${e.message}. Probeer het hieronder opnieuw.`
+            : e.message,
+        ),
+    })
+  }
+
+  function loonbureauRegel(d: Document) {
+    if (d.soort !== 'contract_getekend' || !terugNaarLoonbureau) return null
+    if (d.naar_loonbureau_op) {
+      return (
+        <span className="mt-1 block">
+          <Pil soort="goed">Naar loonbureau {korteDatum(d.naar_loonbureau_op)}</Pil>
+        </span>
+      )
+    }
+    return (
+      <span className="mt-1 flex flex-wrap items-center gap-2">
+        <Pil soort="fout">Nog niet naar loonbureau</Pil>
+        {d.naar_loonbureau_fout && <span className="text-sm text-bad">{d.naar_loonbureau_fout}</span>}
+      </span>
+    )
+  }
 
   return (
     <section className="flex flex-col gap-3">
@@ -190,7 +230,15 @@ function Documenten({ persoon }: { persoon: Persoon }) {
             <Regel
               key={d.id}
               doc={d}
+              onder={loonbureauRegel(d)}
               actie={
+                <>
+                {d.soort === 'contract_getekend' && terugNaarLoonbureau && !d.naar_loonbureau_op && (
+                  <Knop soort="primair" bezig={versturen.isPending} onClick={() => stuur(d.id)}>
+                    <Send className="size-4" aria-hidden />
+                    Naar loonbureau
+                  </Knop>
+                )}
                 <button
                   type="button"
                   onClick={() =>
@@ -202,10 +250,15 @@ function Documenten({ persoon }: { persoon: Persoon }) {
                 >
                   <Archive className="size-4" aria-hidden />
                 </button>
+                </>
               }
             />
           ))}
         </Kaart>
+      )}
+
+      {melding && (
+        <p className="rounded-[4px] border border-good bg-good-soft px-3 py-2 text-sm text-good">{melding}</p>
       )}
 
       {fout && (
@@ -239,9 +292,17 @@ function Documenten({ persoon }: { persoon: Persoon }) {
             const bestand = e.target.files?.[0]
             if (!bestand) return
             setFout(null)
+            setMelding(null)
             toevoegen.mutate(
               { bestand, soort },
-              { onError: (err) => setFout(err.message) },
+              {
+                onError: (err) => setFout(err.message),
+                // Een getekend contract dat het loonbureau opstelde gaat
+                // meteen terug; daar hoef je niet nog eens aan te denken.
+                onSuccess: (id) => {
+                  if (soort === 'contract_getekend' && terugNaarLoonbureau) stuur(id, true)
+                },
+              },
             )
             e.target.value = ''
           }}

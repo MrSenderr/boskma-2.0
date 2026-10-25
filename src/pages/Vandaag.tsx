@@ -7,6 +7,8 @@ import { Reacties } from '../components/Reacties'
 import { useReeksStand, useWeerreeks } from '../lib/weerreeks'
 import { dagnaam, getal } from '../lib/opmaak'
 import { useContractwaker } from '../lib/contractwaker'
+import { useContractStanden, type ContractStand } from '../lib/getekendContract'
+import { useState } from 'react'
 
 /* Het startscherm van Sander.
  *
@@ -99,6 +101,77 @@ function Contracten() {
   )
 }
 
+const ACTIE: Record<'uploaden' | 'versturen', { wat: string; pil: string }> = {
+  uploaden: { wat: 'Getekend contract uploaden', pil: 'Uploaden' },
+  versturen: { wat: 'Getekend contract nog naar het loonbureau', pil: 'Versturen' },
+}
+
+function ContractRegel({ s, wat, pil, soort }: { s: ContractStand; wat: string; pil: string; soort: 'fout' | 'letop' }) {
+  return (
+    <Link
+      to={`/personeel/${s.persoonId}`}
+      data-touch
+      className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0 hover:bg-surface-2"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{s.naam}</span>
+        <span className="block text-sm text-muted">{s.fout ? `Mislukt: ${s.fout}` : wat}</span>
+      </span>
+      <Pil soort={soort}>{pil}</Pil>
+    </Link>
+  )
+}
+
+/* Getekende contracten. Wat jij moet doen staat er altijd; wie er zonder
+   getekend contract bij staat is één regel die je openklapt, anders staat het
+   startscherm weer vol personeel. */
+function GetekendeContracten() {
+  const { data, isPending, error, refetch } = useContractStanden()
+  const [open, setOpen] = useState(false)
+
+  if (isPending) return null
+  if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
+
+  const acties = data.filter((s) => s.stand === 'uploaden' || s.stand === 'versturen')
+  const ontbreekt = data.filter((s) => s.stand === 'ontbreekt')
+  if (acties.length === 0 && ontbreekt.length === 0) return null
+
+  return (
+    <section className="flex flex-col gap-3">
+      <Kopje>Getekende contracten</Kopje>
+      <Kaart>
+        {acties.map((s) => {
+          const a = ACTIE[s.stand as 'uploaden' | 'versturen']
+          return <ContractRegel key={s.persoonId} s={s} wat={a.wat} pil={a.pil} soort="fout" />
+        })}
+        {ontbreekt.length > 0 && (
+          <button
+            type="button"
+            data-touch
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex w-full items-center justify-between gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface-2"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">
+                {ontbreekt.length} {ontbreekt.length === 1 ? 'medewerker' : 'medewerkers'} zonder getekend contract
+              </span>
+              <span className="block text-sm text-muted">Niets in het dossier onder "Getekend contract"</span>
+            </span>
+            <span className="text-sm text-muted" aria-hidden>
+              {open ? '▾' : '▸'}
+            </span>
+          </button>
+        )}
+        {open &&
+          ontbreekt.map((s) => (
+            <ContractRegel key={s.persoonId} s={s} wat="Geen getekend contract in het dossier" pil="Ontbreekt" soort="letop" />
+          ))}
+      </Kaart>
+    </section>
+  )
+}
+
 function wanneer(dagen: number, datum: string) {
   if (dagen < 0) return `${-dagen} dg te laat`
   if (dagen === 0) return 'vandaag'
@@ -167,6 +240,8 @@ export function Vandaag() {
       <Reacties />
 
       <OpJou />
+
+      <GetekendeContracten />
 
       <Contracten />
 
