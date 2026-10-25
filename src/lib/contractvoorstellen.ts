@@ -264,7 +264,12 @@ export const BANDBREEDTE_MAX = 1.3
  *
  * 'fout' betekent: dit voorstel klopt niet en versturen is een vergissing.
  * 'letop' is een waarschuwing waar je overheen mag stappen. */
-export function controleer(v: Partial<Voorstel>, keten: Keten, vandaag = vandaagIso()): Bezwaar[] {
+export function controleer(
+  v: Partial<Voorstel>,
+  keten: Keten,
+  vandaag = vandaagIso(),
+  huidig: Contract | null = null,
+): Bezwaar[] {
   const uit: Bezwaar[] = []
   const aard = v.aard
 
@@ -334,6 +339,28 @@ export function controleer(v: Partial<Voorstel>, keten: Keten, vandaag = vandaag
       ernst: 'letop',
       wat: `Dit gemiddelde gaat over ${v.gemiddelde_over ?? 'een deel van het jaar'}, niet over twaalf maanden. Het loonbureau weet de verloonde uren van het hele jaar; vraag het daar na als je zeker wilt zitten.`,
     })
+  }
+
+  /* Twee stappen passen alleen als je op tijd begint.
+   *
+   * Op een aanbod vaste uren heeft de medewerker een maand om te antwoorden
+   * (art. 7:628a lid 5 BW). Aanzeggen moet uiterlijk een maand vóór de
+   * einddatum (art. 7:668 BW). Doe je het aanbod te laat, dan is zijn antwoord
+   * er pas ná de aanzegdatum — en dan moet je aanzeggen zonder te weten wat je
+   * aanbiedt, of je bent te laat en kost het tot een maandloon.
+   *
+   * Dit houdt niets tegen: er zijn gevallen waarin je het toch moet doen, en
+   * dan wil je niet klemzitten. Het zegt alleen dat de klok niet meewerkt. */
+  if (aard === 'vaste_uren' && huidig?.duur === 'bepaalde' && huidig.eindigt) {
+    const einde = huidig.eindigt.slice(0, 10)
+    const aanzeg = plusMaanden(einde, -1)
+    const antwoordUiterlijk = v.uiterlijk?.slice(0, 10) ?? plusMaanden(vandaag, 1)
+    if (antwoordUiterlijk > aanzeg) {
+      uit.push({
+        ernst: 'letop',
+        wat: `Het antwoord op dit aanbod komt pas rond ${datum(antwoordUiterlijk)}, en aanzeggen moet uiterlijk ${datum(aanzeg)}. Je weet bij het aanzeggen dus nog niet wat hij kiest. Overweeg het aanbod en de verlenging samen te doen, of zeg alvast aan dat je verlengt.`,
+      })
+    }
   }
 
   const min = getal(v.uren_min ?? null)

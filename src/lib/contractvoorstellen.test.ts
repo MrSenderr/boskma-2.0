@@ -667,3 +667,57 @@ describe('eerst het aanbod, dan de verlenging', () => {
     expect(AARDNAAM.verlengen_en_vaste_uren).toBeTruthy()
   })
 })
+
+describe('de klok bij twee stappen', () => {
+  const loopt = c({ begint: '2026-01-01', eindigt: '2026-12-31' })
+  const aanbod = (uiterlijk: string | null) =>
+    controleer(
+      {
+        aard: 'vaste_uren',
+        uren_vast: 14,
+        gemiddelde_uren: 14,
+        gemiddelde_bron: 'berekend',
+        uiterlijk,
+      },
+      leegKeten,
+      vandaag,
+      loopt,
+    )
+
+  /* Aanzeggen moet uiterlijk 30 november; op een aanbod heeft hij een maand.
+     Doe je het aanbod in november, dan is zijn antwoord er pas in december en
+     moet je aanzeggen zonder te weten wat hij kiest. */
+  it('waarschuwt als het antwoord na de aanzegdatum komt', () => {
+    const bezwaren = aanbod('2026-12-15')
+    expect(bezwaren.some((b) => b.ernst === 'letop' && /aanzeggen moet uiterlijk/.test(b.wat))).toBe(
+      true,
+    )
+    // Tegenhouden doet het niet: soms moet het toch.
+    expect(magVerstuurd(bezwaren)).toBe(true)
+  })
+
+  it('zwijgt als het antwoord op tijd binnen is', () => {
+    expect(aanbod('2026-11-15').some((b) => /aanzeggen moet uiterlijk/.test(b.wat))).toBe(false)
+  })
+
+  it('zwijgt bij een contract voor onbepaalde tijd', () => {
+    const vast = c({ begint: '2026-01-01', eindigt: null, duur: 'onbepaalde' })
+    const bezwaren = controleer(
+      { aard: 'vaste_uren', uren_vast: 14, gemiddelde_uren: 14, gemiddelde_bron: 'berekend', uiterlijk: '2026-12-15' },
+      leegKeten,
+      vandaag,
+      vast,
+    )
+    expect(bezwaren.some((b) => /aanzeggen moet uiterlijk/.test(b.wat))).toBe(false)
+  })
+
+  it('zwijgt bij een verlenging; die gaat niet over dit aanbod', () => {
+    const bezwaren = controleer(
+      { aard: 'verlengen', duur: 'bepaalde', begint: '2027-01-01', eindigt: '2027-12-31' },
+      leegKeten,
+      vandaag,
+      loopt,
+    )
+    expect(bezwaren.some((b) => /aanzeggen moet uiterlijk/.test(b.wat))).toBe(false)
+  })
+})

@@ -211,7 +211,10 @@ function Opstellen({
   /* Alles leest hetzelfde voorstel: het voorbeeld, de controle en het
      opslaan. Anders kijk je naar iets anders dan je bewaart. */
   const schoon = useMemo(() => schoonVoorstel(v), [v])
-  const bezwaren = useMemo(() => controleer(schoon, keten), [schoon, keten])
+  const bezwaren = useMemo(
+    () => controleer(schoon, keten, undefined, huidig),
+    [schoon, keten, huidig],
+  )
   const brief = useMemo(
     () => brieftekst({ voorstel: schoon, voornaam: persoon.voornaam, huidig }),
     [schoon, persoon.voornaam, huidig],
