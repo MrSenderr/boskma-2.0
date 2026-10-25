@@ -108,6 +108,30 @@ export function codeKort(code: string): string {
   return `${code.slice(0, 8)} … ${code.slice(-8)}`
 }
 
+/* Ontbreekt er een getekend contract, en valt daar nu iets aan te doen?
+ *
+ * Dit is de vraag waar het blok "Tekenen" zich op laat zien terwijl er nog
+ * niets ligt. Tot 25 oktober 2026 was het antwoord verstopt: geen contract in
+ * het dossier betekende geen blok, dus ook geen knop en geen uitleg. Bij Dylan
+ * Cornelissen liep het daarop vast — wel een contract in de geschiedenis, geen
+ * bestand, en nergens een plek om er een neer te zetten.
+ *
+ * Vier keer níet, en elke keer om een andere reden: er ligt al een getekende
+ * versie; er loopt een ondertekening; er staat iets klaar om te tekenen (dan
+ * wijst die kaart zelf de weg); of de persoon gaat het niet meer tekenen. */
+export function geenGetekendContract(x: {
+  persoon: Pick<Persoon, 'uit_dienst_op' | 'is_eigenaar'>
+  documenten: { soort: string; vervallen_op: string | null }[]
+  ondertekeningen: Pick<Ondertekening, 'ingetrokken_op' | 'afgerond_op'>[]
+  /** Hoeveel contracten klaarstaan om te laten tekenen. */
+  teTekenen: number
+}): boolean {
+  if (x.documenten.some((d) => d.soort === 'contract_getekend' && !d.vervallen_op)) return false
+  if (x.ondertekeningen.some((o) => !o.ingetrokken_op && !o.afgerond_op)) return false
+  if (x.teTekenen > 0) return false
+  return !x.persoon.uit_dienst_op && !x.persoon.is_eigenaar
+}
+
 /* -------------------------------------------------------------- ophalen --- */
 
 const VELDEN = '*'

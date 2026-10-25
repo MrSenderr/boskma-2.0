@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   codeKort,
+  geenGetekendContract,
   ouderNodig,
   standVan,
   wachtOpMedewerker,
@@ -115,5 +116,56 @@ describe('de controlecode', () => {
   // Een korte code verkorten maakt hem onleesbaar in plaats van korter.
   it('laat een korte code staan', () => {
     expect(codeKort('abc123')).toBe('abc123')
+  })
+})
+
+/* Of het blok "Tekenen" zich laat zien terwijl er nog niets ligt.
+ *
+ * Dit is wat er bij Dylan Cornelissen misging: een contract in de
+ * geschiedenis, geen bestand in het dossier, en daardoor geen blok — dus ook
+ * nergens een plek om een contract neer te zetten. */
+describe('geen getekend contract', () => {
+  const persoon = { uit_dienst_op: null, is_eigenaar: false }
+  const leeg = { persoon, documenten: [], ondertekeningen: [], teTekenen: 0 }
+
+  it('vraagt aandacht bij een leeg dossier', () => {
+    expect(geenGetekendContract(leeg)).toBe(true)
+  })
+
+  it('zwijgt zodra er een getekend contract ligt', () => {
+    const documenten = [{ soort: 'contract_getekend', vervallen_op: null }]
+    expect(geenGetekendContract({ ...leeg, documenten })).toBe(false)
+  })
+
+  /* Een vervallen getekend contract is geen getekend contract. Anders blijft
+     een contract dat je hebt afgekeurd de plek bezet houden. */
+  it('telt een vervallen getekend contract niet mee', () => {
+    const documenten = [{ soort: 'contract_getekend', vervallen_op: '2026-10-01T10:00:00Z' }]
+    expect(geenGetekendContract({ ...leeg, documenten })).toBe(true)
+  })
+
+  /* Een ongetekend contract in het dossier ontbreekt niet: dat staat klaar, en
+     de kaart "Laten tekenen" wijst daar zelf de weg. */
+  it('zwijgt als er iets klaarstaat om te tekenen', () => {
+    expect(geenGetekendContract({ ...leeg, teTekenen: 1 })).toBe(false)
+  })
+
+  it('zwijgt zolang er een ondertekening loopt', () => {
+    const ondertekeningen = [{ ingetrokken_op: null, afgerond_op: null }]
+    expect(geenGetekendContract({ ...leeg, ondertekeningen })).toBe(false)
+  })
+
+  /* Een ingetrokken ondertekening loopt niet meer. Dan is er weer niets, en
+     hoort de weg terug open te staan. */
+  it('vraagt opnieuw aandacht na een ingetrokken ondertekening', () => {
+    const ondertekeningen = [{ ingetrokken_op: '2026-10-20T10:00:00Z', afgerond_op: null }]
+    expect(geenGetekendContract({ ...leeg, ondertekeningen })).toBe(true)
+  })
+
+  /* Bij wie weg is en op je eigen kaart valt er niets te tekenen; daar is het
+     geen seintje maar ruis. */
+  it('zwijgt bij wie uit dienst is en op je eigen kaart', () => {
+    expect(geenGetekendContract({ ...leeg, persoon: { uit_dienst_op: '2026-09-30', is_eigenaar: false } })).toBe(false)
+    expect(geenGetekendContract({ ...leeg, persoon: { uit_dienst_op: null, is_eigenaar: true } })).toBe(false)
   })
 })

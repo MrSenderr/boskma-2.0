@@ -78,6 +78,9 @@ export type Signaal = {
     | 'verjaardag'
     | 'voorstel_stil'
     | 'naar_loonbureau'
+    /* Geen getekend contract in het dossier. Komt niet van de waker maar uit
+       de documenten; zie getekendContract.ts. */
+    | 'geen_getekend'
     | 'uit_dienst'
   /** Wat er moet gebeuren, in een paar woorden. */
   wat: string

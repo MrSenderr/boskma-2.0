@@ -1,16 +1,18 @@
-import { useState } from 'react'
-import { Check, FileSignature, Send } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Check, FileSignature, Paperclip, Send } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import { Krabbel } from './Krabbel'
 import { DocumentLink } from './DocumentLink'
 import { korteDatum, type Persoon } from '../lib/personeel'
-import { useDocumenten } from '../lib/dossier'
+import { useDocumentToevoegen, useDocumenten } from '../lib/dossier'
+import { loonbureauMaaktContract } from '../lib/getekendContract'
 import { AARDNAAM, useVoorstellen, type Voorstel } from '../lib/contractvoorstellen'
 import { useVoorstelAfronden, voorstelVoorContract } from '../lib/afronden'
 import { lopendContract, useContracten, type Contract } from '../lib/contracten'
 import {
   STANDNAAM,
   codeKort,
+  geenGetekendContract,
   ouderNodig,
   standVan,
   useOndertekeningAfmaken,
@@ -34,7 +36,14 @@ import {
  * de database houdt die volgorde ook tegen.
  *
  * Papier blijft kunnen. Printen, tekenen, scannen en uploaden als getekend
- * contract loopt hier langsheen en werkt zoals het werkte. */
+ * contract loopt hier langsheen en werkt zoals het werkte.
+ *
+ * Waarom hier ook een uploadknop staat. Dit blok liet zich tot 25 oktober 2026
+ * alleen zien zodra er een contract in het dossier lag; lag er niets, dan was
+ * er geen blok en geen aanwijzing. Dat ging nog net zolang de documenten er
+ * direct onder hingen, maar die staan sinds de herindeling in de andere kolom.
+ * Zo stond de deur in de ene kolom en de sleutel in de andere. Nu begint de weg
+ * waar je hem zoekt. */
 
 const STAND_KLEUR = {
   klaargezet: 'neutraal',
@@ -234,6 +243,62 @@ function Regel({
   )
 }
 
+/* Er is nog niets om te tekenen. Geen verwijt maar een beginpunt: de knop die
+   je nodig hebt staat erin. */
+function NogGeenContract({ persoon }: { persoon: Persoon }) {
+  const toevoegen = useDocumentToevoegen(persoon.id)
+  const invoerRef = useRef<HTMLInputElement>(null)
+  const [fout, setFout] = useState<string | null>(null)
+  const voornaam = persoon.voornaam ?? 'de medewerker'
+
+  return (
+    <Kaart className="flex flex-col gap-3 p-4">
+      <p className="flex flex-wrap items-center gap-2">
+        <FileSignature className="size-4 shrink-0 text-muted" aria-hidden />
+        <span className="font-semibold">Nog geen getekend contract</span>
+      </p>
+      <p className="text-sm text-muted">
+        {loonbureauMaaktContract(persoon)
+          ? `Het loonbureau stelt het contract op. Zodra je het binnen hebt, zet je het hier klaar en kan ${voornaam} het in de app tekenen.`
+          : `Er staat geen contract klaar om te laten tekenen. Zet het bestand hier klaar, dan kan ${voornaam} het in de app tekenen.`}
+      </p>
+
+      {fout && <p className="text-sm text-bad">{fout}</p>}
+
+      <input
+        ref={invoerRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+        onChange={(e) => {
+          const bestand = e.target.files?.[0]
+          if (!bestand) return
+          setFout(null)
+          /* Bewust als 'contract' en niet als 'contract_getekend': wat hier
+             binnenkomt moet nog getekend worden. Zodra het erin staat komt de
+             kaart "Laten tekenen" hieronder vanzelf tevoorschijn. */
+          toevoegen.mutate({ bestand, soort: 'contract' }, { onError: (err) => setFout(err.message) })
+          e.target.value = ''
+        }}
+      />
+      <Knop
+        soort="rustig"
+        bezig={toevoegen.isPending}
+        className="w-fit"
+        onClick={() => invoerRef.current?.click()}
+      >
+        <Paperclip className="size-4" aria-hidden />
+        Contract klaarzetten
+      </Knop>
+
+      <p className="text-sm text-muted">
+        Op papier laten tekenen blijft kunnen. De scan hoort dan bij de documenten, als “getekend
+        contract”; dit blok sla je over.
+      </p>
+    </Kaart>
+  )
+}
+
 export function Ondertekenen({ persoon }: { persoon: Persoon }) {
   const { data: ondertekeningen } = useOndertekeningen(persoon.id)
   const { data: documenten } = useDocumenten(persoon.id)
@@ -258,13 +323,25 @@ export function Ondertekenen({ persoon }: { persoon: Persoon }) {
     (d) => d.soort === 'contract' && !d.vervallen_op && !bezet.has(d.id),
   )
 
-  if (ondertekeningen.length === 0 && teTekenen.length === 0) return null
+  /* Ontbreekt het getekende contract? Dan hoort dat te blijken, met de knop
+     erbij. Niet bij wie uit dienst is of bij je eigen kaart: daar valt niets
+     meer te tekenen. */
+  const ontbreekt = geenGetekendContract({
+    persoon,
+    documenten,
+    ondertekeningen,
+    teTekenen: teTekenen.length,
+  })
+
+  if (ondertekeningen.length === 0 && teTekenen.length === 0 && !ontbreekt) return null
 
   return (
     <section className="flex flex-col gap-3">
       <Kopje>Tekenen</Kopje>
 
       {fout && <p className="text-sm text-bad">{fout}</p>}
+
+      {ontbreekt && <NogGeenContract persoon={persoon} />}
 
       {ondertekeningen.length > 0 && (
         <Kaart className="flex flex-col py-2">

@@ -308,18 +308,40 @@ export function Personeel() {
      Dat komt niet van de waker maar uit de documenten; alleen als er voor die
      persoon nog niets dringenders is, want één regel per naam. */
   for (const c of standen.data ?? []) {
-    if (c.stand !== 'versturen' || dringendste.has(c.persoonId)) continue
+    if (dringendste.has(c.persoonId) || c.stand === 'in_orde') continue
+    if (c.stand === 'versturen') {
+      dringendste.set(c.persoonId, {
+        persoonId: c.persoonId,
+        naam: c.naam,
+        soort: 'naar_loonbureau',
+        wat: c.verwacht
+          ? 'Getekend contract nog niet naar het loonbureau'
+          : 'Getekend contract ligt in het dossier — nog niet verstuurd',
+        uiterlijk: vandaagIso(),
+        dagen: 0,
+        ernst: c.verwacht ? 'fout' : 'letop',
+        pil: 'te versturen',
+      })
+      continue
+    }
+    /* Er is helemaal geen getekend contract. Dat stond tot nu toe alleen op het
+       startscherm, opgevouwen onder een telling; wie hier langs de namen loopt
+       zag het niet. Wacht het loonbureau erop ('uploaden'), dan is er iets
+       binnengekomen dat je nog moet klaarzetten; anders is er simpelweg nooit
+       iets getekend. In beide gevallen geel: het is iets dat moet gebeuren,
+       maar er staat geen dag op. */
     dringendste.set(c.persoonId, {
       persoonId: c.persoonId,
       naam: c.naam,
-      soort: 'naar_loonbureau',
-      wat: c.verwacht
-        ? 'Getekend contract nog niet naar het loonbureau'
-        : 'Getekend contract ligt in het dossier — nog niet verstuurd',
+      soort: 'geen_getekend',
+      wat:
+        c.stand === 'uploaden'
+          ? 'Het loonbureau stelde het contract op — nog niets getekend in de app'
+          : 'Geen getekend contract in het dossier',
       uiterlijk: vandaagIso(),
       dagen: 0,
-      ernst: c.verwacht ? 'fout' : 'letop',
-      pil: 'te versturen',
+      ernst: 'letop',
+      pil: 'te tekenen',
     })
   }
   const gebruiken = medewerkers.filter((p) => inDeApp.has(p.id)).length
