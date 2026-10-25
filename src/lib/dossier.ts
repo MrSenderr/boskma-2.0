@@ -221,6 +221,25 @@ async function vingerafdruk(bestand: File) {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/* Eén document, op nummer. Voor het tekenscherm: daar gaat het om precies het
+   stuk waar de ondertekening aan hangt, en niet om de hele map. Wat een
+   medewerker mag zien regelt de database. */
+export function useDocument(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ['dossier-document', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<Document | null> => {
+      const { data, error } = await supabase
+        .from('dossier_documenten')
+        .select(DOC_VELDEN)
+        .eq('id', id as number)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      return (data ?? null) as unknown as Document | null
+    },
+  })
+}
+
 export function useDocumentToevoegen(medewerkerId: string) {
   const client = useQueryClient()
   return useMutation({

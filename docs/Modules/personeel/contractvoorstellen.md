@@ -1,7 +1,7 @@
 # Contractvoorstellen — verlengen, stoppen, vaste uren
 
-Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 6 is gebouwd; 7 tot en
-met 9 nog niet.
+Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 7 is gebouwd; 8 en 9
+nog niet.
 
 ## Doel
 
@@ -84,6 +84,16 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
    vinger), daarna Sander. De app maakt de getekende PDF met een extra pagina:
    wie tekende, wanneer, en een controlecode (SHA-256) van het origineel.
    Terugval: printen, tekenen, scannen, uploaden als *Getekend contract*.
+   *Gebouwd 25 oktober 2026.* Keuzes die daarbij zijn gemaakt: naam voluit
+   typen plus een bevestiging is verplicht, de krabbel niet (met een muis wordt
+   het een hanenpoot, en een verplicht vakje dat niet wil is een medewerker die
+   niet tekent); onder de 18 komt er een vak voor een ouder of verzorger, nu
+   nog zonder verplichting zolang het open punt bij Pieter ligt; zodra beiden
+   hebben getekend gaat het stuk meteen naar het loonbureau, langs dezelfde weg
+   als een gescand contract. De medewerker tekent eerst en de werkgever
+   tekent mee — de database houdt die volgorde vast. De controlecode wordt bij
+   het afmaken opnieuw uitgerekend over de bytes in de opslag; klopt hij niet,
+   dan gaat er niets door.
 8. **Afronden.** Het getekende contract staat in het dossier en gaat vanzelf
    terug naar het loonbureau — dat bestaat al (`stuur-getekend-contract`).
 9. **Teksten en brieven.** Als laatste. Eén brief voor alle gevallen, in

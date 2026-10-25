@@ -5,7 +5,9 @@ import { useWieBenIk } from '../lib/wie'
 import { MeekijkenLeeg } from '../components/Meekijken'
 import { DocumentLink } from '../components/DocumentLink'
 import { MijnVoorstellen } from '../components/MijnVoorstel'
+import { MijnContracten } from '../components/MijnContract'
 import { useMijnVoorstellen } from '../lib/contractvoorstellen'
+import { useMijnOndertekeningen } from '../lib/ondertekenen'
 import { korteDatum } from '../lib/personeel'
 import {
   soortLabel,
@@ -128,6 +130,7 @@ export function MijnDossier() {
   // voor hem maar geschiedenis, en die hoort aan de beheerkant.
   const documenten = splitsDocumenten(alleDocumenten).actueel
   const { data: voorstellen } = useMijnVoorstellen()
+  const { data: tekenen } = useMijnOndertekeningen()
   const gemeld = useRef<Set<number>>(new Set())
 
   // Openen telt als gelezen; dan hoeft Sander niet te gissen of het is
@@ -153,7 +156,10 @@ export function MijnDossier() {
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
   const leeg =
-    verslagen.length === 0 && documenten.length === 0 && (voorstellen ?? []).length === 0
+    verslagen.length === 0 &&
+    documenten.length === 0 &&
+    (voorstellen ?? []).length === 0 &&
+    (tekenen ?? []).length === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -163,6 +169,7 @@ export function MijnDossier() {
           datum waarop het antwoord binnen moet zijn; verslagen en papieren
           kunnen wachten. */}
       <MijnVoorstellen />
+      <MijnContracten />
 
       {leeg && (
         <Leeg

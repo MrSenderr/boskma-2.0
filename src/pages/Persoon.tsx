@@ -11,6 +11,7 @@ import { VasteDagen } from '../components/VasteDagen'
 import { Werkplekken } from '../components/Werkplekken'
 import { Contracten } from '../components/Contracten'
 import { Voorstellen } from '../components/Voorstellen'
+import { Ondertekenen } from '../components/Ondertekenen'
 import {
   aannemen,
   afwijzen,
@@ -192,6 +193,8 @@ export function Persoon() {
       {p.fase === 'medewerker' && <Contracten persoon={p} />}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Voorstellen persoon={p} />}
+
+      {p.fase === 'medewerker' && <Ondertekenen persoon={p} />}
 
       {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
 
