@@ -5,6 +5,9 @@ import { Krabbel } from './Krabbel'
 import { DocumentLink } from './DocumentLink'
 import { korteDatum, type Persoon } from '../lib/personeel'
 import { useDocumenten } from '../lib/dossier'
+import { AARDNAAM, useVoorstellen, type Voorstel } from '../lib/contractvoorstellen'
+import { useVoorstelAfronden, voorstelVoorContract } from '../lib/afronden'
+import { lopendContract, useContracten, type Contract } from '../lib/contracten'
 import {
   STANDNAAM,
   codeKort,
@@ -71,13 +74,25 @@ function Meetekenen({ o, persoon }: { o: Ondertekening; persoon: Persoon }) {
   )
 }
 
-function Regel({ o, persoon }: { o: Ondertekening; persoon: Persoon }) {
+function Regel({
+  o,
+  persoon,
+  voorstellen,
+  contracten,
+}: {
+  o: Ondertekening
+  persoon: Persoon
+  voorstellen: Voorstel[]
+  contracten: Contract[]
+}) {
   const versturen = useOndertekeningVersturen(persoon.id)
   const afmaken = useOndertekeningAfmaken(persoon.id)
+  const afronden = useVoorstelAfronden(persoon.id)
   const intrekken = useOndertekeningIntrekken(persoon.id)
   const [melding, setMelding] = useState<string | null>(null)
   const [fout, setFout] = useState<string | null>(null)
   const stand = standVan(o)
+  const voorstel = voorstellen.find((v) => v.id === o.voorstel_id) ?? null
 
   return (
     <div className="border-b border-line px-4 py-3 last:border-0">
@@ -164,6 +179,33 @@ function Regel({ o, persoon }: { o: Ondertekening; persoon: Persoon }) {
                           ? `Getekend. Testmodus staat aan: de mail ging naar ${uit.verstuurd.verstuurd_naar}, niet naar het loonbureau.`
                           : 'Getekend contract gemaakt en naar het loonbureau gestuurd.',
                     )
+                    /* En nu de geschiedenis bijwerken. Pas hier: zolang er
+                       niets getekend is, is er ook niets afgesproken om vast te
+                       leggen. Lukt dit niet, dan blijft het getekende contract
+                       gewoon staan en kun je het met de hand toevoegen. */
+                    if (!voorstel) return
+                    afronden.mutate(
+                      { voorstel, lopend: lopendContract(contracten), documentId: uit.documentId },
+                      {
+                        onSuccess: (a) =>
+                          setMelding((m) =>
+                            [
+                              m,
+                              a.wat === 'nieuw'
+                                ? 'Het nieuwe contract staat in de geschiedenis.'
+                                : a.wat === 'bijwerken'
+                                  ? 'De vaste uren staan bij het lopende contract.'
+                                  : a.reden,
+                            ]
+                              .filter(Boolean)
+                              .join(' '),
+                          ),
+                        onError: (e) =>
+                          setFout(
+                            `Het getekende contract is klaar, maar de contractgeschiedenis bijwerken lukte niet: ${e.message}`,
+                          ),
+                      },
+                    )
                   },
                   onError: (e) => setFout(e.message),
                 })
@@ -195,10 +237,17 @@ function Regel({ o, persoon }: { o: Ondertekening; persoon: Persoon }) {
 export function Ondertekenen({ persoon }: { persoon: Persoon }) {
   const { data: ondertekeningen } = useOndertekeningen(persoon.id)
   const { data: documenten } = useDocumenten(persoon.id)
+  const { data: voorstellen } = useVoorstellen(persoon.id)
+  const { data: contracten } = useContracten(persoon.id)
   const starten = useOndertekeningStarten(persoon.id)
   const [fout, setFout] = useState<string | null>(null)
 
   if (!ondertekeningen || !documenten) return null
+
+  /* Bij welk voorstel dit contract hoort. Zonder die koppeling komt het
+     afgesprokene na het tekenen niet in de contractgeschiedenis terecht, en
+     blijft de app rekenen met het contract dat eronder lag. */
+  const voorstel = voorstelVoorContract(voorstellen ?? [])
 
   /* Contracten die klaarstaan om getekend te worden: nog geldig, en er loopt
      nog geen ondertekening voor. */
@@ -220,7 +269,13 @@ export function Ondertekenen({ persoon }: { persoon: Persoon }) {
       {ondertekeningen.length > 0 && (
         <Kaart className="flex flex-col py-2">
           {ondertekeningen.map((o) => (
-            <Regel key={o.id} o={o} persoon={persoon} />
+            <Regel
+              key={o.id}
+              o={o}
+              persoon={persoon}
+              voorstellen={voorstellen ?? []}
+              contracten={contracten ?? []}
+            />
           ))}
         </Kaart>
       )}
@@ -239,7 +294,11 @@ export function Ondertekenen({ persoon }: { persoon: Persoon }) {
               bezig={starten.isPending}
               onClick={() =>
                 starten.mutate(
-                  { persoon, document: { id: d.id, naam: d.naam, sha256: d.sha256 } },
+                  {
+                    persoon,
+                    document: { id: d.id, naam: d.naam, sha256: d.sha256 },
+                    voorstelId: voorstel?.id ?? null,
+                  },
                   { onError: (e) => setFout(e.message) },
                 )
               }
@@ -252,6 +311,17 @@ export function Ondertekenen({ persoon }: { persoon: Persoon }) {
               </span>
             )}
           </div>
+          {voorstel ? (
+            <p className="text-sm text-muted">
+              Hoort bij het voorstel van {korteDatum(voorstel.opgesteld_op)} ({AARDNAAM[voorstel.aard]}).
+              Zodra het getekend is komt dat in de contractgeschiedenis te staan.
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              Er is geen beantwoord voorstel dat hierbij hoort. Het getekende contract komt wel in
+              het dossier, maar je moet het zelf aan de contractgeschiedenis toevoegen.
+            </p>
+          )}
         </Kaart>
       ))}
     </section>

@@ -92,7 +92,11 @@ describe('aanzeggen', () => {
     const teLaat = signalenVoor(p, jaarcontract, '2026-12-10')[0]
     expect(teLaat.dagen).toBeLessThan(0)
     expect(teLaat.wat).toMatch(/voorbij/)
-    expect(signalenVoor(p, jaarcontract, '2027-01-01')).toHaveLength(0)
+    /* Na de einddatum valt er niets meer aan te zeggen. Wat er dan wél staat is
+       de vraag of hij uit dienst moet; sinds 25 oktober 2026 blijft een
+       afgelopen contract niet stil in de app hangen. */
+    const na = signalenVoor(p, jaarcontract, '2027-01-01')
+    expect(na.map((x) => x.soort)).toEqual(['uit_dienst'])
   })
 
   it('telt een half jaar als zes maanden', () => {
@@ -334,7 +338,10 @@ describe('de waker en de voorstellen', () => {
   /* De plicht is het aanbod doen, niet dat het wordt aangenomen. Een gedaan
      aanbod haalt het seintje weg; twaalf maanden later komt het terug. */
   it('zwijgt over het aanbod vaste uren zodra er een aanbod is gedaan', () => {
-    const oproep = contract({ id: 'c1', begint: '2026-01-01', eindigt: '2026-12-31', soort: 'nuluren' })
+    /* Onbepaalde tijd, zodat het contract ook in 2027 nog loopt: een aanbod
+       vaste uren hoort bij een lopende oproepovereenkomst, en op een contract
+       dat al is afgelopen valt niets aan te bieden. */
+    const oproep = contract({ id: 'c1', begint: '2026-01-01', eindigt: null, duur: 'onbepaalde', soort: 'nuluren' })
     const p = persoon({ voornaam: 'Thijmen', achternaam: 'Bakker', in_dienst_sinds: '2026-01-01' })
 
     const zonder = signalenVoor(p, [oproep], '2026-12-20')
@@ -368,5 +375,48 @@ describe('de waker en de voorstellen', () => {
       '2026-11-20',
     )
     expect(uit).toEqual([])
+  })
+})
+
+describe('een contract dat is afgelopen', () => {
+  const thijmen = persoon({ voornaam: 'Thijmen', achternaam: 'Bakker' })
+  const voorbij = contract({ id: 'c1', begint: '2025-01-01', eindigt: '2026-06-30' })
+
+  /* De app zet niemand zelf uit dienst — dat raakt zijn toegang, het rooster
+     en de loonstrook. Maar vergeten mag ook niet, dus blijft het staan. */
+  it('vraagt om hem uit dienst te zetten', () => {
+    const uit = signalenVoor(thijmen, [voorbij], '2026-10-25')
+    const s = uit.find((x) => x.soort === 'uit_dienst')
+    expect(s?.wat).toMatch(/uit dienst zetten/)
+    expect(s?.uiterlijk).toBe('2026-06-30')
+  })
+
+  it('zwijgt zolang het contract nog loopt', () => {
+    const loopt = contract({ id: 'c1', begint: '2026-01-01', eindigt: '2026-12-31' })
+    expect(signalenVoor(thijmen, [loopt], '2026-10-25').some((s) => s.soort === 'uit_dienst')).toBe(
+      false,
+    )
+  })
+
+  /* Ligt er een geaccepteerde verlenging, dan is hij niet weg maar wacht hij
+     op het contract. "Uit dienst zetten?" zou dan het verkeerde zeggen. */
+  it('zwijgt als er een verlenging is afgesproken', () => {
+    const akkoord = {
+      id: 'v1',
+      medewerker_id: 'p1',
+      vorig_contract_id: 'c1',
+      aard: 'verlengen',
+      verstuurd_op: '2026-05-01T09:00:00Z',
+      ingetrokken_op: null,
+      keuze_verlenging: 'akkoord',
+      keuze_vaste_uren: null,
+    } as unknown as Voorstel
+    const uit = signalenVoor(thijmen, [voorbij], '2026-10-25', [akkoord])
+    expect(uit.some((s) => s.soort === 'uit_dienst')).toBe(false)
+  })
+
+  it('zwijgt bij iemand die al uit dienst is', () => {
+    const weg = persoon({ voornaam: 'Thijmen', uit_dienst_op: '2026-07-01' })
+    expect(signalenVoor(weg, [voorbij], '2026-10-25')).toEqual([])
   })
 })

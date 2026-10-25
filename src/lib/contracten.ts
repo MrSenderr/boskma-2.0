@@ -97,12 +97,20 @@ export function eindeVan(c: Contract): string | null {
 
 /** Het contract dat vandaag loopt, of anders het laatst bekende. Dezelfde
  *  keuze als de view huidig_contract in de database maakt. */
+/* Loopt dit contract op deze dag?
+ *
+ * Staat los van lopendContract, die bij gebrek aan een lopend contract het
+ * laatste teruggeeft — handig om iets te laten zien, maar niet te gebruiken
+ * als antwoord op "is hij nog in dienst". Dat onderscheid kostte op
+ * 25 oktober 2026 een seintje dat nooit verscheen. */
+export function looptOp(c: Contract, vandaag = vandaagIso()): boolean {
+  return c.begint <= vandaag && (!c.eindigt || c.eindigt >= vandaag) && !c.beeindigd_op
+}
+
 export function lopendContract(contracten: Contract[], vandaag = vandaagIso()): Contract | null {
   if (contracten.length === 0) return null
-  const loopt = (c: Contract) =>
-    c.begint <= vandaag && (!c.eindigt || c.eindigt >= vandaag) && !c.beeindigd_op
   const op = [...contracten].sort((a, b) => b.begint.localeCompare(a.begint))
-  return op.find(loopt) ?? op[0]
+  return op.find((c) => looptOp(c, vandaag)) ?? op[0]
 }
 
 /* ------------------------------------------------------------------ keten --- */

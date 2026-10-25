@@ -19,6 +19,9 @@ import {
 } from '../lib/dossier'
 import { korteDatum, type Persoon } from '../lib/personeel'
 import { DocumentLink } from './DocumentLink'
+import { AARDNAAM, useVoorstellen } from '../lib/contractvoorstellen'
+import { useVoorstelAfronden, voorstelVoorContract } from '../lib/afronden'
+import { lopendContract, useContracten } from '../lib/contracten'
 import { uitkomstTekst, useGetekendVersturen } from '../lib/getekendContract'
 
 /* Het dossier zoals Sander het ziet. Zie
@@ -162,11 +165,18 @@ function Documenten({ persoon }: { persoon: Persoon }) {
   const verklaring = (persoon.onboarding_data as Record<string, unknown> | null)?.loonheffing_pdf
   const { actueel, vervallen } = splitsDocumenten(data)
   const toevoegen = useDocumentToevoegen(persoon.id)
+  const { data: voorstellen } = useVoorstellen(persoon.id)
+  const { data: contracten } = useContracten(persoon.id)
+  const afronden = useVoorstelAfronden(persoon.id)
+  const voorstel = voorstelVoorContract(voorstellen ?? [])
   const latenVervallen = useDocumentLatenVervallen()
   const terughalen = useDocumentTerughalen()
   const versturen = useGetekendVersturen()
   const invoerRef = useRef<HTMLInputElement>(null)
   const [soort, setSoort] = useState('contract')
+  /* Een net geüpload getekend contract waarvan nog niet gezegd is bij welk
+     voorstel het hoort. */
+  const [koppelen, setKoppelen] = useState<number | null>(null)
   const [toonVervallen, setToonVervallen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
@@ -301,6 +311,12 @@ function Documenten({ persoon }: { persoon: Persoon }) {
                 // meteen terug; daar hoef je niet nog eens aan te denken.
                 onSuccess: (id) => {
                   if (soort === 'contract_getekend' && terugNaarLoonbureau) stuur(id, true)
+                  /* Een getekend contract dat op papier binnenkomt hoort net zo
+                     goed in de contractgeschiedenis als een dat in de app is
+                     getekend. Anders blijft de app rekenen met het contract dat
+                     eronder lag, en dat merk je pas bij de volgende
+                     aanzegtermijn. */
+                  if (soort === 'contract_getekend' && voorstel) setKoppelen(id)
                 },
               },
             )
@@ -311,6 +327,48 @@ function Documenten({ persoon }: { persoon: Persoon }) {
           <Paperclip className="size-4" aria-hidden />
           Bestand kiezen
         </Knop>
+
+        {koppelen !== null && voorstel && (
+          <div className="flex flex-col gap-2 border-t border-line pt-3">
+            <p>
+              Hoort dit getekende contract bij het voorstel van{' '}
+              {korteDatum(voorstel.opgesteld_op)} ({AARDNAAM[voorstel.aard]})? Dan zet ik het
+              afgesprokene meteen in de contractgeschiedenis.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Knop
+                bezig={afronden.isPending}
+                onClick={() =>
+                  afronden.mutate(
+                    {
+                      voorstel,
+                      lopend: lopendContract(contracten ?? []),
+                      documentId: koppelen,
+                    },
+                    {
+                      onSuccess: (a) => {
+                        setKoppelen(null)
+                        setMelding(
+                          a.wat === 'nieuw'
+                            ? 'Het nieuwe contract staat in de geschiedenis.'
+                            : a.wat === 'bijwerken'
+                              ? 'De vaste uren staan bij het lopende contract.'
+                              : a.reden,
+                        )
+                      },
+                      onError: (e) => setFout(e.message),
+                    },
+                  )
+                }
+              >
+                Ja, leg het vast
+              </Knop>
+              <Knop soort="rustig" onClick={() => setKoppelen(null)}>
+                Nee, laat maar
+              </Knop>
+            </div>
+          </div>
+        )}
       </Kaart>
 
       {vervallen.length > 0 && (

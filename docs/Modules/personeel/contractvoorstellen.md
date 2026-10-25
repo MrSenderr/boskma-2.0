@@ -1,7 +1,7 @@
 # Contractvoorstellen — verlengen, stoppen, vaste uren
 
-Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 7 is gebouwd; 8 en 9
-nog niet.
+Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 8 is gebouwd; 9 nog
+niet.
 
 ## Doel
 
@@ -96,6 +96,18 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
    dan gaat er niets door.
 8. **Afronden.** Het getekende contract staat in het dossier en gaat vanzelf
    terug naar het loonbureau — dat bestaat al (`stuur-getekend-contract`).
+   *Gebouwd 25 oktober 2026.* Daar is bij gekomen dat het afgesprokene nu ook
+   in `public.contracten` terechtkomt, want zonder dat bleef de app rekenen met
+   het contract dat eronder lag. Eén onderscheid bepaalt wat er gebeurt: een
+   geaccepteerde verlenging is een nieuw contract en telt mee in de keten, een
+   aangenomen aanbod vaste uren verandert het lopende contract en maakt de
+   keten dus níet langer. Zou dat laatste een rij opleveren, dan zou de app bij
+   de volgende verlenging zeggen dat die vanzelf vast wordt terwijl dat niet zo
+   is. Een gescand contract krijgt dezelfde vraag bij het uploaden, zodat de
+   papieren weg op hetzelfde uitkomt. En loopt een contract af zonder dat er
+   iets nieuws ligt, dan vraagt het startscherm of de medewerker uit dienst
+   moet — de app doet dat niet zelf, want het raakt zijn toegang, het rooster
+   en de loonstrook.
 9. **Teksten en brieven.** Als laatste. Eén brief voor alle gevallen, in
    eenvoudige taal, met blokken: A verlengen, B niet verlengen, C aanbod vaste
    uren (met uitleg wat vaste uren betekenen), plus ontvangstbevestiging en

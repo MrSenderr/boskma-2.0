@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
-import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, type Contract } from './contracten'
+import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, looptOp, type Contract } from './contracten'
 import { herinnering, type Voorstel } from './contractvoorstellen'
 import { klaarVoorLoonbureau } from './contractverzoek'
 
@@ -54,6 +54,11 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
    7. Een afspraak die nog niet bij het loonbureau ligt. Zonder dit seintje
       blijft een geaccepteerde verlenging liggen tot iemand het zich herinnert,
       en komt het contract niet.
+   8. Een contract dat is afgelopen terwijl de medewerker nog in dienst staat.
+      De app zet niemand zelf uit dienst — dat raakt zijn toegang, het rooster
+      en de loonstrook, en dat hoort niet te gebeuren terwijl jij er niet bij
+      bent. Maar het mag ook niet vergeten worden, dus blijft het seintje staan
+      tot het gedaan is.
 
    En wat de waker níet meer zegt: dat een contract afloopt terwijl er al een
    antwoord op een voorstel ligt. Dat seintje bleef anders staan tot het nieuwe
@@ -73,6 +78,7 @@ export type Signaal = {
     | 'verjaardag'
     | 'voorstel_stil'
     | 'naar_loonbureau'
+    | 'uit_dienst'
   /** Wat er moet gebeuren, in een paar woorden. */
   wat: string
   /** De datum waar het om draait (JJJJ-MM-DD). */
@@ -181,7 +187,10 @@ export function signalenVoor(
     ]
   }
 
-  const huidig = lopendContract(contracten, vandaag)
+  const gevonden = lopendContract(contracten, vandaag)
+  /* lopendContract geeft het laatste contract terug als er geen lopend is.
+     Voor "wat moet er gebeuren" is dat verschil er wel degelijk. */
+  const huidig = gevonden && looptOp(gevonden, vandaag) ? gevonden : null
   const keten = ketenVan(contracten, vandaag)
   const ketenInfo =
     huidig && huidig.duur === 'bepaalde'
@@ -267,6 +276,26 @@ export function signalenVoor(
         ernst: ernstVan(totAanbod),
       })
     }
+  }
+
+  /* 8: het contract is afgelopen en er is niets nieuws.
+     Alleen als er ook geen afspraak ligt die nog een contract moet opleveren —
+     anders staat hier "uit dienst zetten?" terwijl de verlenging bij het
+     loonbureau ligt. */
+  const laatste = [...contracten]
+    .sort((a, b) => (a.eindigt ?? '9999').localeCompare(b.eindigt ?? '9999'))
+    .pop()
+  const afgelopen = !huidig && laatste?.eindigt && laatste.eindigt.slice(0, 10) < vandaag
+  if (afgelopen && !voorstellen.some((v) => !v.ingetrokken_op && v.keuze_verlenging === 'akkoord')) {
+    const einde = laatste!.eindigt!.slice(0, 10)
+    uit.push({
+      ...basis,
+      soort: 'uit_dienst',
+      wat: 'Contract is afgelopen — uit dienst zetten?',
+      uiterlijk: einde,
+      dagen: dagenTussen(vandaag, einde),
+      ernst: 'letop',
+    })
   }
 
   // 5: verjaardag onder de 21
