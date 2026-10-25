@@ -2,7 +2,12 @@
    loonbureau? */
 
 import { describe, expect, it } from 'vitest'
-import { contractStanden, standVan, type GetekendDocument } from './getekendContract'
+import {
+  contractStanden,
+  controleerVerstuurdatum,
+  standVan,
+  type GetekendDocument,
+} from './getekendContract'
 
 function mens(extra: Record<string, unknown> = {}) {
   return {
@@ -84,5 +89,26 @@ describe('de hele lijst', () => {
       ['b', 'uploaden'],
       ['a', 'ontbreekt'],
     ])
+  })
+})
+
+describe('de datum waarop je het zelf verstuurde', () => {
+  const vandaag = '2026-10-25'
+
+  it('neemt een gewone dag aan', () => {
+    expect(controleerVerstuurdatum('2026-10-20', vandaag)).toBeNull()
+    expect(controleerVerstuurdatum(vandaag, vandaag)).toBeNull()
+  })
+
+  /* Een leeg veld wordt anders 'Invalid Date' en belandt als niets in de
+     tabel; dan staat er dat het verstuurd is zonder wanneer. */
+  it('weigert een leeg of onzinnig veld', () => {
+    expect(controleerVerstuurdatum('', vandaag)).toMatch(/Vul een datum in/)
+    expect(controleerVerstuurdatum('morgen', vandaag)).toMatch(/Vul een datum in/)
+  })
+
+  // Iets versturen dat nog moet gebeuren kan niet.
+  it('weigert een datum in de toekomst', () => {
+    expect(controleerVerstuurdatum('2026-10-26', vandaag)).toMatch(/toekomst/)
   })
 })

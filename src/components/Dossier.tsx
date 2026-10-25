@@ -22,7 +22,12 @@ import { DocumentLink } from './DocumentLink'
 import { AARDNAAM, useVoorstellen } from '../lib/contractvoorstellen'
 import { useVoorstelAfronden, voorstelVoorContract } from '../lib/afronden'
 import { lopendContract, useContracten } from '../lib/contracten'
-import { uitkomstTekst, useGetekendVersturen } from '../lib/getekendContract'
+import {
+  uitkomstTekst,
+  useGetekendAfgetekend,
+  useGetekendVersturen,
+} from '../lib/getekendContract'
+import { useLoonbureauAdres } from '../lib/instellingen'
 
 /* Het dossier zoals Sander het ziet. Zie
    docs/modules/personeel/personeelsmodule.md. */
@@ -177,6 +182,11 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
   /* Een net geüpload getekend contract waarvan nog niet gezegd is bij welk
      voorstel het hoort. */
   const [koppelen, setKoppelen] = useState<number | null>(null)
+  /* Bij welk document je bezig bent met "al verstuurd", en op welke dag. */
+  const [afgetekend, setAfgetekend] = useState<number | null>(null)
+  const [datum, setDatum] = useState(vandaag())
+  const aftekenen = useGetekendAfgetekend()
+  const { data: loonbureauAdres } = useLoonbureauAdres()
   const [toonVervallen, setToonVervallen] = useState(false)
   const [fout, setFout] = useState<string | null>(null)
   const [melding, setMelding] = useState<string | null>(null)
@@ -195,6 +205,44 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
             : e.message,
         ),
     })
+  }
+
+  function afgetekendRegel(d: Document) {
+    if (afgetekend !== d.id) return null
+    return (
+      <span className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-muted">Wanneer heb je hem verstuurd?</span>
+          <input
+            type="date"
+            value={datum}
+            max={vandaag()}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDatum(e.target.value)}
+            className="rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2 text-base outline-none focus:border-accent"
+          />
+        </label>
+        <Knop
+          bezig={aftekenen.isPending}
+          onClick={() =>
+            aftekenen.mutate(
+              { documentId: d.id, op: datum, adres: loonbureauAdres ?? 'info@lbwf.nl' },
+              {
+                onSuccess: () => {
+                  setAfgetekend(null)
+                  setMelding('Genoteerd als al verstuurd. De app heeft niets gemaild.')
+                },
+                onError: (e) => setFout(e.message),
+              },
+            )
+          }
+        >
+          Vastleggen
+        </Knop>
+        <Knop soort="rustig" onClick={() => setAfgetekend(null)}>
+          Toch niet
+        </Knop>
+      </span>
+    )
   }
 
   function loonbureauRegel(d: Document) {
@@ -240,14 +288,38 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
             <Regel
               key={d.id}
               doc={d}
-              onder={loonbureauRegel(d)}
+              onder={
+                <>
+                  {loonbureauRegel(d)}
+                  {afgetekendRegel(d)}
+                </>
+              }
               actie={
                 <>
                 {d.soort === 'contract_getekend' && terugNaarLoonbureau && !d.naar_loonbureau_op && (
-                  <Knop soort="primair" bezig={versturen.isPending} onClick={() => stuur(d.id)}>
-                    <Send className="size-4" aria-hidden />
-                    Naar loonbureau
-                  </Knop>
+                  <>
+                    <Knop soort="primair" bezig={versturen.isPending} onClick={() => stuur(d.id)}>
+                      <Send className="size-4" aria-hidden />
+                      Naar loonbureau
+                    </Knop>
+                    {/* Heb je hem zelf al gemaild, dan hoeft de app hem niet
+                        nog een keer te sturen — dan krijgt het loonbureau
+                        hetzelfde contract twee keer. */}
+                    {afgetekend !== d.id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAfgetekend(d.id)
+                          setDatum(vandaag())
+                          setFout(null)
+                          setMelding(null)
+                        }}
+                        className="text-sm text-muted underline hover:text-text"
+                      >
+                        al verstuurd
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   type="button"

@@ -146,3 +146,73 @@ export function uitkomstTekst(r: Verstuurd) {
     return `Testmodus: naar ${r.verstuurd_naar} gestuurd, niet naar het loonbureau. Het blijft openstaan.`
   return `Getekend contract naar het loonbureau gestuurd (${r.verstuurd_naar}).`
 }
+
+/* Een getekend contract aftekenen dat je zelf hebt verstuurd.
+ *
+ * Komt voor: je mailt het stuk vanuit je eigen postvak, of geeft het mee, en
+ * daarna blijft de app zeggen dat het nog moet. Zonder deze knop blijft dat
+ * seintje staan tot je het alsnog door de app laat versturen — en dan krijgt
+ * het loonbureau hetzelfde contract twee keer.
+ *
+ * Twee dingen worden met opzet vastgelegd. De dátum die jij opgeeft, niet het
+ * moment van aftekenen: anders staat er in de gegevens dat het vandaag ging
+ * terwijl het vorige week was. En een notitie dat de app het niet heeft
+ * verstuurd — wat de app niet gedaan heeft hoort er niet uit te zien alsof hij
+ * het wel deed. */
+/* Wat er mis kan zijn met de opgegeven datum. Geeft null als hij deugt.
+ *
+ * Apart, omdat dit het stuk is dat stilletjes onzin kan doorlaten: een lege
+ * datum wordt anders 'Invalid Date' en belandt als null in de tabel, en een
+ * datum in de toekomst zou betekenen dat je iets hebt verstuurd dat nog moet
+ * gebeuren. */
+export function controleerVerstuurdatum(
+  op: string,
+  vandaag = new Date().toLocaleDateString('sv-SE'),
+): string | null {
+  const dag = (op ?? '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dag)) return 'Vul een datum in.'
+  if (dag > vandaag) return 'Die datum ligt in de toekomst.'
+  return null
+}
+
+export function useGetekendAfgetekend() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (opdracht: { documentId: number; op: string; adres: string }) => {
+      const dag = opdracht.op.slice(0, 10)
+      const bezwaar = controleerVerstuurdatum(dag)
+      if (bezwaar) throw new Error(bezwaar)
+
+      const { data: bestaand, error: leesfout } = await supabase
+        .from('dossier_documenten')
+        .select('notitie,naar_loonbureau_op')
+        .eq('id', opdracht.documentId)
+        .single()
+      if (leesfout) throw new Error(leesfout.message)
+      if ((bestaand as { naar_loonbureau_op: string | null }).naar_loonbureau_op) {
+        throw new Error('Dit contract staat al als verstuurd genoteerd.')
+      }
+
+      const oud = (bestaand as { notitie: string | null }).notitie?.trim()
+      const notitie = [oud, 'Buiten de app om naar het loonbureau gestuurd; hier afgetekend.']
+        .filter(Boolean)
+        .join('\n')
+
+      const { error } = await supabase
+        .from('dossier_documenten')
+        .update({
+          // Middag, zodat de dag klopt in elke tijdzone.
+          naar_loonbureau_op: `${dag}T12:00:00`,
+          naar_loonbureau_adres: opdracht.adres,
+          naar_loonbureau_fout: null,
+          notitie,
+        })
+        .eq('id', opdracht.documentId)
+      if (error) throw new Error(error.message)
+    },
+    onSettled: () => {
+      client.invalidateQueries({ queryKey: ['contract-standen'] })
+      client.invalidateQueries({ queryKey: ['dossier-documenten'] })
+    },
+  })
+}

@@ -60,3 +60,28 @@ export async function maakInvullink(
   if (error) return { ok: false, error: error.message }
   return data as LinkResultaat
 }
+
+/* Het adres van het loonbureau, uit instellingen.loonbureau_naar.
+ *
+ * De serverfuncties lezen dezelfde instelling; die blijft de bron. Hier is hij
+ * alleen nodig om vast te leggen waarheen iets is gegaan toen Sander het zelf
+ * verstuurde. Lukt het lezen niet, dan het algemene adres — nooit een
+ * contactpersoon die er misschien niet meer werkt. */
+const LOONBUREAU_STANDAARD = 'info@lbwf.nl'
+
+export function useLoonbureauAdres() {
+  return useQuery({
+    queryKey: ['instelling', 'loonbureau_naar'],
+    staleTime: 60 * 60 * 1000,
+    queryFn: async (): Promise<string> => {
+      const { data, error } = await supabase
+        .from('instellingen')
+        .select('waarde')
+        .eq('sleutel', 'loonbureau_naar')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      const adres = (data as { waarde?: { adres?: string } } | null)?.waarde?.adres
+      return typeof adres === 'string' && adres.includes('@') ? adres : LOONBUREAU_STANDAARD
+    },
+  })
+}
