@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import { korteDatum, type Persoon } from '../lib/personeel'
+import { useGemiddeldeUren } from '../lib/gewerkteUren'
 import {
   KETEN_MAX_CONTRACTEN,
   SOORTNAAM,
@@ -193,6 +194,66 @@ function Formulier({
   )
 }
 
+/* Het gemiddelde over twaalf maanden, voor het aanbod vaste uren.
+ *
+ * Alleen bij een oproepcontract: daar hangt de verplichting aan. Bij vaste
+ * uren is het al afgesproken en zegt een gemiddelde niets nieuws.
+ *
+ * Staat er geen getal, dan is dat geen storing maar het eerlijke antwoord: de
+ * uren van die twaalf maanden zijn niet allemaal ingelezen, en een gemiddelde
+ * over een deel is geen gemiddelde over het geheel. */
+function GemiddeldeUren({ persoonId }: { persoonId: string }) {
+  const { data } = useGemiddeldeUren(persoonId)
+  if (!data) return null
+
+  // Nederlandse komma; 11.09 uur leest als een foutje.
+  const getal = (n: number) => n.toLocaleString('nl-NL', { maximumFractionDigits: 2 })
+
+  const { urenPerWeek, urenPerMaand, dekking, totaalUren, nietMeegeteld } = data
+
+  if (urenPerWeek !== null) {
+    return (
+      <Kaart className="flex flex-col gap-1 p-4">
+        <p>
+          Gemiddeld <strong className="font-semibold">{getal(urenPerWeek)} uur per week</strong> over
+          de afgelopen twaalf maanden ({getal(urenPerMaand ?? 0)} uur per maand).
+        </p>
+        <p className="text-sm text-muted">
+          Een aanbod voor vaste uren moet minstens dat zijn. Betaald verlof telt mee.
+        </p>
+        {nietMeegeteld.length > 0 && (
+          <p className="text-sm text-muted">
+            Niet meegeteld:{' '}
+            {nietMeegeteld.map((n) => `${getal(n.uren)} uur ${n.soort}`).join(', ')}.
+          </p>
+        )}
+      </Kaart>
+    )
+  }
+
+  const weken = Math.round(dekking.dagenGedekt / 7)
+  return (
+    <Kaart className="flex flex-col gap-1 border-warn p-4">
+      <p className="flex items-center gap-2 font-semibold">
+        <AlertTriangle className="size-4 shrink-0 text-warn" aria-hidden />
+        Het gemiddelde is nog niet te zeggen
+      </p>
+      <p className="text-sm text-muted">
+        Van de twaalf maanden{' '}
+        {dekking.dagenGedekt === 0
+          ? 'is er nog niets ingelezen'
+          : `${weken === 1 ? 'is er één week' : `zijn er ${weken} weken`} ingelezen (${getal(totaalUren)} uur)`}
+        . Zolang dat zo is kan de app geen getal geven dat in een aanbod mag — te laag aanbieden kan
+        de medewerker tot vijf jaar terug opeisen.
+      </p>
+      <p className="text-sm text-muted">
+        Dit komt goed zodra de automatische export van gewerkte uren in eitje aanstaat; de planning
+        loopt al wel.
+      </p>
+    </Kaart>
+  )
+}
+
 function maanden(dagen: number): string {
   const m = Math.round(dagen / 30.44)
   if (m < 1) return `${dagen} ${dagen === 1 ? 'dag' : 'dagen'}`
@@ -340,6 +401,8 @@ export function Contracten({ persoon }: { persoon: Persoon }) {
           })}
         </Kaart>
       )}
+
+      {data.some((c) => c.soort === 'nuluren') && <GemiddeldeUren persoonId={persoon.id} />}
 
       {keten.driejaarOp && !keten.heeftVast && (
         <p className="text-sm text-muted">
