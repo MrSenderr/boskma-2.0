@@ -20,6 +20,7 @@ import {
 import { bijlagenStand, bijlagenVan, bouwMutatieformulier } from '../lib/mutatieformulier'
 import { lopendContract, urenTekst, SOORTNAAM, useContracten, type Contract } from '../lib/contracten'
 import { useTestmodus } from '../lib/instellingen'
+import { NAAR_LOONBUREAU } from '../lib/mijngegevens'
 import { supabase } from '../lib/supabase'
 
 const VELDNAAM: Record<string, string> = {
@@ -151,6 +152,16 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
       if (!r.ok) throw new Error(r.error ?? 'onbekende fout')
 
       await wijzig.mutateAsync({ loonbureau_verstuurd_op: new Date().toISOString() })
+      /* Het formulier bevat het adres en het rekeningnummer zoals ze nu zijn.
+         Wat de medewerker zelf wijzigde is daarmee doorgegeven; dat hoeft niet
+         nog eens apart. */
+      await supabase
+        .from('wijzigingen')
+        .update({ naar_loonbureau_op: new Date().toISOString() })
+        .eq('medewerker_id', p.id)
+        .is('naar_loonbureau_op', null)
+        .in('veld', NAAR_LOONBUREAU)
+      client.invalidateQueries({ queryKey: ['wijzigingen-van', p.id] })
       client.invalidateQueries({ queryKey: ['persoon', p.id] })
       setUitkomst(
         r.oefening

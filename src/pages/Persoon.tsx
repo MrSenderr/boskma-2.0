@@ -12,6 +12,7 @@ import { Werkplekken } from '../components/Werkplekken'
 import { Contracten } from '../components/Contracten'
 import { Voorstellen } from '../components/Voorstellen'
 import { Ondertekenen } from '../components/Ondertekenen'
+import { ZelfGewijzigd } from '../components/ZelfGewijzigd'
 import { Breed } from '../lib/breedte'
 import {
   aannemen,
@@ -221,6 +222,9 @@ export function Persoon() {
           {/* Bij een medewerker altijd, ook als er nog niets is ingevuld:
               anders is er geen plek om het alsnog te doen. */}
           {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
+
+          {/* Direct onder de gegevens: wat hij er zelf aan veranderd heeft. */}
+          {p.fase === 'medewerker' && !eigenaar && <ZelfGewijzigd persoon={p} />}
 
           {p.motivatie && (
             <section className="flex flex-col gap-3">
