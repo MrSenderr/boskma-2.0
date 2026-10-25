@@ -6,7 +6,7 @@
  * van het scherm staat en hier wordt nagerekend. */
 
 import { describe, expect, it } from 'vitest'
-import { eindeVan, ketenVan, urenTekst, type Contract } from './contracten'
+import { eindeVan, ketenVan, urenTekst, uur, type Contract } from './contracten'
 
 let teller = 0
 const c = (anders: Partial<Contract>): Contract => ({
@@ -193,5 +193,14 @@ describe('losse dingen', () => {
     expect(urenTekst(c({ soort: 'min_max', uren_min: 10, uren_max: 40 }))).toBe('10 tot 40 uur per week')
     expect(urenTekst(c({ soort: 'bandbreedte', uren_min: 10, uren_max: 13 }))).toBe('10 tot 13 uur per week')
     expect(urenTekst(c({ soort: 'vaste_uren' }))).toBe('uren onbekend')
+  })
+})
+
+describe('uren in het Nederlands', () => {
+  it('schrijft een komma en laat nullen weg', () => {
+    expect(uur(14)).toBe('14')
+    expect(uur(14.5)).toBe('14,5')
+    expect(uur(13.92)).toBe('13,92')
+    expect(uur(13.916666)).toBe('13,92')
   })
 })

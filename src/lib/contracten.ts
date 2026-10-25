@@ -71,15 +71,20 @@ export const KETEN_PAUZE_MAANDEN = 6
 const getal = (w: number | string | null | undefined): number | null =>
   w === null || w === undefined || w === '' ? null : Number.isFinite(Number(w)) ? Number(w) : null
 
+/** Een urenaantal zoals je het in het Nederlands opschrijft: 13,92 en 14. */
+export const uur = (n: number): string =>
+  String(Math.round(n * 100) / 100).replace('.', ',')
+
 /** De uren zoals je ze opschrijft, afhankelijk van de vorm van het contract. */
 export function urenTekst(c: Contract): string {
   const vast = getal(c.uren_vast)
   const min = getal(c.uren_min)
   const max = getal(c.uren_max)
-  if (c.soort === 'vaste_uren') return vast === null ? 'uren onbekend' : `${vast} uur per week`
+  if (c.soort === 'vaste_uren') return vast === null ? 'uren onbekend' : `${uur(vast)} uur per week`
   if (c.soort === 'min_max' || c.soort === 'bandbreedte') {
     if (min === null && max === null) return 'uren onbekend'
-    return `${min ?? '?'} tot ${max ?? '?'} uur per week`
+    const t = (n: number | null) => (n === null ? '?' : uur(n))
+    return `${t(min)} tot ${t(max)} uur per week`
   }
   return 'geen vaste uren'
 }
