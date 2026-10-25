@@ -5,7 +5,7 @@ import { Kaart, Knop, Kopje, Laden, Mislukt, Pil } from '../components/ui'
 import { Invullink } from '../components/Invullink'
 import { Loonbureau } from '../components/Loonbureau'
 import { UitDienst } from '../components/UitDienst'
-import { Dossier } from '../components/Dossier'
+import { Documenten, Gespreksverslagen } from '../components/Dossier'
 import { IngevuldeGegevens } from '../components/IngevuldeGegevens'
 import { VasteDagen } from '../components/VasteDagen'
 import { Werkplekken } from '../components/Werkplekken'
@@ -177,14 +177,20 @@ export function Persoon() {
       )}
 
       {/* Twee kolommen op een breed scherm, en onder elkaar op een telefoon.
-          Links de werklijn: hoe het contract ervoor staat en wat er met deze
-          persoon loopt. Rechts het naslagwerk: wat vastligt en af en toe
-          nagekeken wordt. Zo zie je in één oogopslag hoe iemand ervoor staat,
-          in plaats van te moeten scrollen om te onthouden wat erboven stond. */}
+          Links alles over het dienstverband: hoe het contract ervoor staat,
+          wat er loopt, en wat er met het loonbureau is gewisseld. Rechts wie
+          het is: zijn gegevens, zijn papieren en hoe hij hier terecht is
+          gekomen.
+
+          Eerst was de verdeling 'wat je doet' tegen 'wat je naleest'. Dat klonk
+          goed maar kwam uit op 570 tegen 2400 pixels: bijna alles is naslag, en
+          de linkerkolom stond voor driekwart leeg. Werk tegen mens valt
+          ongeveer gelijk uit, en je hoeft niet te onthouden wat waar hoort — de
+          vraag is simpelweg of iets over het werken gaat of over de persoon. */}
       <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="flex min-w-0 flex-col gap-8">
           {/* Zolang er nog iets moet, staat het bovenaan. Is alles rond, dan is
-              dit archief en gaat het dagelijkse werk voor. */}
+              het naslag en gaat het contract voor. */}
           {!lopend && !eigenaar && p.fase === 'medewerker' && !p.uit_dienst_op && (
             <>
               <Invullink persoon={p} />
@@ -195,12 +201,7 @@ export function Persoon() {
           {p.fase === 'medewerker' && <Contracten persoon={p} />}
           {p.fase === 'medewerker' && !p.uit_dienst_op && <Voorstellen persoon={p} />}
           {p.fase === 'medewerker' && <Ondertekenen persoon={p} />}
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-8">
-          {/* Is alles rond, dan zijn dit geen taken meer maar naslag: iets wat
-              je af en toe nakijkt. Moet er nog iets, dan staan ze bovenaan in
-              de linkerkolom. */}
           {lopend && (
             <>
               <Loonbureau persoon={p} />
@@ -211,6 +212,12 @@ export function Persoon() {
           {p.fase === 'medewerker' && !p.uit_dienst_op && <Werkplekken persoon={p} />}
           {p.fase === 'medewerker' && !p.uit_dienst_op && !eigenaar && <VasteDagen persoon={p} />}
 
+          {/* Een verslag gaat over hoe het werken gaat, en schrijf je meestal
+              meteen na een gesprek. */}
+          {p.fase === 'medewerker' && <Gespreksverslagen persoon={p} />}
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-8">
           {/* Bij een medewerker altijd, ook als er nog niets is ingevuld:
               anders is er geen plek om het alsnog te doen. */}
           {(ingevuld || p.fase === 'medewerker') && !eigenaar && <IngevuldeGegevens persoon={p} />}
@@ -224,20 +231,13 @@ export function Persoon() {
             </section>
           )}
 
+          {p.fase === 'medewerker' && <Documenten persoon={p} />}
+
           <Tijdlijn p={p} />
 
           {p.fase === 'medewerker' && !eigenaar && <UitDienst persoon={p} />}
         </div>
       </div>
-
-      {/* Over de volle breedte: het dossier is zijn eigen onderwerp, met
-          verslagen en documenten die ruimte nodig hebben. */}
-      {p.fase === 'medewerker' && (
-        <section className="flex flex-col gap-4">
-          <h3 className="font-display text-xl">Dossier</h3>
-          <Dossier persoon={p} />
-        </section>
-      )}
 
       {/* Zelden nodig, dus niet bovenaan in de weg. */}
       {p.fase === 'medewerker' && !eigenaar && (!p.aangenomen_op || !p.onboarding_verstuurd_op) && (

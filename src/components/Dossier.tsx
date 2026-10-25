@@ -157,7 +157,7 @@ function Regel({
   )
 }
 
-function Documenten({ persoon }: { persoon: Persoon }) {
+export function Documenten({ persoon }: { persoon: Persoon }) {
   const { data } = useDocumenten(persoon.id)
   // De loonheffingsverklaring komt uit het invulformulier en staat in
   // onboarding_data. Hem hier tonen in plaats van kopiëren naar de
@@ -411,7 +411,15 @@ function Documenten({ persoon }: { persoon: Persoon }) {
   )
 }
 
-export function Dossier({ persoon }: { persoon: Persoon }) {
+/* Gespreksverslagen en documenten zijn tot 25 oktober 2026 samen als "Dossier"
+   onder de pagina gehangen. Dat las als een aanhangsel: een band over de volle
+   breedte onder twee kolommen, waar je al voorbij was gescrold.
+   
+   Het zijn ook twee verschillende dingen. Een verslag schríjf je, meestal
+   meteen na een gesprek — dat hoort bij het werk. Documenten zóek je op. Ze
+   staan nu elk in de kolom waar ze bij horen, en het woord "Dossier" is
+   daarmee overbodig geworden: de twee kopjes zeggen het zelf. */
+export function Gespreksverslagen({ persoon }: { persoon: Persoon }) {
   const { data: verslagen } = useVerslagen(persoon.id)
   const delen = useVerslagDelen()
   const weggooien = useVerslagWeggooien()
@@ -420,7 +428,6 @@ export function Dossier({ persoon }: { persoon: Persoon }) {
   const voornaam = persoon.voornaam ?? 'de medewerker'
 
   return (
-    <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Kopje>Gespreksverslagen</Kopje>
@@ -501,8 +508,5 @@ export function Dossier({ persoon }: { persoon: Persoon }) {
           )
         })}
       </section>
-
-      <Documenten persoon={persoon} />
-    </div>
   )
 }
