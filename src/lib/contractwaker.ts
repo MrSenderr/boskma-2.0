@@ -90,6 +90,10 @@ export type Signaal = {
   ketenNummer?: number
   /** Een volgend tijdelijk contract wordt vanzelf een vast contract. */
   volgendeWordtVast?: boolean
+  /* Wat er op de pil hoort te staan, als aftellen geen zin heeft. Zonder dit
+     zou een seintje zonder datum "vandaag" tonen, en dat leest als een
+     deadline die er niet is. */
+  pil?: string
 }
 
 /** Velden die de waker nodig heeft — geen onboarding_data. */

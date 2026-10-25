@@ -45,8 +45,9 @@ export const MENU: {
   {
     pad: '/inkoop', label: 'Inkoop', icoon: ShoppingCart, exact: false, voor: 'beheer',
     kinderen: [
-      { pad: '/inkoop/documenten', label: 'Facturen' },
+      { pad: '/inkoop/bestellen', label: 'Bestellen' },
       { pad: '/inkoop/prijzen', label: 'Prijsmutaties' },
+      { pad: '/inkoop/documenten', label: 'Facturen' },
       { pad: '/inkoop/stuksprijzen', label: 'Stuksprijzen' },
       { pad: '/inkoop/producten', label: 'Producten' },
       { pad: '/inkoop/uploaden', label: 'Toevoegen' },

@@ -22,6 +22,10 @@ export type ContractStand = {
   persoonId: string
   naam: string
   stand: Stand
+  /* Verwacht het loonbureau dit terug? Alleen als zij het contract hebben
+     opgesteld. Een getekend contract dat nog niet verstuurd is hoort hoe dan
+     ook zichtbaar te zijn — maar het is pas verzuim als zij erop wachten. */
+  verwacht: boolean
   /** Het getekende contract waar het om gaat, als het er is. */
   documentId: number | null
   /** De laatste foutmelding bij versturen. */
@@ -53,14 +57,18 @@ export function standVan(p: Medewerker, documenten: GetekendDocument[]): Contrac
     .sort((a, b) => b.toegevoegd_op.localeCompare(a.toegevoegd_op))
   const nieuwste = eigen[0] ?? null
   const naam = [p.voornaam, p.achternaam].filter(Boolean).join(' ') || 'Naamloos'
-  const basis = { persoonId: p.id, naam, documentId: nieuwste?.id ?? null, fout: null }
+  const verwacht = Boolean(p.contract_door_loonbureau)
+  const basis = { persoonId: p.id, naam, documentId: nieuwste?.id ?? null, fout: null, verwacht }
 
   if (!nieuwste) {
     return { ...basis, stand: loonbureauMaaktContract(p) ? 'uploaden' : 'ontbreekt' }
   }
-  // Alleen als het loonbureau het contract maakte, hoort het getekend terug.
-  // Een contract dat je zelf opstelde blijft in het dossier.
-  if (p.contract_door_loonbureau && !eigen.some((d) => d.naar_loonbureau_op)) {
+
+  /* Ligt er een getekend contract dat nog niet is verstuurd, dan hoort dat te
+     blijken — ook als jij het contract zelf opstelde. Tot 25 oktober 2026 werd
+     dat stil als 'in orde' geteld, en dan zie je nergens meer dat het er nog
+     ligt. Hoe zwaar het weegt zegt `verwacht`. */
+  if (!eigen.some((d) => d.naar_loonbureau_op)) {
     return { ...basis, stand: 'versturen', fout: nieuwste.naar_loonbureau_fout }
   }
   return { ...basis, stand: 'in_orde' }

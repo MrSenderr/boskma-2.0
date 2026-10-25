@@ -4,6 +4,8 @@ import { ChevronRight, UserPlus, Users } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
 import { Breed, useBreedScherm } from '../lib/breedte'
 import { useContractwaker, wanneer, type Signaal } from '../lib/contractwaker'
+import { useContractStanden } from '../lib/getekendContract'
+import { vandaagIso } from '../lib/datums'
 import { KETEN_MAX_CONTRACTEN, useHuidigeContracten, type HuidigContract } from '../lib/contracten'
 import {
   inArchief,
@@ -180,7 +182,9 @@ function Regel({
         )}
       </span>
       {signaal ? (
-        <Pil soort={signaal.ernst}>{wanneer(signaal.dagen, signaal.uiterlijk)}</Pil>
+        <Pil soort={signaal.ernst}>
+          {signaal.pil ?? wanneer(signaal.dagen, signaal.uiterlijk)}
+        </Pil>
       ) : (
         <Pil soort={toestand.soort}>{toestand.label}</Pil>
       )}
@@ -279,6 +283,7 @@ export function Personeel() {
   const { data, isPending, error, refetch } = usePersonen()
   const bezoek = useAppBezoek()
   const waker = useContractwaker()
+  const standen = useContractStanden()
   const { data: contracten } = useHuidigeContracten()
   const [toonArchief, setToonArchief] = useState(false)
   const [toevoegen, setToevoegen] = useState(false)
@@ -297,6 +302,25 @@ export function Personeel() {
   const dringendste = new Map<string, Signaal>()
   for (const s of waker.data ?? []) {
     if (!dringendste.has(s.persoonId)) dringendste.set(s.persoonId, s)
+  }
+
+  /* Een getekend contract dat nog in het dossier ligt hoort hier ook te staan.
+     Dat komt niet van de waker maar uit de documenten; alleen als er voor die
+     persoon nog niets dringenders is, want één regel per naam. */
+  for (const c of standen.data ?? []) {
+    if (c.stand !== 'versturen' || dringendste.has(c.persoonId)) continue
+    dringendste.set(c.persoonId, {
+      persoonId: c.persoonId,
+      naam: c.naam,
+      soort: 'naar_loonbureau',
+      wat: c.verwacht
+        ? 'Getekend contract nog niet naar het loonbureau'
+        : 'Getekend contract ligt in het dossier — nog niet verstuurd',
+      uiterlijk: vandaagIso(),
+      dagen: 0,
+      ernst: c.verwacht ? 'fout' : 'letop',
+      pil: 'te versturen',
+    })
   }
   const gebruiken = medewerkers.filter((p) => inDeApp.has(p.id)).length
 

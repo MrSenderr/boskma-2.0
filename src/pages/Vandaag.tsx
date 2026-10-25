@@ -101,7 +101,7 @@ function Contracten() {
                 </span>
               )}
             </span>
-            <Pil soort={s.ernst}>{wanneer(s.dagen, s.uiterlijk)}</Pil>
+            <Pil soort={s.ernst}>{s.pil ?? wanneer(s.dagen, s.uiterlijk)}</Pil>
           </Link>
         ))}
       </Kaart>
@@ -150,7 +150,18 @@ function GetekendeContracten() {
       <Kaart>
         {acties.map((s) => {
           const a = ACTIE[s.stand as 'uploaden' | 'versturen']
-          return <ContractRegel key={s.persoonId} s={s} wat={a.wat} pil={a.pil} soort="fout" />
+          /* Wacht het loonbureau erop, dan is het verzuim en staat het rood.
+             Stelde je het contract zelf op, dan ligt het er alleen nog — dat
+             hoort te blijken, maar niet alsof je te laat bent. */
+          return (
+            <ContractRegel
+              key={s.persoonId}
+              s={s}
+              wat={s.verwacht ? a.wat : 'Getekend contract nog niet naar het loonbureau'}
+              pil={a.pil}
+              soort={s.verwacht ? 'fout' : 'letop'}
+            />
+          )
         })}
         {ontbreekt.length > 0 && (
           <button

@@ -55,8 +55,22 @@ describe('stand per medewerker', () => {
     expect(standVan(mens(), [doc({ naar_loonbureau_op: '2026-10-20T10:01:00Z' })]).stand).toBe('in_orde')
   })
 
-  it('stuurt een zelf opgesteld contract niet naar het loonbureau', () => {
-    expect(standVan(mens({ contract_door_loonbureau: false }), [doc()]).stand).toBe('in_orde')
+  /* Een getekend contract dat nog niet verstuurd is hoort te blijken, ook als
+     jij het contract zelf opstelde. Tot 25 oktober 2026 werd dat stil als
+     'in orde' geteld, en dan zie je nergens meer dat het er nog ligt.
+
+     Het verschil zit in `verwacht`: alleen als het loonbureau het opstelde
+     wachten zij erop, en pas dan is het verzuim. */
+  it('laat een zelf opgesteld contract ook zien, maar zonder verwachting', () => {
+    const s = standVan(mens({ contract_door_loonbureau: false }), [doc()])
+    expect(s.stand).toBe('versturen')
+    expect(s.verwacht).toBe(false)
+  })
+
+  it('verwacht het terug als het loonbureau het opstelde', () => {
+    const s = standVan(mens(), [doc()])
+    expect(s.stand).toBe('versturen')
+    expect(s.verwacht).toBe(true)
   })
 
   it('kijkt naar het nieuwste document', () => {
