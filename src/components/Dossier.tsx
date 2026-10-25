@@ -128,36 +128,59 @@ function Schrijven({ persoon, sluiten }: { persoon: Persoon; sluiten: () => void
   )
 }
 
+/* Eén document in de lijst.
+ *
+ * De naam krijgt een ondergrens in breedte. Zonder die grens duwen de knoppen
+ * hem in een smalle kolom samen tot "Personee…" terwijl de regel eronder per
+ * woord afbreekt; dan is er veel inkt en weinig informatie. Met de grens wijken
+ * de knoppen naar de volgende regel, en dat leest wél.
+ *
+ * Een formulier hoort niet tússen de naam en de knoppen maar eronder, over de
+ * volle breedte. Daar is `blok` voor; `onder` blijft voor losse regeltjes onder
+ * de naam, zoals de stand bij het loonbureau. */
 function Regel({
   doc,
   vervallen,
   actie,
   onder,
+  blok,
 }: {
   doc: Document
   vervallen?: boolean
   actie: React.ReactNode
   /** Een extra regel onder de naam, zoals de stand bij het loonbureau. */
   onder?: React.ReactNode
+  /** Een blok over de volle breedte onder de regel, zoals een formulier. */
+  blok?: React.ReactNode
 }) {
   const grootte = leesbareGrootte(doc.bytes)
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0">
-      <FileText className={`size-5 shrink-0 ${vervallen ? 'text-muted/60' : 'text-muted'}`} aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate font-medium ${vervallen ? 'text-muted line-through' : ''}`}>
-          {doc.naam}
+    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <FileText
+          className={`size-5 shrink-0 ${vervallen ? 'text-muted/60' : 'text-muted'}`}
+          aria-hidden
+        />
+        <span className="min-w-[11rem] flex-1">
+          <span
+            className={`block truncate font-medium ${vervallen ? 'text-muted line-through' : ''}`}
+          >
+            {doc.naam}
+          </span>
+          <span className="block text-sm text-muted">
+            {soortLabel(doc.soort)} — {korteDatum(doc.toegevoegd_op)}
+            {grootte ? ` — ${grootte}` : ''}
+            {vervallen && doc.vervallen_op ? ` — vervallen op ${korteDatum(doc.vervallen_op)}` : ''}
+          </span>
+          {doc.notitie && <span className="block text-sm text-muted">{doc.notitie}</span>}
+          {onder}
         </span>
-        <span className="block text-sm text-muted">
-          {soortLabel(doc.soort)} — {korteDatum(doc.toegevoegd_op)}
-          {grootte ? ` — ${grootte}` : ''}
-          {vervallen && doc.vervallen_op ? ` — vervallen op ${korteDatum(doc.vervallen_op)}` : ''}
+        <span className="flex shrink-0 flex-wrap items-center gap-2">
+          <DocumentLink pad={doc.pad}>Openen</DocumentLink>
+          {actie}
         </span>
-        {doc.notitie && <span className="block text-sm text-muted">{doc.notitie}</span>}
-        {onder}
-      </span>
-      <DocumentLink pad={doc.pad}>Openen</DocumentLink>
-      {actie}
+      </div>
+      {blok}
     </div>
   )
 }
@@ -222,17 +245,23 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
   function afgetekendRegel(d: Document) {
     if (afgetekend !== d.id) return null
     return (
-      <span className="mt-2 flex flex-wrap items-end gap-2">
+      /* Een eigen blok onder de regel, met de vraag boven het veld. In een
+         smalle kolom zakken de knoppen onder de datum in plaats van ernaast te
+         worden geperst. */
+      <div className="flex flex-col gap-3 rounded-[4px] bg-surface-2 p-3">
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-muted">Wanneer heb je hem verstuurd?</span>
+          <span className="text-sm font-semibold text-muted">
+            Wanneer heb je hem verstuurd?
+          </span>
           <input
             type="date"
             value={datum}
             max={vandaag()}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDatum(e.target.value)}
-            className="rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2 text-base outline-none focus:border-accent"
+            className="w-full max-w-[12rem] rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2 text-base outline-none focus:border-accent"
           />
         </label>
+        <div className="flex flex-wrap gap-2">
         <Knop
           bezig={aftekenen.isPending}
           onClick={() =>
@@ -253,7 +282,8 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
         <Knop soort="rustig" onClick={() => setAfgetekend(null)}>
           Toch niet
         </Knop>
-      </span>
+        </div>
+      </div>
     )
   }
 
@@ -304,12 +334,8 @@ export function Documenten({ persoon }: { persoon: Persoon }) {
             <Regel
               key={d.id}
               doc={d}
-              onder={
-                <>
-                  {loonbureauRegel(d)}
-                  {afgetekendRegel(d)}
-                </>
-              }
+              onder={loonbureauRegel(d)}
+              blok={afgetekendRegel(d)}
               actie={
                 <>
                 {d.soort === 'contract_getekend' && !d.naar_loonbureau_op && (
