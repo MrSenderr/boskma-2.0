@@ -6,7 +6,7 @@ import { supabase } from './supabase'
 const LIJST_VELDEN =
   'id,voornaam,achternaam,status,fase,aangemeld_op,aangenomen_op,' +
   'onboarding_verstuurd_op,onboarding_ingevuld_op,' +
-  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op,is_eigenaar,in_dienst_sinds'
+  'loonbureau_verstuurd_op,loonbureau_bevestigd_op,uit_dienst_op,is_eigenaar,is_test,in_dienst_sinds'
 
 const KAART_VELDEN =
   LIJST_VELDEN +
@@ -32,6 +32,8 @@ export type Persoon = {
   /** Meewerkend eigenaar: doet mee in rooster en spits, maar niet in de
    *  onboarding, het loonbureau of de vergelijking met eitje. */
   is_eigenaar: boolean
+  /** Een oefenkaart om mee te testen, geen mens. */
+  is_test: boolean
   /** De dag dat deze persoon bij Boskma begon, ook als dat onder de vorige
    *  eigenaar was. Telt voor de ketenregeling en de twaalf maanden oproep;
    *  de begindatum van een los contract staat in public.contracten. */
@@ -209,6 +211,10 @@ const SOLLICITANT: Record<string, Toestand> = {
 /** De toestand van een medewerker wordt afgeleid uit de tijdstippen, niet apart
  *  bijgehouden. Zo kan hij nooit iets anders beweren dan er gebeurd is. */
 export function toestandVan(p: Persoon): Toestand {
+  /* Bovenaan, vóór alle andere regels: wie hiernaar kijkt moet meteen zien dat
+     dit geen mens is. Een oefenkaart die eruitziet als een medewerker is een
+     mail die een keer naar de verkeerde gaat. */
+  if (p.is_test) return { sleutel: 'test', label: 'Oefenkaart', soort: 'letop' }
   if (p.fase === 'sollicitant') {
     return SOLLICITANT[p.status ?? 'nieuw'] ?? SOLLICITANT.nieuw
   }

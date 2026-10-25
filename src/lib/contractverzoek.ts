@@ -305,6 +305,8 @@ export function useNaarLoonbureau(medewerkerId: string) {
       const { data, error } = await supabase.functions.invoke('stuur-loonbureau', {
         body: {
           emp_naam: naamVan(opdracht.persoon),
+          // Zodat de server post over een oefenkaart binnenhoudt.
+          medewerker_id: opdracht.persoon.id,
           mutatie_html: bouwContractverzoek({ ...opdracht, uitkomst }),
           onderwerp: `Wijziging dienstverband — ${uitkomst.titel}`,
           bestandsnaam: 'wijziging_dienstverband',
@@ -326,7 +328,7 @@ export function useNaarLoonbureau(medewerkerId: string) {
         .eq('id', opdracht.voorstel.id)
       if (fout) throw new Error(`De mail is verstuurd, maar het vastleggen mislukte: ${fout.message}`)
 
-      return data as { testmodus?: boolean; verstuurd_naar?: string }
+      return data as { testmodus?: boolean; oefening?: boolean; verstuurd_naar?: string }
     },
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['contractvoorstellen', medewerkerId] })

@@ -91,6 +91,8 @@ export function useContractStanden() {
           .select('id,voornaam,achternaam,fase,uit_dienst_op,is_eigenaar,loonbureau_verstuurd_op,contract_door_loonbureau')
           .eq('fase', 'medewerker')
           .eq('is_apparaat', false)
+          // Een oefenkaart is geen personeel; zie is_test op sollicitaties.
+          .eq('is_test', false)
           .is('uit_dienst_op', null),
         supabase
           .from('dossier_documenten')
@@ -108,7 +110,13 @@ export function useContractStanden() {
   })
 }
 
-export type Verstuurd = { testmodus: boolean; verstuurd_naar: string; al_verstuurd?: boolean }
+export type Verstuurd = {
+  testmodus: boolean
+  /** Ging over de oefenkaart; het loonbureau heeft niets gekregen. */
+  oefening?: boolean
+  verstuurd_naar: string
+  al_verstuurd?: boolean
+}
 
 /** Eén getekend contract naar het loonbureau. */
 export function useGetekendVersturen() {
@@ -132,6 +140,8 @@ export function useGetekendVersturen() {
 
 export function uitkomstTekst(r: Verstuurd) {
   if (r.al_verstuurd) return 'Dit contract was al naar het loonbureau gestuurd.'
+  if (r.oefening)
+    return `Oefenkaart: naar ${r.verstuurd_naar} gestuurd, niet naar het loonbureau.`
   if (r.testmodus)
     return `Testmodus: naar ${r.verstuurd_naar} gestuurd, niet naar het loonbureau. Het blijft openstaan.`
   return `Getekend contract naar het loonbureau gestuurd (${r.verstuurd_naar}).`

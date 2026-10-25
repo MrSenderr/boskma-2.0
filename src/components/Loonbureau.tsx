@@ -112,19 +112,24 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
           mutatie_html: bouwMutatieformulier(p),
           files: bijlagen,
           emp_naam: naamVan(p),
+          // Hiermee kan de server zien dat het om een oefenkaart gaat en de
+          // post binnenhouden, ook als de testmodus uit staat.
+          medewerker_id: p.id,
           lb_contract: Boolean(p.contract_door_loonbureau),
         },
       })
       if (error) throw new Error(error.message)
-      const r = data as { ok: boolean; error?: string; testmodus?: boolean; verstuurd_naar?: string; bijlagen?: number }
+      const r = data as { ok: boolean; error?: string; testmodus?: boolean; oefening?: boolean; verstuurd_naar?: string; bijlagen?: number }
       if (!r.ok) throw new Error(r.error ?? 'onbekende fout')
 
       await wijzig.mutateAsync({ loonbureau_verstuurd_op: new Date().toISOString() })
       client.invalidateQueries({ queryKey: ['persoon', p.id] })
       setUitkomst(
-        r.testmodus
-          ? `Testmodus: verstuurd naar ${r.verstuurd_naar}, niet naar het loonbureau. ${r.bijlagen ?? 0} bijlagen.`
-          : `Verstuurd naar ${r.verstuurd_naar}. ${r.bijlagen ?? 0} bijlagen.`,
+        r.oefening
+          ? `Oefenkaart: verstuurd naar ${r.verstuurd_naar}, niet naar het loonbureau. ${r.bijlagen ?? 0} bijlagen.`
+          : r.testmodus
+            ? `Testmodus: verstuurd naar ${r.verstuurd_naar}, niet naar het loonbureau. ${r.bijlagen ?? 0} bijlagen.`
+            : `Verstuurd naar ${r.verstuurd_naar}. ${r.bijlagen ?? 0} bijlagen.`,
       )
     } catch (e) {
       setFout(e instanceof Error ? e.message : 'onbekende fout')

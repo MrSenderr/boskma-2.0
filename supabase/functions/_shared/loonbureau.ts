@@ -58,3 +58,37 @@ export function bufNaarBase64(buf: ArrayBuffer): string {
   }
   return btoa(bin);
 }
+
+/* Is dit een oefenkaart?
+ *
+ * Sinds 25 oktober 2026 staat er een testmedewerker in de personeelslijst om
+ * de contractstroom mee te kunnen doorlopen. Zonder deze controle zou het
+ * loonbureau bij de eerste oefening een verzoek krijgen om een contract voor
+ * een verzonnen persoon op te stellen. Post over een oefenkaart gaat daarom
+ * nooit naar buiten, ook niet als de testmodus uit staat.
+ *
+ * Bij twijfel — tabel onbereikbaar, rij weg — luidt het antwoord ja. Een mail
+ * die ten onrechte binnen blijft kun je alsnog versturen; een mail die ten
+ * onrechte naar het loonbureau gaat niet. */
+export async function isOefenkaart(medewerkerId: string | null | undefined): Promise<boolean> {
+  if (!medewerkerId) return false;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/sollicitaties?id=eq.${medewerkerId}&select=is_test`,
+      { headers: service },
+    );
+    if (!r.ok) return true;
+    const rijen = await r.json();
+    if (!Array.isArray(rijen) || rijen.length === 0) return true;
+    return rijen[0]?.is_test === true;
+  } catch {
+    return true;
+  }
+}
+
+export function oefenBalk(echteOntvanger: string) {
+  return `<div style="background:#e6f0f1;border:2px solid #003a41;border-radius:6px;padding:12px 16px;margin:0 0 16px;font-family:Arial,sans-serif;font-size:14px;color:#003a41">
+    <strong>OEFENING</strong> — dit gaat over de testmedewerker, niet over een echt persoon.
+    Deze mail was bedoeld voor <strong>${echteOntvanger}</strong> en is daar niet naartoe gegaan.
+  </div>`;
+}

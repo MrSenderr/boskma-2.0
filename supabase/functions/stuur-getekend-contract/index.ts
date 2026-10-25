@@ -12,7 +12,8 @@
 
 import { wieBelt } from "../_shared/beller.ts";
 import {
-  CC_EMAIL, FROM_EMAIL, bufNaarBase64, leesOntvanger, leesTestmodus, service, testBalk,
+  CC_EMAIL, FROM_EMAIL, bufNaarBase64, isOefenkaart, leesOntvanger, leesTestmodus, oefenBalk,
+  service, testBalk,
 } from "../_shared/loonbureau.ts";
 
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
     // 1. Het document en de medewerker
     const dRes = await fetch(
       `${SB_URL}/rest/v1/dossier_documenten?id=eq.${id}` +
-        `&select=id,soort,naam,pad,mime_type,vervallen_op,naar_loonbureau_op,` +
+        `&select=id,soort,naam,pad,mime_type,vervallen_op,naar_loonbureau_op,medewerker_id,` +
         `sollicitaties(voornaam,achternaam)`,
       { headers: service },
     );
@@ -100,7 +101,12 @@ Deno.serve(async (req) => {
     // 3. Versturen
     const tm = await leesTestmodus();
     const loonbureau = await leesOntvanger();
-    const naar = tm.aan ? tm.adres : loonbureau;
+
+    /* Een getekend oefencontract hoort niet bij het loonbureau. Dit gaat vóór
+       de testmodus: ook met de testmodus uit blijft het binnen. */
+    const oefening = await isOefenkaart(doc.medewerker_id);
+    const binnenhouden = tm.aan || oefening;
+    const naar = oefening ? CC_EMAIL : tm.aan ? tm.adres : loonbureau;
 
     const mail = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -108,10 +114,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [naar],
-        ...(tm.aan ? {} : { cc: [CC_EMAIL] }),
-        subject: `${tm.aan ? "[TEST] " : ""}Getekend contract — ${naam}`,
+        ...(binnenhouden ? {} : { cc: [CC_EMAIL] }),
+        subject: `${oefening ? "[OEFENING] " : tm.aan ? "[TEST] " : ""}Getekend contract — ${naam}`,
         html:
-          (tm.aan ? testBalk(loonbureau) : "") +
+          (oefening ? oefenBalk(loonbureau) : tm.aan ? testBalk(loonbureau) : "") +
           `<p>Hierbij het getekende arbeidscontract van <strong>${naam}</strong>, ` +
           `retour na ondertekening.</p>` +
           `<p>Bijgevoegd: ${bestandsnaam}</p>` +
@@ -122,8 +128,8 @@ Deno.serve(async (req) => {
     });
     if (!mail.ok) throw new Error(`Verzenden mislukt: ${await mail.text()}`);
 
-    // 4. Vastleggen. In testmodus niet: het loonbureau heeft niets gekregen.
-    if (tm.aan) {
+    // 4. Vastleggen. Binnengehouden post telt niet: het loonbureau heeft niets gekregen.
+    if (binnenhouden) {
       await bijwerken(id, { naar_loonbureau_fout: null });
     } else {
       await bijwerken(id, {
@@ -133,7 +139,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return antwoord({ ok: true, testmodus: tm.aan, verstuurd_naar: naar });
+    return antwoord({ ok: true, testmodus: binnenhouden, oefening, verstuurd_naar: naar });
   } catch (e) {
     const fout = e instanceof Error ? e.message : String(e);
     console.error("[stuur-getekend-contract]", fout);

@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { wieBelt } from "../_shared/beller.ts";
+import { isOefenkaart, oefenBalk } from "../_shared/loonbureau.ts";
 
 const GOTENBERG_URL  = Deno.env.get("GOTENBERG_URL")!;
 const RESEND_KEY     = Deno.env.get("RESEND_API_KEY")!;
@@ -82,8 +83,8 @@ serve(async (req) => {
        het verzoek om een contract bij een verlenging. Dat is geen
        mutatieformulier en hoort ook niet zo in de inbox van het loonbureau te
        staan. Blijven ze leeg, dan gaat alles zoals het ging. */
-    const { mutatie_html, files, emp_naam, lb_contract, onderwerp, bestandsnaam, bericht } =
-      await req.json();
+    const { mutatie_html, files, emp_naam, lb_contract, onderwerp, bestandsnaam, bericht,
+            medewerker_id } = await req.json();
     if (!mutatie_html || !emp_naam) return jsonErr("mutatie_html en emp_naam zijn vereist", 400);
 
     const attachments: { filename: string; content: string }[] = [];
@@ -143,21 +144,28 @@ serve(async (req) => {
     const tm = await leesTestmodus();
     const naarLoonbureau = await leesOntvanger();
 
+    /* Post over de testmedewerker gaat nooit naar buiten, ook niet als de
+       testmodus uit staat. Anders krijgt het loonbureau bij de eerste oefening
+       een verzoek om een contract voor een verzonnen persoon. */
+    const oefening = await isOefenkaart(medewerker_id);
+    const binnenhouden = tm.aan || oefening;
+    const ontvanger = oefening ? CC_EMAIL : tm.aan ? tm.adres : naarLoonbureau;
+
     // 3. Verstuur via Resend
     const mailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: FROM_EMAIL,
-        to: [tm.aan ? tm.adres : naarLoonbureau],
-        ...(tm.aan ? {} : { cc: [CC_EMAIL] }),
-        subject: `${tm.aan ? "[TEST] " : ""}${
+        to: [ontvanger],
+        ...(binnenhouden ? {} : { cc: [CC_EMAIL] }),
+        subject: `${oefening ? "[OEFENING] " : tm.aan ? "[TEST] " : ""}${
           onderwerp
             ? `${onderwerp} — ${emp_naam}`
             : `Mutatieformulier + bijlagen — ${emp_naam}${lb_contract ? " (contract door loonbureau)" : ""}`
         }`,
         html:
-          (tm.aan ? testBalk(naarLoonbureau) : "") +
+          (oefening ? oefenBalk(naarLoonbureau) : tm.aan ? testBalk(naarLoonbureau) : "") +
           (bericht
             ? eigenMailBody(bericht, attachments.map((a) => a.filename))
             : buildMailBody(emp_naam, attachments.map((a) => a.filename), lb_contract)),
@@ -171,7 +179,7 @@ serve(async (req) => {
       return jsonErr("Verzenden mislukt: " + err, 500);
     }
 
-    return new Response(JSON.stringify({ ok: true, testmodus: tm.aan, verstuurd_naar: tm.aan ? tm.adres : naarLoonbureau, bijlagen: attachments.length }), {
+    return new Response(JSON.stringify({ ok: true, testmodus: binnenhouden, oefening, verstuurd_naar: ontvanger, bijlagen: attachments.length }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });
 

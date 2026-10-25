@@ -290,6 +290,8 @@ export function useLoongegevens() {
         .eq('fase', 'medewerker')
         .is('uit_dienst_op', null)
         .eq('is_apparaat', false)
+        // Een oefenkaart is geen personeel; zie is_test op sollicitaties.
+        .eq('is_test', false)
         // De eigenaar staat wel in eitje — daar hangt zijn eigen contract aan —
         // maar niet in deze vergelijking. Zie `vergelijk`, dat hem al overslaat
         // als hij niet in de app staat.

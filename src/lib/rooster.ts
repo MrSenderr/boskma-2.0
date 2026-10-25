@@ -125,6 +125,8 @@ export function useKandidaten() {
         .select('id,voornaam,achternaam,uit_dienst_op')
         .eq('fase', 'medewerker')
         .eq('is_apparaat', false)
+        // Een oefenkaart is geen personeel; zie is_test op sollicitaties.
+        .eq('is_test', false)
         .order('voornaam')
       if (error) throw new Error(error.message)
       return (data ?? []) as Kandidaat[]

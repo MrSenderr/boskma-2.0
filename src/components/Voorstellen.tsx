@@ -435,9 +435,11 @@ function Regel({
                     {
                       onSuccess: (uit) =>
                         setFout(
-                          uit?.testmodus
-                            ? `Testmodus staat aan: de mail ging naar ${uit.verstuurd_naar}, niet naar het loonbureau.`
-                            : null,
+                          uit?.oefening
+                            ? `Oefenkaart: de mail ging naar ${uit.verstuurd_naar}, niet naar het loonbureau.`
+                            : uit?.testmodus
+                              ? `Testmodus staat aan: de mail ging naar ${uit.verstuurd_naar}, niet naar het loonbureau.`
+                              : null,
                         ),
                       onError: (e) => setFout(e.message),
                     },

@@ -377,6 +377,8 @@ export function useContractwaker() {
         .select(WAKER_VELDEN)
         .eq('fase', 'medewerker')
         .eq('is_apparaat', false)
+        // Een oefenkaart is geen personeel; zie is_test op sollicitaties.
+        .eq('is_test', false)
         .is('uit_dienst_op', null)
       if (error) throw new Error(error.message)
 
