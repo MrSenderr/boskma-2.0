@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
 import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, type Contract } from './contracten'
+import { herinnering, type Voorstel } from './contractvoorstellen'
 
 /* De datumhulpjes staan sinds 25 oktober 2026 in datums.ts, omdat de
    contractgeschiedenis met dezelfde maanden rekent. Hier blijven ze
@@ -43,14 +44,19 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
       staan: de verplichting verdwijnt niet, hij wordt alleen duurder.
    5. Verjaardag onder de 21 — het jeugdloon gaat omhoog, en bij 16 en 18
       veranderen ook de werktijden. Alleen een seintje; het uurloon zelf wordt
-      bewust niet getoetst (besluit 22 augustus 2026). */
+      bewust niet getoetst (besluit 22 augustus 2026).
+   6. Een verstuurd voorstel dat niet gelezen wordt. Dit is de enige regel die
+      niet uit een contract volgt maar uit iets wat de app zelf heeft gedaan:
+      er is aangezegd, maar niet bewijsbaar aangekomen. Twee weken vooraf om
+      hem erop aan te spreken, een week vooraf omdat het dan op papier mee
+      moet. Zie herinnering() in contractvoorstellen.ts. */
 
 export type Ernst = 'fout' | 'letop'
 
 export type Signaal = {
   persoonId: string
   naam: string
-  soort: 'geen_contract' | 'aanzeggen' | 'einde' | 'vaste_uren' | 'verjaardag'
+  soort: 'geen_contract' | 'aanzeggen' | 'einde' | 'vaste_uren' | 'verjaardag' | 'voorstel_stil'
   /** Wat er moet gebeuren, in een paar woorden. */
   wat: string
   /** De datum waar het om draait (JJJJ-MM-DD). */
@@ -70,6 +76,10 @@ const WAKER_VELDEN =
 
 /** De velden van een contract die de waker gebruikt. */
 const CONTRACT_VELDEN = 'id,medewerker_id,werkgever,soort,duur,begint,eindigt,beeindigd_op'
+
+/** De velden die herinnering() nodig heeft. */
+const VOORSTEL_VELDEN =
+  'id,medewerker_id,uiterlijk,verstuurd_op,ingetrokken_op,ontvangst_bevestigd_op,op_papier'
 
 /* ------------------------------------------------------------------ regels --- */
 
@@ -230,6 +240,39 @@ export function signalenVoor(p: Persoon, contracten: Contract[], vandaag: string
   return uit
 }
 
+/* Voorstellen die bij de medewerker blijven liggen. Staat los van
+   signalenVoor, omdat het niets met de contracttabel te maken heeft: het gaat
+   om post die de app heeft verstuurd. */
+export function voorstelSignalen(
+  personen: Persoon[],
+  voorstellen: Voorstel[],
+  vandaag: string,
+): Signaal[] {
+  const namen = new Map(personen.map((p) => [p.id, naamVan(p)]))
+  const uit: Signaal[] = []
+  for (const v of voorstellen) {
+    const naam = namen.get(v.medewerker_id)
+    if (!naam) continue
+    const s = herinnering(v, vandaag)
+    if (!s) continue
+    uit.push({
+      persoonId: v.medewerker_id,
+      naam,
+      soort: 'voorstel_stil',
+      wat:
+        s.dagen < 0
+          ? 'Voorstel nog niet gelezen en de datum is voorbij — geef het op papier mee'
+          : s.dringend
+            ? 'Voorstel nog niet gelezen — geef het op papier mee'
+            : 'Voorstel nog niet gelezen — spreek hem erop aan',
+      uiterlijk: (v.uiterlijk ?? vandaag).slice(0, 10),
+      dagen: s.dagen,
+      ernst: s.dringend ? 'fout' : 'letop',
+    })
+  }
+  return uit
+}
+
 /** "Contract 2 van 3", als dat bekend is. */
 export function ketenTekst(s: Signaal): string | null {
   return s.ketenNummer ? `Contract ${s.ketenNummer} van ${KETEN_MAX_CONTRACTEN}` : null
@@ -266,6 +309,16 @@ export function useContractwaker() {
         .select(CONTRACT_VELDEN)
       if (fout) throw new Error(fout.message)
 
+      /* Verstuurde voorstellen die nog niet zijn gelezen. Alleen de velden die
+         herinnering() nodig heeft. */
+      const { data: voorstellen, error: vfout } = await supabase
+        .from('contractvoorstellen')
+        .select(VOORSTEL_VELDEN)
+        .not('verstuurd_op', 'is', null)
+        .is('ingetrokken_op', null)
+        .is('ontvangst_bevestigd_op', null)
+      if (vfout) throw new Error(vfout.message)
+
       const per = new Map<string, Contract[]>()
       for (const c of (contracten ?? []) as unknown as Contract[]) {
         const lijst = per.get(c.medewerker_id) ?? []
@@ -273,7 +326,12 @@ export function useContractwaker() {
         per.set(c.medewerker_id, lijst)
       }
 
-      return signalen((personen ?? []) as unknown as Persoon[], per, vandaagIso())
+      const vandaag = vandaagIso()
+      const lijst = (personen ?? []) as unknown as Persoon[]
+      return [
+        ...signalen(lijst, per, vandaag),
+        ...voorstelSignalen(lijst, (voorstellen ?? []) as unknown as Voorstel[], vandaag),
+      ].sort((a, b) => a.dagen - b.dagen || a.naam.localeCompare(b.naam, 'nl'))
     },
   })
 }

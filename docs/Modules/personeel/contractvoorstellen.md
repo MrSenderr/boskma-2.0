@@ -1,6 +1,7 @@
 # Contractvoorstellen — verlengen, stoppen, vaste uren
 
-Plan, vastgelegd op 25 oktober 2026. Nog niet gebouwd.
+Plan, vastgelegd op 25 oktober 2026. Stap 1 tot en met 5 is gebouwd; 6 tot en
+met 9 nog niet.
 
 ## Doel
 
@@ -56,11 +57,17 @@ einddatum. De tussenpoos in de ketenregeling wordt drie jaar.
    overgenomen medewerkers, en tonen hoeveelste contract het is ("contract 3
    van 3"). Bij elk seintje een knop **Voorstel opstellen**, vooringevuld.
 4. **Voorstel opstellen (Sander).** Verlengen, stoppen, vaste uren of een
-   combinatie, met duur, uren en loon. Voorbeeld zien, dan versturen.
+   combinatie, met duur, uren en loon. Voorbeeld zien, dan versturen. *Gebouwd
+   25 oktober 2026.*
 5. **Voorstel bekijken (medewerker).** Melding op de telefoon; onder *Mijn
    dossier* ontvangst bevestigen en bij vaste uren kiezen. Alles met tijdstip:
    verstuurd, geopend, bevestigd, gekozen. Niet geopend als de deadline nadert:
-   de app waarschuwt Sander om het op papier te geven.
+   de app waarschuwt Sander om het op papier te geven. *Gebouwd 25 oktober
+   2026.* Keuzes die daarbij zijn gemaakt: altijd mail (dat is het bewijsstuk)
+   en push als de medewerker die zelf aanzet onder *Mijn gegevens*; ontvangst
+   bevestigen en kiezen zijn twee stappen; waarschuwing aan Sander twee weken
+   én een week voor de uiterlijke datum; de medewerker mag altijd iets bij zijn
+   antwoord schrijven.
 6. **Naar het loonbureau.** Aangenomen of verlengd: verzoek om het contract op
    te stellen, met de afgesproken duur, uren en loon. Stoppen of "blijft
    oproepkracht": alleen een melding.

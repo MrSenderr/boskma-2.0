@@ -12,7 +12,7 @@ import {
   type KimVraag,
   type KimWachtpost,
 } from '../lib/kim'
-import { kimMeldingenAan, kimMeldingenStatus, type Meldingstand } from '../lib/kimpush'
+import { meldingenAan, meldingenStatus, type Meldingstand } from '../lib/meldingen'
 import { deelIn, euro, telOp, useFacturen } from '../lib/facturen'
 
 /* Het Kim-scherm: wat ze wil weten, en wat er openstaat.
@@ -26,7 +26,7 @@ function Meldingen() {
   const [fout, setFout] = useState<string | null>(null)
 
   useEffect(() => {
-    kimMeldingenStatus().then(setStand)
+    meldingenStatus().then(setStand)
   }, [])
 
   async function aanzetten() {
@@ -35,10 +35,10 @@ function Meldingen() {
     try {
       // Bewust hier, in de klik: iOS weigert de toestemmingsvraag als die niet
       // rechtstreeks uit een tik komt.
-      setStand(await kimMeldingenAan())
+      setStand(await meldingenAan(true))
     } catch (e) {
       setFout(e instanceof Error ? e.message : 'Aanzetten lukte niet.')
-      setStand(await kimMeldingenStatus())
+      setStand(await meldingenStatus())
     } finally {
       setBezig(false)
     }

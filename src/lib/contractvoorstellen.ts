@@ -12,7 +12,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from './supabase'
-import { plusMaanden, vandaagIso } from './datums'
+import { dagenTussen, plusMaanden, vandaagIso } from './datums'
 import {
   KETEN_MAX_CONTRACTEN,
   urenTekst,
@@ -64,6 +64,10 @@ export type Voorstel = {
   ingetrokken_reden: string | null
   naar_loonbureau_op: string | null
   contract_id: string | null
+  /** De brief zoals verstuurd. Niet opnieuw samenstellen: dit is het bewijs. */
+  brief: string | null
+  /** Op papier meegegeven; het antwoord is door Sander vastgelegd. */
+  op_papier: boolean
 }
 
 const getal = (w: number | string | null | undefined): number | null =>
@@ -366,6 +370,51 @@ export const STANDNAAM: Record<Stand, string> = {
   ingetrokken: 'Ingetrokken',
 }
 
+/* ------------------------------------------------------------- antwoorden --- */
+
+/** Waar nog een antwoord op moet komen. */
+export function openstaand(v: Voorstel): { verlenging: boolean; vasteUren: boolean } {
+  return {
+    verlenging: metVerlenging(v.aard) && !v.keuze_verlenging,
+    vasteUren: metVasteUren(v.aard) && !v.keuze_vaste_uren,
+  }
+}
+
+/** Ligt dit voorstel nog bij de medewerker? */
+export function wachtOpMedewerker(v: Voorstel): boolean {
+  if (!v.verstuurd_op || v.ingetrokken_op) return false
+  const open = openstaand(v)
+  return !v.ontvangst_bevestigd_op || open.verlenging || open.vasteUren
+}
+
+export const KEUZENAAM = {
+  akkoord: 'Akkoord met de verlenging',
+  niet_akkoord: 'Niet akkoord met de verlenging',
+  aangenomen: 'Vaste uren aangenomen',
+  geweigerd: 'Vaste uren geweigerd — blijft oproepkracht',
+} as const
+
+/** Wanneer de app Sander waarschuwt dat het voorstel blijft liggen. */
+export const HERINNER = { vroeg: 14, laat: 7 }
+
+/* Een voorstel dat niet wordt opgepakt is het dure geval: aanzeggen moet
+   schriftelijk en de ontvangst moet te bewijzen zijn. Blijft de bevestiging
+   weg, dan moet het op papier mee, en daar heb je een paar dagen voor nodig.
+   Daarom twee seintjes: twee weken vooraf om hem aan te spreken, een week
+   vooraf omdat het dan echt moet. Is de datum voorbij en is er nog niets
+   bevestigd, dan blijft het seintje staan — de verplichting gaat niet weg. */
+export function herinnering(
+  v: Voorstel,
+  vandaag = vandaagIso(),
+): { dagen: number; dringend: boolean } | null {
+  if (!v.verstuurd_op || v.ingetrokken_op || v.op_papier) return null
+  if (v.ontvangst_bevestigd_op) return null
+  if (!v.uiterlijk) return null
+  const dagen = dagenTussen(vandaag, v.uiterlijk.slice(0, 10))
+  if (dagen > HERINNER.vroeg) return null
+  return { dagen, dringend: dagen <= HERINNER.laat }
+}
+
 /* --------------------------------------------------------------- ophalen --- */
 
 const VELDEN = '*'
@@ -420,5 +469,138 @@ export function useVoorstelIntrekken(medewerkerId: string) {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ['contractvoorstellen', medewerkerId] }),
+  })
+}
+
+/* --------------------------------------------------------------- versturen --- */
+
+/* Versturen gaat via een serverfunctie, niet via de browser.
+ *
+ * De brief gaat mee: wat Sander in het voorbeeld zag, is wat er verstuurd
+ * wordt, en de serverfunctie legt die tekst vast. Zou de server de zinnen zelf
+ * samenstellen, dan staan ze op twee plekken en lopen ze een keer uit elkaar.
+ *
+ * verstuurd_op wordt daar gezet, niet hier: alleen de server weet of de mail
+ * er echt uit is. */
+export function useVoorstelVersturen(medewerkerId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: Voorstel) => {
+      const { data, error } = await supabase.functions.invoke('stuur-voorstel', {
+        body: { voorstel: v.id, brief: samenvatting(v) },
+      })
+      if (error) throw new Error(await leesFout(error))
+      if (!data?.ok) throw new Error(data?.error ?? 'Versturen lukte niet.')
+      return data as { testmodus: boolean; verstuurd_naar: string; apparaten: number }
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['contractvoorstellen', medewerkerId] }),
+  })
+}
+
+/* Een serverfunctie die 4xx teruggeeft komt bij supabase-js aan als een
+   FunctionsHttpError waarvan de melding "non-2xx status code" is — precies wat
+   je niet wilt lezen als je wil weten wát er mis is. De echte tekst zit in het
+   antwoord zelf. */
+async function leesFout(error: unknown): Promise<string> {
+  const res = (error as { context?: Response })?.context
+  if (res && typeof res.json === 'function') {
+    try {
+      const body = await res.clone().json()
+      if (body?.error) return String(body.error)
+    } catch {
+      /* geen json; dan de oorspronkelijke melding */
+    }
+  }
+  return error instanceof Error ? error.message : 'Versturen lukte niet.'
+}
+
+/** Het antwoord dat op papier of mondeling binnenkwam zelf vastleggen. */
+export function useVoorstelOpPapier(medewerkerId: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (opdracht: {
+      id: string
+      verlenging?: 'akkoord' | 'niet_akkoord' | null
+      vasteUren?: 'aangenomen' | 'geweigerd' | null
+      reactie?: string | null
+    }) => {
+      const nu = new Date().toISOString()
+      const velden: Record<string, unknown> = { op_papier: true, bijgewerkt_op: nu }
+      // Op papier meegeven is ook aanzeggen; de ontvangst staat dan vast.
+      velden.ontvangst_bevestigd_op = nu
+      if (opdracht.verlenging) {
+        velden.keuze_verlenging = opdracht.verlenging
+        velden.keuze_verlenging_op = nu
+      }
+      if (opdracht.vasteUren) {
+        velden.keuze_vaste_uren = opdracht.vasteUren
+        velden.keuze_vaste_uren_op = nu
+      }
+      if (opdracht.reactie) velden.reactie = opdracht.reactie
+      const { error } = await supabase
+        .from('contractvoorstellen')
+        .update(velden)
+        .eq('id', opdracht.id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['contractvoorstellen', medewerkerId] }),
+  })
+}
+
+/* ------------------------------------------------------- de medewerkerkant --- */
+
+/* Wat de medewerker van zichzelf ziet. De policy eigen_voorstel laat alleen
+   door wat verstuurd is en niet is ingetrokken; een concept is nog van Sander
+   alleen. Hier staat dus geen extra filter — dat zou doen alsof de beveiliging
+   in de browser zit. */
+export function useMijnVoorstellen() {
+  return useQuery({
+    queryKey: ['mijn-voorstellen'],
+    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<Voorstel[]> => {
+      const { data, error } = await supabase
+        .from('contractvoorstellen')
+        .select(VELDEN)
+        .order('opgesteld_op', { ascending: false })
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as Voorstel[]
+    },
+  })
+}
+
+/** Dat hij het heeft gezien. Eén keer; daarna blijft de eerste datum staan. */
+export async function voorstelGeopend(id: string) {
+  await supabase.rpc('voorstel_geopend', { p_voorstel: id })
+}
+
+export function useVoorstelBevestigen() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('voorstel_bevestigen', { p_voorstel: id })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['mijn-voorstellen'] }),
+  })
+}
+
+export function useVoorstelAntwoorden() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (opdracht: {
+      id: string
+      verlenging?: 'akkoord' | 'niet_akkoord'
+      vasteUren?: 'aangenomen' | 'geweigerd'
+      reactie?: string
+    }) => {
+      const { error } = await supabase.rpc('voorstel_antwoorden', {
+        p_voorstel: opdracht.id,
+        p_verlenging: opdracht.verlenging ?? null,
+        p_vaste_uren: opdracht.vasteUren ?? null,
+        p_reactie: opdracht.reactie?.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ['mijn-voorstellen'] }),
   })
 }

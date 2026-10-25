@@ -3,6 +3,7 @@ import { Clock, Lock, Pencil } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
 import { MeekijkenLeeg } from '../components/Meekijken'
+import { MeldingSchakelaar } from '../components/MeldingSchakelaar'
 import {
   VELDNAMEN,
   useGegevenWijzigen,
@@ -206,6 +207,8 @@ export function MijnGegevens() {
           </p>
         </Kaart>
       </section>
+
+      <MeldingSchakelaar />
 
       <p className="max-w-prose text-sm text-muted">
         Wat je hier wijzigt geeft Sander door aan het loonbureau als dat nodig is —

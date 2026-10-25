@@ -4,6 +4,8 @@ import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil } from '../components/ui'
 import { useWieBenIk } from '../lib/wie'
 import { MeekijkenLeeg } from '../components/Meekijken'
 import { DocumentLink } from '../components/DocumentLink'
+import { MijnVoorstellen } from '../components/MijnVoorstel'
+import { useMijnVoorstellen } from '../lib/contractvoorstellen'
 import { korteDatum } from '../lib/personeel'
 import {
   soortLabel,
@@ -125,6 +127,7 @@ export function MijnDossier() {
   // Een medewerker ziet wat er nu geldt. Vervallen papieren zijn geen dossier
   // voor hem maar geschiedenis, en die hoort aan de beheerkant.
   const documenten = splitsDocumenten(alleDocumenten).actueel
+  const { data: voorstellen } = useMijnVoorstellen()
   const gemeld = useRef<Set<number>>(new Set())
 
   // Openen telt als gelezen; dan hoeft Sander niet te gissen of het is
@@ -149,11 +152,17 @@ export function MijnDossier() {
   if (isPending) return <Laden />
   if (error) return <Mislukt tekst={error.message} opnieuw={() => refetch()} />
 
-  const leeg = verslagen.length === 0 && documenten.length === 0
+  const leeg =
+    verslagen.length === 0 && documenten.length === 0 && (voorstellen ?? []).length === 0
 
   return (
     <div className="flex flex-col gap-6">
       <Kopje>Mijn dossier</Kopje>
+
+      {/* Bovenaan: hier moet hij iets mee. Een contractvoorstel heeft een
+          datum waarop het antwoord binnen moet zijn; verslagen en papieren
+          kunnen wachten. */}
+      <MijnVoorstellen />
 
       {leeg && (
         <Leeg

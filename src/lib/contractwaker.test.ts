@@ -6,7 +6,15 @@
    gekomen die vóór die omzetting stil bleven. */
 
 import { describe, expect, it } from 'vitest'
-import { dagenTussen, plusMaanden, signalen, signalenVoor, ketenTekst } from './contractwaker'
+import {
+  dagenTussen,
+  plusMaanden,
+  signalen,
+  signalenVoor,
+  ketenTekst,
+  voorstelSignalen,
+} from './contractwaker'
+import type { Voorstel } from './contractvoorstellen'
 import type { Contract } from './contracten'
 import type { Persoon } from './personeel'
 
@@ -234,5 +242,44 @@ describe('wie meetelt', () => {
       ['b', [contract({ medewerker_id: 'b', duur: 'onbepaalde', eindigt: null })]],
     ])
     expect(signalen([a, b], per, '2026-11-01').map((s) => s.persoonId)).toEqual(['b', 'a'])
+  })
+})
+
+describe('voorstellen die blijven liggen', () => {
+  const thijmen = { id: 'p1', voornaam: 'Thijmen', achternaam: 'Bakker' } as unknown as Persoon
+  const v = (anders: Partial<Voorstel> = {}): Voorstel =>
+    ({
+      id: 'v1',
+      medewerker_id: 'p1',
+      aard: 'verlengen',
+      uiterlijk: '2026-11-30',
+      verstuurd_op: '2026-10-20T10:00:00Z',
+      ingetrokken_op: null,
+      ontvangst_bevestigd_op: null,
+      op_papier: false,
+      ...anders,
+    }) as Voorstel
+
+  it('meldt niets zolang er tijd is', () => {
+    expect(voorstelSignalen([thijmen], [v()], '2026-10-25')).toEqual([])
+  })
+
+  it('vraagt eerst om een gesprek en daarna om papier', () => {
+    const vroeg = voorstelSignalen([thijmen], [v()], '2026-11-16')
+    expect(vroeg[0].ernst).toBe('letop')
+    expect(vroeg[0].wat).toMatch(/spreek hem erop aan/)
+
+    const laat = voorstelSignalen([thijmen], [v()], '2026-11-25')
+    expect(laat[0].ernst).toBe('fout')
+    expect(laat[0].wat).toMatch(/op papier/)
+    expect(laat[0].naam).toBe('Thijmen Bakker')
+    expect(laat[0].soort).toBe('voorstel_stil')
+  })
+
+  /* Een voorstel van iemand die niet in de lijst staat — uit dienst, of de
+     eigenaar — hoort niet op het startscherm. Zonder deze regel zou er een
+     seintje staan zonder naam. */
+  it('slaat een voorstel over van iemand die niet in de lijst staat', () => {
+    expect(voorstelSignalen([], [v()], '2026-11-25')).toEqual([])
   })
 })

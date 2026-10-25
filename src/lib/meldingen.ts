@@ -1,8 +1,17 @@
-/* Pushberichten van Kim aanzetten op dit apparaat.
+/* Pushberichten aanzetten op dit apparaat.
+
+   Twee soorten: de meldingen van Kim (die gaan naar de tablet in de zaak) en
+   de meldingen voor jezelf, zoals een contractvoorstel. Het verschil zit in
+   één vlag, voor_kim, en in wie ze mag zetten: alleen een beheerder. Een
+   medewerker kan alleen zijn eigen apparaat aanmelden, en dat regelt de
+   database (policy eigen_abonnementen), niet deze code.
+
+   Heette tot 25 oktober 2026 kimpush.ts, toen de meldingen alleen voor Kim
+   waren.
 
    Twee dingen om te weten:
 
-   - kimMeldingenAan() moet uit een tik komen. iOS weigert de toestemmingsvraag
+   - meldingenAan() moet uit een tik komen. iOS weigert de toestemmingsvraag
      als die niet direct uit een klik van de gebruiker volgt.
    - Op iPhone werkt het alleen als de app via Safari → Deel → "Zet op
      beginscherm" is geïnstalleerd en vanaf dat icoon wordt geopend.
@@ -14,7 +23,7 @@ import { supabase } from './supabase'
 
 export type Meldingstand = 'aan' | 'uit' | 'niet-ondersteund' | 'geweigerd'
 
-export async function kimMeldingenStatus(): Promise<Meldingstand> {
+export async function meldingenStatus(): Promise<Meldingstand> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'niet-ondersteund'
   if (Notification.permission === 'denied') return 'geweigerd'
   const reg = await navigator.serviceWorker.getRegistration()
@@ -22,7 +31,7 @@ export async function kimMeldingenStatus(): Promise<Meldingstand> {
   return sub ? 'aan' : 'uit'
 }
 
-export async function kimMeldingenAan(): Promise<Meldingstand> {
+export async function meldingenAan(voorKim = false): Promise<Meldingstand> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     throw new Error(
       'Dit apparaat kan geen pushberichten ontvangen. Op iPhone: zet de app op je beginscherm en open hem vanaf dat icoon.',
@@ -51,16 +60,26 @@ export async function kimMeldingenAan(): Promise<Meldingstand> {
       endpoint: j.endpoint,
       p256dh: j.keys!.p256dh,
       auth: j.keys!.auth,
-      voor_kim: true,
+      voor_kim: voorKim,
       apparaat: navigator.userAgent.slice(0, 120),
     },
     { onConflict: 'endpoint' },
   )
-  if (error) throw new Error(`Opslaan mislukt: ${error.message}`)
+  /* Een apparaat kan één abonnement hebben. Staat er al een van iemand anders
+     — de tablet van Kim, of een vorige gebruiker van dit toestel — dan houdt
+     de database het tegen, en dat hoort leesbaar te zijn. */
+  if (error) {
+    if (/row-level security|policy/i.test(error.message)) {
+      throw new Error(
+        'Dit apparaat is al voor iemand anders aangemeld. Zet de meldingen aan op je eigen telefoon.',
+      )
+    }
+    throw new Error(`Opslaan mislukt: ${error.message}`)
+  }
   return 'aan'
 }
 
-export async function kimMeldingenUit(): Promise<Meldingstand> {
+export async function meldingenUit(): Promise<Meldingstand> {
   const reg = await navigator.serviceWorker.getRegistration()
   const sub = reg && (await reg.pushManager.getSubscription())
   if (!sub) return 'uit'

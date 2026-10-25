@@ -25,9 +25,10 @@ Let op: die staan niet in de tekst van een databasefunctie maar in de
 triggerdefinitie, dus zoeken op `functions/v1/` in `pg_get_functiondef` vindt ze
 niet. Zoek ook in `pg_get_triggerdef`.
 
-Uit de app: `stuur-inloglink`, `stuur-loonbureau`, `stuur-getekend-contract`, `stuur-verkoopfactuur`,
-`verkoopfactuur-pdf`, `send-onboarding`, `submit-onboarding`,
-`weer-verzamelen`, en `rooster-inlezen` via het script in Gmail.
+Uit de app: `stuur-inloglink`, `stuur-loonbureau`, `stuur-getekend-contract`,
+`stuur-voorstel`, `stuur-verkoopfactuur`, `verkoopfactuur-pdf`,
+`send-onboarding`, `submit-onboarding`, `weer-verzamelen`, en `rooster-inlezen`
+via het script in Gmail.
 
 ## Wat er op 24 oktober 2026 is weggehaald
 

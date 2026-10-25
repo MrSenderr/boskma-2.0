@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, FileText, Info, Plus } from 'lucide-react'
+import { AlertTriangle, FileText, Info, Plus, Send } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
-import { korteDatum, type Persoon } from '../lib/personeel'
+import { korteDatum, naamVan, type Persoon } from '../lib/personeel'
 import {
   ketenVan,
   useContracten,
@@ -13,7 +13,10 @@ import {
 import { useGemiddeldeUren } from '../lib/gewerkteUren'
 import {
   AARDNAAM,
+  KEUZENAAM,
   STANDNAAM,
+  herinnering,
+  openstaand,
   controleer,
   magVerstuurd,
   metVasteUren,
@@ -23,7 +26,9 @@ import {
   vulVoorstelIn,
   standVan,
   useVoorstelIntrekken,
+  useVoorstelOpPapier,
   useVoorstelOpslaan,
+  useVoorstelVersturen,
   useVoorstellen,
   type Aard,
   type Voorstel,
@@ -36,9 +41,11 @@ import {
  * en houdt tegen wat juridisch niet kan — een vierde tijdelijk contract, of
  * een aanbod vaste uren onder het twaalfmaandsgemiddelde.
  *
- * Versturen zit hier nog niet in. Dat hoort bij het scherm waar de medewerker
- * het voorstel ziet; een mail sturen naar een pagina die nog niets toont is
- * een belofte die je niet waarmaakt. */
+ * Versturen gaat met één knop. De medewerker krijgt een mail — en een
+ * pushbericht als hij meldingen aan heeft staan — en ziet het voorstel onder
+ * Mijn dossier. Daar bevestigt hij de ontvangst en kiest hij. Blijft dat weg,
+ * dan zegt deze lijst twee weken en een week vooraf dat het op papier mee
+ * moet; te laat aanzeggen kost tot een maandloon. */
 
 const invoer =
   'w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-3 py-2.5 text-base outline-none focus:border-accent'
@@ -283,6 +290,214 @@ function Opstellen({
   )
 }
 
+
+/* Eén voorstel in de lijst bij Sander.
+ *
+ * Een concept gaat met één knop de deur uit. Daarna is de rij vooral een
+ * tijdlijn: verstuurd, gezien, bevestigd, geantwoord. Die tijdstippen zijn
+ * geen opsmuk — bij een geschil over aanzeggen is dit wat je laat zien.
+ *
+ * En er is altijd de papieren weg. Wie het niet opent krijgt het op papier
+ * mee, en dan legt Sander het antwoord hier vast. Dat staat erbij vermeld,
+ * want dan komen de tijdstippen niet van de medewerker zelf. */
+function Regel({
+  v,
+  persoon,
+  intrekken,
+}: {
+  v: Voorstel
+  persoon: Persoon
+  intrekken: ReturnType<typeof useVoorstelIntrekken>
+}) {
+  const versturen = useVoorstelVersturen(persoon.id)
+  const opPapier = useVoorstelOpPapier(persoon.id)
+  const [fout, setFout] = useState<string | null>(null)
+  const [papier, setPapier] = useState(false)
+  const stand = standVan(v)
+  const open = openstaand(v)
+  const seintje = herinnering(v)
+
+  return (
+    <div className="border-b border-line px-4 py-3 last:border-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold">{AARDNAAM[v.aard]}</span>
+          <Pil soort={STAND_KLEUR[stand]}>{STANDNAAM[stand]}</Pil>
+          {v.op_papier && <Pil soort="neutraal">Op papier</Pil>}
+        </span>
+        <span className="text-sm text-muted">{korteDatum(v.opgesteld_op)}</span>
+      </div>
+
+      {(v.brief ? v.brief.split('\n') : samenvatting(v)).map((r) => (
+        <p key={r} className="mt-0.5 text-sm text-muted">
+          {r}
+        </p>
+      ))}
+
+      {/* De tijdlijn. Alleen wat er is; een lege regel zegt niets. */}
+      {v.verstuurd_op && (
+        <p className="mt-1 text-sm text-muted">
+          Verstuurd {korteDatum(v.verstuurd_op)}
+          {v.verstuurd_naar ? ` naar ${v.verstuurd_naar}` : ''}
+          {v.geopend_op ? ` · gezien ${korteDatum(v.geopend_op)}` : ' · nog niet gezien'}
+          {v.ontvangst_bevestigd_op ? ` · gelezen ${korteDatum(v.ontvangst_bevestigd_op)}` : ''}
+        </p>
+      )}
+      {v.keuze_verlenging && (
+        <p className="mt-0.5 text-sm">
+          {KEUZENAAM[v.keuze_verlenging]} op {korteDatum(v.keuze_verlenging_op)}
+        </p>
+      )}
+      {v.keuze_vaste_uren && (
+        <p className="mt-0.5 text-sm">
+          {KEUZENAAM[v.keuze_vaste_uren]} op {korteDatum(v.keuze_vaste_uren_op)}
+        </p>
+      )}
+      {v.reactie && (
+        <p className="mt-1 whitespace-pre-wrap rounded-[4px] bg-surface-2 p-3 text-sm">{v.reactie}</p>
+      )}
+
+      {seintje && (
+        <p
+          className={`mt-2 flex items-start gap-2 text-sm ${seintje.dringend ? 'text-bad' : 'text-warn'}`}
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            {seintje.dagen < 0
+              ? `Nog niet gelezen en de datum is ${-seintje.dagen} ${-seintje.dagen === 1 ? 'dag' : 'dagen'} voorbij — geef het alsnog op papier mee`
+              : `Nog niet gelezen, nog ${seintje.dagen} ${seintje.dagen === 1 ? 'dag' : 'dagen'} — ${seintje.dringend ? 'geef het op papier mee' : 'spreek hem erop aan'}`}
+          </span>
+        </p>
+      )}
+
+      {v.ingetrokken_op && (
+        <p className="mt-0.5 text-sm text-muted">
+          Ingetrokken op {korteDatum(v.ingetrokken_op)}
+          {v.ingetrokken_reden ? ` — ${v.ingetrokken_reden}` : ''}
+        </p>
+      )}
+
+      {fout && <p className="mt-2 text-sm text-bad">{fout}</p>}
+
+      {!v.ingetrokken_op && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {!v.verstuurd_op && (
+            <Knop
+              bezig={versturen.isPending}
+              onClick={() =>
+                versturen.mutate(v, {
+                  onSuccess: (uitkomst) =>
+                    setFout(
+                      uitkomst.testmodus
+                        ? `Testmodus staat aan: de mail ging naar ${uitkomst.verstuurd_naar}, niet naar ${naamVan(persoon)}.`
+                        : null,
+                    ),
+                  onError: (e) => setFout(e.message),
+                })
+              }
+            >
+              <Send className="size-4" aria-hidden />
+              Versturen
+            </Knop>
+          )}
+          {v.verstuurd_op && (open.verlenging || open.vasteUren) && !papier && (
+            <button
+              type="button"
+              className="text-sm text-muted underline hover:text-text"
+              onClick={() => setPapier(true)}
+            >
+              antwoord op papier vastleggen
+            </button>
+          )}
+          {/* Een beantwoord voorstel is een vastgelegde afspraak. Dat
+              intrekken zou hem uit beeld halen terwijl hij is gedaan; wil je
+              iets anders, dan stuur je een nieuw voorstel. */}
+          {!v.keuze_verlenging && !v.keuze_vaste_uren && (
+            <button
+              type="button"
+              className="text-sm text-muted underline hover:text-text"
+              onClick={() => intrekken.mutate({ id: v.id })}
+            >
+              intrekken
+            </button>
+          )}
+        </div>
+      )}
+
+      {papier && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-line pt-3">
+          <p className="text-sm text-muted">
+            Wat heeft {naamVan(persoon)} geantwoord? Dit wordt vastgelegd als op papier gegeven.
+          </p>
+          {open.verlenging && (
+            <div className="flex flex-wrap gap-2">
+              <Knop
+                soort="rustig"
+                bezig={opPapier.isPending}
+                onClick={() =>
+                  opPapier.mutate(
+                    { id: v.id, verlenging: 'akkoord' },
+                    { onSuccess: () => setPapier(false), onError: (e) => setFout(e.message) },
+                  )
+                }
+              >
+                Akkoord met verlenging
+              </Knop>
+              <Knop
+                soort="rustig"
+                bezig={opPapier.isPending}
+                onClick={() =>
+                  opPapier.mutate(
+                    { id: v.id, verlenging: 'niet_akkoord' },
+                    { onSuccess: () => setPapier(false), onError: (e) => setFout(e.message) },
+                  )
+                }
+              >
+                Niet akkoord
+              </Knop>
+            </div>
+          )}
+          {open.vasteUren && (
+            <div className="flex flex-wrap gap-2">
+              <Knop
+                soort="rustig"
+                bezig={opPapier.isPending}
+                onClick={() =>
+                  opPapier.mutate(
+                    { id: v.id, vasteUren: 'aangenomen' },
+                    { onSuccess: () => setPapier(false), onError: (e) => setFout(e.message) },
+                  )
+                }
+              >
+                Vaste uren aangenomen
+              </Knop>
+              <Knop
+                soort="rustig"
+                bezig={opPapier.isPending}
+                onClick={() =>
+                  opPapier.mutate(
+                    { id: v.id, vasteUren: 'geweigerd' },
+                    { onSuccess: () => setPapier(false), onError: (e) => setFout(e.message) },
+                  )
+                }
+              >
+                Vaste uren geweigerd
+              </Knop>
+            </div>
+          )}
+          <button
+            type="button"
+            className="w-fit text-sm text-muted underline hover:text-text"
+            onClick={() => setPapier(false)}
+          >
+            laat maar
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Voorstellen({ persoon }: { persoon: Persoon }) {
   const { data: contracten } = useContracten(persoon.id)
   const { data: voorstellen } = useVoorstellen(persoon.id)
@@ -302,40 +517,9 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
 
       {voorstellen.length > 0 && (
         <Kaart className="flex flex-col py-2">
-          {voorstellen.map((v) => {
-            const stand = standVan(v)
-            return (
-              <div key={v.id} className="border-b border-line px-4 py-3 last:border-0">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{AARDNAAM[v.aard]}</span>
-                    <Pil soort={STAND_KLEUR[stand]}>{STANDNAAM[stand]}</Pil>
-                  </span>
-                  <span className="text-sm text-muted">{korteDatum(v.opgesteld_op)}</span>
-                </div>
-                {samenvatting(v).map((r) => (
-                  <p key={r} className="mt-0.5 text-sm text-muted">
-                    {r}
-                  </p>
-                ))}
-                {v.ingetrokken_op && (
-                  <p className="mt-0.5 text-sm text-muted">
-                    Ingetrokken op {korteDatum(v.ingetrokken_op)}
-                    {v.ingetrokken_reden ? ` — ${v.ingetrokken_reden}` : ''}
-                  </p>
-                )}
-                {!v.ingetrokken_op && (
-                  <button
-                    type="button"
-                    className="mt-1 text-sm text-muted underline hover:text-text"
-                    onClick={() => intrekken.mutate({ id: v.id })}
-                  >
-                    intrekken
-                  </button>
-                )}
-              </div>
-            )
-          })}
+          {voorstellen.map((v) => (
+            <Regel key={v.id} v={v} persoon={persoon} intrekken={intrekken} />
+          ))}
         </Kaart>
       )}
 
@@ -360,8 +544,7 @@ export function Voorstellen({ persoon }: { persoon: Persoon }) {
 
       <p className="flex items-start gap-2 text-sm text-muted">
         <FileText className="mt-0.5 size-4 shrink-0" aria-hidden />
-        Versturen komt samen met het scherm waar de medewerker het voorstel ziet. Tot die tijd kun
-        je het hier opstellen en nakijken.
+        Het loonbureau maakt het contract. Dit is wat je aanbiedt, niet wat er getekend is.
       </p>
     </section>
   )

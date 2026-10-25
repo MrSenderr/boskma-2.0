@@ -12,9 +12,12 @@ import {
   magVerstuurd,
   metVasteUren,
   metVerlenging,
+  herinnering,
+  openstaand,
   samenvatting,
   schoonVoorstel,
   standVan,
+  wachtOpMedewerker,
   vulVoorstelIn,
   type Voorstel,
 } from './contractvoorstellen'
@@ -350,5 +353,97 @@ describe('de stand van een voorstel', () => {
     expect(standVan(v({ verstuurd_op: 'x', keuze_verlenging: 'akkoord', ingetrokken_op: 'z' }))).toBe(
       'ingetrokken',
     )
+  })
+})
+
+describe('wat er nog van de medewerker moet komen', () => {
+  const v = (anders: Partial<Voorstel>): Voorstel =>
+    ({
+      id: 'v1',
+      aard: 'verlengen',
+      uiterlijk: '2026-11-30',
+      verstuurd_op: '2026-10-20T10:00:00Z',
+      ingetrokken_op: null,
+      geopend_op: null,
+      ontvangst_bevestigd_op: null,
+      keuze_verlenging: null,
+      keuze_vaste_uren: null,
+      op_papier: false,
+      ...anders,
+    }) as Voorstel
+
+  it('vraagt alleen om de antwoorden die bij de aard horen', () => {
+    expect(openstaand(v({ aard: 'verlengen' }))).toEqual({ verlenging: true, vasteUren: false })
+    expect(openstaand(v({ aard: 'vaste_uren' }))).toEqual({ verlenging: false, vasteUren: true })
+    expect(openstaand(v({ aard: 'stoppen' }))).toEqual({ verlenging: false, vasteUren: false })
+    expect(openstaand(v({ aard: 'verlengen_en_vaste_uren' }))).toEqual({
+      verlenging: true,
+      vasteUren: true,
+    })
+  })
+
+  /* Bij stoppen valt er niets te kiezen; dan is het bevestigen van de ontvangst
+     het hele antwoord. Zou de app blijven wachten op een keuze, dan stond er
+     tot in het oneindige een seintje. */
+  it('is bij stoppen klaar zodra de ontvangst is bevestigd', () => {
+    expect(wachtOpMedewerker(v({ aard: 'stoppen' }))).toBe(true)
+    expect(
+      wachtOpMedewerker(v({ aard: 'stoppen', ontvangst_bevestigd_op: '2026-10-21T10:00:00Z' })),
+    ).toBe(false)
+  })
+
+  it('wacht bij verlengen ook na de bevestiging nog op de keuze', () => {
+    const bevestigd = v({ ontvangst_bevestigd_op: '2026-10-21T10:00:00Z' })
+    expect(wachtOpMedewerker(bevestigd)).toBe(true)
+    expect(wachtOpMedewerker({ ...bevestigd, keuze_verlenging: 'akkoord' })).toBe(false)
+  })
+
+  it('wacht niet op een concept of op iets wat is ingetrokken', () => {
+    expect(wachtOpMedewerker(v({ verstuurd_op: null }))).toBe(false)
+    expect(wachtOpMedewerker(v({ ingetrokken_op: '2026-10-22T10:00:00Z' }))).toBe(false)
+  })
+})
+
+describe('het seintje dat een voorstel blijft liggen', () => {
+  const v = (anders: Partial<Voorstel> = {}): Voorstel =>
+    ({
+      id: 'v1',
+      aard: 'verlengen',
+      uiterlijk: '2026-11-30',
+      verstuurd_op: '2026-10-20T10:00:00Z',
+      ingetrokken_op: null,
+      ontvangst_bevestigd_op: null,
+      op_papier: false,
+      ...anders,
+    }) as Voorstel
+
+  it('zwijgt zolang er nog ruim tijd is', () => {
+    expect(herinnering(v(), '2026-10-25')).toBeNull()
+  })
+
+  it('komt twee weken vooraf, en wordt een week vooraf dringend', () => {
+    expect(herinnering(v(), '2026-11-16')).toEqual({ dagen: 14, dringend: false })
+    expect(herinnering(v(), '2026-11-23')).toEqual({ dagen: 7, dringend: true })
+  })
+
+  /* Over de datum heen blijft het staan. De aanzegging is dan te laat en dat
+     wordt niet minder waar door het weg te halen. */
+  it('blijft staan als de datum voorbij is', () => {
+    expect(herinnering(v(), '2026-12-05')).toEqual({ dagen: -5, dringend: true })
+  })
+
+  it('zwijgt zodra hij het gelezen heeft of het op papier is gegaan', () => {
+    expect(herinnering(v({ ontvangst_bevestigd_op: '2026-10-21T10:00:00Z' }), '2026-11-23')).toBeNull()
+    expect(herinnering(v({ op_papier: true }), '2026-11-23')).toBeNull()
+  })
+
+  it('zwijgt bij een concept en bij een ingetrokken voorstel', () => {
+    expect(herinnering(v({ verstuurd_op: null }), '2026-11-23')).toBeNull()
+    expect(herinnering(v({ ingetrokken_op: '2026-10-22T10:00:00Z' }), '2026-11-23')).toBeNull()
+  })
+
+  // Zonder uiterlijke datum valt er niets af te tellen.
+  it('zwijgt zonder uiterlijke datum', () => {
+    expect(herinnering(v({ uiterlijk: null }), '2026-11-23')).toBeNull()
   })
 })
