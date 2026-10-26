@@ -9,7 +9,6 @@ import { Personeel } from './pages/Personeel'
 import { Kim } from './pages/Kim'
 import { Kas } from './pages/Kas'
 import { Inkoop } from './pages/Inkoop'
-import { InkoopBestellen } from './pages/InkoopBestellen'
 import { InkoopDocumenten } from './pages/InkoopDocumenten'
 import { InkoopFactuur } from './pages/InkoopFactuur'
 import { InkoopPrijsmutaties } from './pages/InkoopPrijsmutaties'
@@ -106,7 +105,6 @@ function Poort() {
               zelf — daar staat het overzicht al, dus hier geen tweede pagina
               die hetzelfde zegt. */}
           <Route index element={<Navigate to="prijzen" replace />} />
-          <Route path="bestellen" element={<InkoopBestellen />} />
           <Route path="documenten" element={<InkoopDocumenten />} />
           <Route path="documenten/:levId/:nummer" element={<InkoopFactuur />} />
           <Route path="prijzen" element={<InkoopPrijsmutaties />} />
