@@ -326,3 +326,44 @@ export function onderbouwingVan(g: Gemiddelde | undefined | null): Onderbouwing 
     maandenGedekt: g.maandenGedekt,
   }
 }
+
+/* ------------------------------------------------- ervaring voor vakkracht --- */
+
+/* Hoeveel uur iemand sinds zijn achttiende verjaardag heeft gewerkt.
+ *
+ * Voor de vraag of iemand vakkracht is: de cao noemt 1.976 uur ervaring in
+ * dezelfde functie, opgebouwd ná het achttiende jaar.
+ *
+ * Dit getal is met opzet géén antwoord op die vraag, alleen een geheugensteun.
+ * Het telt wat er bij Boskma is geschreven, en dat begint pas in 2026. Uren
+ * bij een vorige werkgever tellen volgens de cao gewoon mee maar staan hier
+ * niet in, dus het werkelijke aantal is altijd minstens dit en meestal meer.
+ * Daarom staat er in het scherm bij wat eronder valt. */
+export function useErvaringsuren(
+  medewerkerId: string | null | undefined,
+  geboortedatum: string | null | undefined,
+) {
+  const achttien = geboortedatum ? plusMaanden(geboortedatum.slice(0, 10), 18 * 12) : null
+  return useQuery({
+    queryKey: ['ervaringsuren', medewerkerId, achttien],
+    enabled: Boolean(medewerkerId && achttien),
+    queryFn: async (): Promise<{ uren: number; vanaf: string; sinds: string | null }> => {
+      const { data, error } = await supabase
+        .from('gewerkte_uren')
+        .select('datum,minuten,soort')
+        .eq('medewerker_id', medewerkerId as string)
+        .gte('datum', achttien as string)
+      if (error) throw new Error(error.message)
+
+      const regels = (data ?? []) as { datum: string; minuten: number | null; soort: string | null }[]
+      const meetellend = regels.filter((r) => telMee(r.soort))
+      const minuten = meetellend.reduce((s, r) => s + (r.minuten ?? 0), 0)
+      const dagen = meetellend.map((r) => r.datum).sort()
+      return {
+        uren: Math.round(minuten / 60),
+        vanaf: achttien as string,
+        sinds: dagen[0] ?? null,
+      }
+    },
+  })
+}

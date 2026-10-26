@@ -60,16 +60,15 @@ function Keuze<T extends string>({
 }
 
 function Formulier({
-  persoonId,
-  geboortedatum,
+  persoon,
   begin,
   onKlaar,
 }: {
-  persoonId: string
-  geboortedatum: string | null | undefined
+  persoon: Persoon
   begin: Partial<Contract>
   onKlaar: () => void
 }) {
+  const persoonId = persoon.id
   const [c, setC] = useState<Partial<Contract>>({
     werkgever: 'boskma',
     soort: 'nuluren',
@@ -153,7 +152,7 @@ function Formulier({
         <Uurloonveld
           waarde={c.uurloon}
           onVeranderd={(v) => setC({ ...c, uurloon: v })}
-          geboortedatum={geboortedatum}
+          persoon={persoon}
           opDatum={c.begint}
         />
         <Veld
@@ -414,7 +413,7 @@ export function Contracten({ persoon }: { persoon: Persoon }) {
       )}
 
       {bewerkt ? (
-        <Formulier persoonId={persoon.id} geboortedatum={persoon.geboortedatum} begin={bewerkt} onKlaar={() => setBewerkt(null)} />
+        <Formulier persoon={persoon} begin={bewerkt} onKlaar={() => setBewerkt(null)} />
       ) : (
         <Knop soort="rustig" className="w-fit" onClick={() => setBewerkt({})}>
           <Plus className="size-4" aria-hidden />

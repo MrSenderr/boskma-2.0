@@ -443,7 +443,7 @@ function Opstellen({
           <Uurloonveld
             waarde={v.uurloon}
             onVeranderd={(bedrag) => setV({ ...v, uurloon: bedrag })}
-            geboortedatum={persoon.geboortedatum}
+            persoon={persoon}
             opDatum={v.begint}
           />
           <Veld

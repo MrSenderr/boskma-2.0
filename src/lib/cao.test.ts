@@ -6,7 +6,15 @@
  * arbeidsovereenkomst. */
 
 import { describe, expect, it } from 'vitest'
-import { caoUurloon, euro, leeftijdOp, onderCao, tabelOp } from './cao'
+import {
+  caoUurloon,
+  euro,
+  isVakkracht,
+  leeftijdOp,
+  onderCao,
+  tabelOp,
+  vakkrachtDoetErtoe,
+} from './cao'
 
 describe('leeftijd op een bepaalde dag', () => {
   it('telt het jaar pas mee vanaf de verjaardag', () => {
@@ -100,5 +108,68 @@ describe('bedragen opschrijven', () => {
     expect(euro(8.24)).toBe('€ 8,24')
     expect(euro(14.99)).toBe('€ 14,99')
     expect(euro(5)).toBe('€ 5,00')
+  })
+})
+
+/* De tweede bodem: vakkracht of niet.
+ *
+ * Dit is waar het geld zit. Bij achttien scheelt het meer dan twee euro per
+ * uur, en wie het verkeerd zet betaalt een jaar lang te weinig of te veel. */
+describe('vakkracht', () => {
+  const op = '2026-10-26'
+
+  it('kent de drie tredes waar het om gaat', () => {
+    expect(caoUurloon('2008-03-01', op, true)?.bedrag).toBe(11.99) // 18
+    expect(caoUurloon('2007-03-01', op, true)?.bedrag).toBe(13.49) // 19
+    expect(caoUurloon('2006-03-01', op, true)?.bedrag).toBe(14.99) // 20
+  })
+
+  /* Onder de achttien bestaat een vakkracht niet. Dan hoort de app te zwijgen
+     in plaats van het bedrag van een achttienjarige te noemen. */
+  it('bestaat niet onder de achttien', () => {
+    expect(caoUurloon('2010-03-01', op, true)).toBeNull()
+  })
+
+  it('maakt vanaf eenentwintig geen verschil meer', () => {
+    expect(caoUurloon('2005-03-01', op, true)?.bedrag).toBe(14.99)
+    expect(caoUurloon('2005-03-01', op, false)?.bedrag).toBe(14.99)
+  })
+
+  /* De vraag alleen stellen waar hij iets oplevert. Bij Kate van zestien en
+     bij Ilona van eenenveertig is het geen voorzichtigheid maar ruis. */
+  it('doet er alleen toe bij 18, 19 en 20', () => {
+    expect(vakkrachtDoetErtoe('2010-03-01', op)).toBe(false) // 16
+    expect(vakkrachtDoetErtoe('2009-03-01', op)).toBe(false) // 17
+    expect(vakkrachtDoetErtoe('2008-03-01', op)).toBe(true) // 18
+    expect(vakkrachtDoetErtoe('2006-03-01', op)).toBe(true) // 20
+    expect(vakkrachtDoetErtoe('2005-03-01', op)).toBe(false) // 21
+    expect(vakkrachtDoetErtoe('1985-01-03', op)).toBe(false) // 41
+  })
+
+  it('meldt te laag tegen de bodem die bij deze persoon hoort', () => {
+    const geboren = '2008-03-01' // 18 jaar
+    expect(onderCao(10, geboren, op, false)).toBeNull()
+    expect(onderCao(10, geboren, op, true)?.bedrag).toBe(11.99)
+  })
+})
+
+describe('vanaf wanneer iemand vakkracht is', () => {
+  it('telt niet mee vóór de dag waarop het inging', () => {
+    const p = { vakkracht: 'diploma', vakkracht_sinds: '2026-09-01' }
+    expect(isVakkracht(p, '2026-08-31')).toBe(false)
+    expect(isVakkracht(p, '2026-09-01')).toBe(true)
+  })
+
+  /* Zonder datum geldt het gewoon. Dat is het geval van iemand die al jaren
+     een diploma heeft en bij wie niemand meer weet sinds wanneer. */
+  it('geldt zonder datum altijd', () => {
+    expect(isVakkracht({ vakkracht: 'ervaring', vakkracht_sinds: null }, '2020-01-01')).toBe(true)
+  })
+
+  /* Leeg is onbekend en "nee" is beantwoord. Allebei leveren ze dezelfde
+     bodem op, maar het scherm moet er iets anders mee doen. */
+  it('rekent zowel bij nee als bij onbekend met de gewone staffel', () => {
+    expect(isVakkracht({ vakkracht: 'nee' }, '2026-10-26')).toBe(false)
+    expect(isVakkracht({ vakkracht: null }, '2026-10-26')).toBe(false)
   })
 })

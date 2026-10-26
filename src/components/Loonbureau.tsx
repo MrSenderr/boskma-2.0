@@ -265,7 +265,7 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
           <Uurloonveld
             waarde={loon}
             onVeranderd={setLoon}
-            geboortedatum={p.geboortedatum}
+            persoon={p}
             opDatum={p.ingangsdatum}
             onKlaar={(v) => {
               if (v !== p.uurloon) wijzig.mutate({ uurloon: v })

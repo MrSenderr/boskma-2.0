@@ -10,11 +10,14 @@
  * "Lonen niet-vakkrachten en BBL-studenten", functiegroep I+II, kolom "per
  * arbeidsuur". Te vinden op khn.nl onder de loontabellen bij de horeca-cao.
  *
+ * TWEE BODEMS VANAF ACHTTIEN
+ * Een vakkracht heeft recht op het basisloon van zijn functiegroep, wie dat
+ * niet is valt onder de lagere staffel. Bij 18 jaar scheelt dat € 9,74 tegen
+ * € 11,99, bij 19 € 11,24 tegen € 13,49, bij 20 € 12,74 tegen € 14,99. Vanaf
+ * 21 lopen ze weer gelijk en doet het onderscheid er niet meer toe; onder de
+ * 18 bestaat een vakkracht niet.
+ *
  * WAT DEZE TABEL NIET WEET
- * — Een vakkracht (met horecadiploma of genoeg ervaring) heeft een hógere
- *   bodem: € 11,99 bij 18 jaar, € 13,49 bij 19, € 14,99 vanaf 20. De app weet
- *   niet wie vakkracht is, dus hij rekent met de gewone tabel. Voor iemand die
- *   wél vakkracht is ligt het werkelijke minimum dus hoger dan hier staat.
  * — Functiegroep V en hoger. Boskma kent twee functies: "Medewerker
  *   fastservice I" staat in de app als groep 2 en "II" als groep 3 — dus
  *   functiegroep II en III, niet alleen I+II. Dat mag hier samenvallen omdat
@@ -44,12 +47,14 @@ export type Loontabel = {
   bron: string
   /** Uurloon per leeftijd. De hoogste sleutel geldt ook voor alles erboven. */
   perLeeftijd: Record<number, number>
+  /** Hetzelfde voor wie vakkracht is. Begint bij 18; daaronder bestaat het niet. */
+  vakkrachtPerLeeftijd: Record<number, number>
 }
 
 export const TABELLEN: Loontabel[] = [
   {
     vanaf: '2026-07-01',
-    bron: 'KHN-loontabel per 1 juli 2026, niet-vakkrachten functiegroep I+II',
+    bron: 'KHN-loontabel per 1 juli 2026, functiegroep I+II',
     perLeeftijd: {
       15: 5.25,
       16: 6.75,
@@ -59,8 +64,41 @@ export const TABELLEN: Loontabel[] = [
       20: 12.74,
       21: 14.99,
     },
+    /* "Basislonen vakkrachten per uur" uit diezelfde tabel: 80% bij 18 jaar,
+       90% bij 19, en vanaf 20 het hele basisloon. Onder de 18 staat er niets,
+       want dan kun je geen vakkracht zijn. */
+    vakkrachtPerLeeftijd: {
+      18: 11.99,
+      19: 13.49,
+      20: 14.99,
+    },
   },
 ]
+
+/** Hoeveel uur ervaring na je achttiende je vakkracht maakt. */
+export const VAKKRACHT_UREN = 1976
+
+export type Vakkracht = 'nee' | 'diploma' | 'ervaring'
+
+export const VAKKRACHT_REDEN: Record<Vakkracht, string> = {
+  nee: 'Geen vakkracht',
+  diploma: 'Vakkracht — erkend vakdiploma',
+  ervaring: `Vakkracht — ${VAKKRACHT_UREN.toLocaleString('nl-NL')} uur ervaring`,
+}
+
+/* Gold deze persoon op die dag als vakkracht?
+ *
+ * De dag doet ertoe. Wie in maart zijn diploma haalde was in februari nog
+ * geen vakkracht, en een contract uit januari hoort niet met terugwerkende
+ * kracht tegen de hogere bodem te worden gelezen. */
+export function isVakkracht(
+  p: { vakkracht?: string | null; vakkracht_sinds?: string | null },
+  opDatum: string,
+): boolean {
+  if (!p.vakkracht || p.vakkracht === 'nee') return false
+  if (!p.vakkracht_sinds) return true
+  return p.vakkracht_sinds.slice(0, 10) <= opDatum.slice(0, 10)
+}
 
 /** De tabel die op deze dag gold. Null als die dag vóór de oudste tabel ligt. */
 export function tabelOp(datum: string): Loontabel | null {
@@ -96,6 +134,7 @@ export type CaoLoon = {
 export function caoUurloon(
   geboortedatum: string | null | undefined,
   opDatum: string,
+  vakkracht = false,
 ): CaoLoon | null {
   if (!geboortedatum) return null
   const tabel = tabelOp(opDatum)
@@ -103,17 +142,34 @@ export function caoUurloon(
   const leeftijd = leeftijdOp(geboortedatum, opDatum)
   if (leeftijd === null) return null
 
-  const leeftijden = Object.keys(tabel.perLeeftijd).map(Number).sort((a, b) => a - b)
+  const staffel = vakkracht ? tabel.vakkrachtPerLeeftijd : tabel.perLeeftijd
+  const leeftijden = Object.keys(staffel).map(Number).sort((a, b) => a - b)
   const jongste = leeftijden[0]
   const oudste = leeftijden[leeftijden.length - 1]
 
   /* Onder de jongste trede zegt de cao niets. Dat is geen reden om maar iets
      te noemen: onder de vijftien hoort er een heel ander gesprek te worden
-     gevoerd dan over een uurtarief. */
+     gevoerd dan over een uurtarief, en onder de achttien bestaat een
+     vakkracht niet. */
   if (leeftijd < jongste) return null
 
   const trede = Math.min(leeftijd, oudste)
-  return { bedrag: tabel.perLeeftijd[trede], leeftijd, tabel }
+  return { bedrag: staffel[trede], leeftijd, tabel }
+}
+
+/* Doet het ertoe of deze persoon vakkracht is?
+ *
+ * Alleen bij 18, 19 en 20. Daaronder bestaat een vakkracht niet, daarboven
+ * zijn de twee bodems gelijk. De vraag stellen bij een zestienjarige of bij
+ * Ilona van 41 is dus niet voorzichtig maar verwarrend. */
+export function vakkrachtDoetErtoe(
+  geboortedatum: string | null | undefined,
+  opDatum: string,
+): boolean {
+  if (!geboortedatum) return false
+  const gewoon = caoUurloon(geboortedatum, opDatum, false)
+  const vak = caoUurloon(geboortedatum, opDatum, true)
+  return gewoon !== null && vak !== null && gewoon.bedrag !== vak.bedrag
 }
 
 /** Ligt dit bedrag onder wat de cao voorschrijft? */
@@ -121,9 +177,10 @@ export function onderCao(
   uurloon: number | null | undefined,
   geboortedatum: string | null | undefined,
   opDatum: string,
+  vakkracht = false,
 ): CaoLoon | null {
   if (uurloon === null || uurloon === undefined || !Number.isFinite(uurloon)) return null
-  const cao = caoUurloon(geboortedatum, opDatum)
+  const cao = caoUurloon(geboortedatum, opDatum, vakkracht)
   /* Een halve cent speling. Een tabel van € 8,24 tegenover een contract van
      € 8,2399 is geen onderbetaling maar een afronding, en een melding daarover
      leert je alleen om meldingen weg te klikken. */

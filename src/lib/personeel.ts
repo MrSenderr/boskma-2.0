@@ -12,7 +12,8 @@ const KAART_VELDEN =
   LIJST_VELDEN +
   ',geboortedatum,telefoonnummer,email,motivatie,onboarding_data,' +
   'voorletters,tussenvoegsel,' +
-  'contracttype,contractduur,contracturen,uren_min,uren_max,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau'
+  'contracttype,contractduur,contracturen,uren_min,uren_max,functie,ingangsdatum,einddatum,uurloon,proefperiode,contract_door_loonbureau,' +
+  'vakkracht,vakkracht_sinds'
 
 export type Fase = 'sollicitant' | 'medewerker'
 
@@ -40,6 +41,11 @@ export type Persoon = {
   in_dienst_sinds: string | null
   // alleen op de kaart
   geboortedatum?: string | null
+  /* Vakkracht volgens de horeca-cao; zie lib/cao.ts. Leeg is onbekend, en dat
+     is iets anders dan 'nee': bij onbekend hoort het scherm de vraag nog te
+     stellen. */
+  vakkracht?: 'nee' | 'diploma' | 'ervaring' | null
+  vakkracht_sinds?: string | null
   telefoonnummer?: string | null
   email?: string | null
   motivatie?: string | null
