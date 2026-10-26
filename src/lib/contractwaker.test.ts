@@ -225,6 +225,29 @@ describe('verjaardag', () => {
     expect(signalenVoor(p, vast, '2026-12-25')[0].wat).toBe('Wordt 19 — uurloon nakijken')
   })
 
+  /* Het geval van Dylan Cornelissen. Hij is vijftien en staat op € 5,25 —
+     precies de cao voor die leeftijd. Op zijn zestiende verjaardag is dat
+     bedrag ineens te laag, en dat hoort het seintje te zeggen in plaats van
+     "uurloon nakijken". */
+  it('noemt het bedrag als het straks onder de cao komt', () => {
+    const p = persoon({ geboortedatum: '2011-01-14' })
+    const laag = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null, uurloon: 5.25 })]
+    const [s] = signalenVoor(p, laag, '2027-01-05')
+    expect(s.wat).toBe('Wordt 16 — € 5,25 is dan onder de cao, die staat op € 6,75')
+    expect(s.ernst).toBe('fout')
+  })
+
+  /* Boven de achttien betaalt Boskma ruim boven de cao. Dan is een verjaardag
+     geen loonkwestie, en hoort er geen rood seintje te staan over een bedrag
+     dat allang hoog genoeg is. */
+  it('houdt het rustig als er al boven de cao wordt betaald', () => {
+    const p = persoon({ geboortedatum: '2008-01-03' })
+    const ruim = [contract({ soort: 'vaste_uren', duur: 'onbepaalde', eindigt: null, uurloon: 13.49 })]
+    const [s] = signalenVoor(p, ruim, '2026-12-25')
+    expect(s.wat).toBe('Wordt 19 — uurloon nakijken')
+    expect(s.ernst).toBe('letop')
+  })
+
   it('zwijgt vanaf 22', () => {
     expect(signalenVoor(persoon({ geboortedatum: '2004-11-05' }), vast, '2026-11-01')).toHaveLength(0)
   })

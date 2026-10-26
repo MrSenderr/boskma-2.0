@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from './supabase'
 import { naamVan, type Persoon } from './personeel'
 import { dagenTussen, plusMaanden, vandaagIso } from './datums'
+import { caoUurloon, euro } from './cao'
 import { KETEN_MAX_CONTRACTEN, ketenVan, lopendContract, looptOp, type Contract } from './contracten'
 import { aanbodWachtOpVerlenging, herinnering, type Voorstel } from './contractvoorstellen'
 import { klaarVoorLoonbureau } from './contractverzoek'
@@ -323,13 +324,27 @@ export function signalenVoor(
       if (tot < 0 || tot > VOORUIT.verjaardag) continue
       if (leeftijd < 16 || leeftijd > 21) continue
       const extra = leeftijd === 16 || leeftijd === 18 ? ' en werktijden' : ''
+      /* "Uurloon nakijken" laat je zelf opzoeken wat er dan hoort te staan.
+         De app kan dat uitrekenen, dus hoort hij het te zeggen — en vooral of
+         er iets aan de hand is. Boskma betaalt boven de achttien ruim boven de
+         cao; dan is een verjaardag geen loonkwestie en hoeft het seintje daar
+         niet over te gaan. Blijft het huidige bedrag straks ónder de cao, dan
+         is het dat wel, en dan staat het rood. */
+      const straks = caoUurloon(geb, dag)
+      const nu = huidig?.uurloon === null || huidig?.uurloon === undefined
+        ? null
+        : Number(huidig.uurloon)
+      const wordtTeLaag =
+        straks !== null && nu !== null && Number.isFinite(nu) && nu < straks.bedrag - 0.005
       uit.push({
         ...basis,
         soort: 'verjaardag',
-        wat: `Wordt ${leeftijd} — uurloon${extra} nakijken`,
+        wat: wordtTeLaag
+          ? `Wordt ${leeftijd} — ${euro(nu)} is dan onder de cao, die staat op ${euro(straks.bedrag)}`
+          : `Wordt ${leeftijd} — uurloon${extra} nakijken`,
         uiterlijk: dag,
         dagen: tot,
-        ernst: 'letop',
+        ernst: wordtTeLaag ? 'fout' : 'letop',
       })
     }
   }

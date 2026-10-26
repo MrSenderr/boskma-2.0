@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Building2, Check, FileText, Pencil, Send, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
+import { Uurloonveld } from './Uurloon'
 import {
   CONTRACTTYPES,
   FUNCTIES,
@@ -179,6 +180,13 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
   }
 
   const [voorbeeld, setVoorbeeld] = useState<string | null>(null)
+  /* Het uurloon staat hier in het scherm en niet rechtstreeks in de database:
+     het veld vult zichzelf met het cao-bedrag, en dat hoort pas vast te staan
+     als je het veld verlaat. Bij elke toetsaanslag bewaren zou van "8" een
+     opgeslagen bedrag van acht euro maken terwijl je ",24" nog moest typen. */
+  const [loon, setLoon] = useState<number | null>(
+    p.uurloon === null || p.uurloon === undefined ? null : Number(p.uurloon),
+  )
 
   return (
     <section className="flex flex-col gap-3">
@@ -254,14 +262,12 @@ export function Loonbureau({ persoon: p }: { persoon: Persoon }) {
             opties={FUNCTIES.map((f) => ({ waarde: f.naam, label: `${f.naam} (groep ${f.groep})` }))}
             onKies={(v) => wijzig.mutate({ functie: v })}
           />
-          <Veld
-            label="Uurloon bruto"
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            defaultValue={p.uurloon ?? ''}
-            onBlur={(e) => {
-              const v = e.target.value === '' ? null : Number(e.target.value)
+          <Uurloonveld
+            waarde={loon}
+            onVeranderd={setLoon}
+            geboortedatum={p.geboortedatum}
+            opDatum={p.ingangsdatum}
+            onKlaar={(v) => {
               if (v !== p.uurloon) wijzig.mutate({ uurloon: v })
             }}
           />

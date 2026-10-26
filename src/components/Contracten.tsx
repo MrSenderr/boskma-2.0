@@ -3,6 +3,7 @@ import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
 import { korteDatum, type Persoon } from '../lib/personeel'
 import { useGemiddeldeUren } from '../lib/gewerkteUren'
+import { Uurloonveld } from './Uurloon'
 import {
   KETEN_MAX_CONTRACTEN,
   SOORTNAAM,
@@ -60,10 +61,12 @@ function Keuze<T extends string>({
 
 function Formulier({
   persoonId,
+  geboortedatum,
   begin,
   onKlaar,
 }: {
   persoonId: string
+  geboortedatum: string | null | undefined
   begin: Partial<Contract>
   onKlaar: () => void
 }) {
@@ -147,12 +150,11 @@ function Formulier({
             />
           </>
         )}
-        <Veld
-          label="Uurloon bruto"
-          type="number"
-          step="0.01"
-          value={String(c.uurloon ?? '')}
-          onChange={(e) => setC({ ...c, uurloon: e.target.value === '' ? null : Number(e.target.value) })}
+        <Uurloonveld
+          waarde={c.uurloon}
+          onVeranderd={(v) => setC({ ...c, uurloon: v })}
+          geboortedatum={geboortedatum}
+          opDatum={c.begint}
         />
         <Veld
           label="Functie"
@@ -412,7 +414,7 @@ export function Contracten({ persoon }: { persoon: Persoon }) {
       )}
 
       {bewerkt ? (
-        <Formulier persoonId={persoon.id} begin={bewerkt} onKlaar={() => setBewerkt(null)} />
+        <Formulier persoonId={persoon.id} geboortedatum={persoon.geboortedatum} begin={bewerkt} onKlaar={() => setBewerkt(null)} />
       ) : (
         <Knop soort="rustig" className="w-fit" onClick={() => setBewerkt({})}>
           <Plus className="size-4" aria-hidden />

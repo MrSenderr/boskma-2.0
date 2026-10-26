@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Building2, FileText, Info, Plus, Send, X } from 'lucide-react'
 import { Kaart, Knop, Kopje, Pil, Veld } from './ui'
+import { Uurloonveld } from './Uurloon'
 import { korteDatum, naamVan, type Persoon } from '../lib/personeel'
 import {
   ketenVan,
@@ -439,14 +440,11 @@ function Opstellen({
               />
             </>
           )}
-          <Veld
-            label="Uurloon bruto"
-            type="number"
-            step="0.01"
-            value={String(v.uurloon ?? '')}
-            onChange={(e) =>
-              setV({ ...v, uurloon: e.target.value === '' ? null : Number(e.target.value) })
-            }
+          <Uurloonveld
+            waarde={v.uurloon}
+            onVeranderd={(bedrag) => setV({ ...v, uurloon: bedrag })}
+            geboortedatum={persoon.geboortedatum}
+            opDatum={v.begint}
           />
           <Veld
             label="Functie"
