@@ -208,6 +208,63 @@ describe('geen contract vastgelegd', () => {
     const p = persoon({ geboortedatum: '2010-11-05' })
     expect(signalenVoor(p, [], '2026-10-25')).toHaveLength(1)
   })
+
+  /* Het geval van Nathal van Beurden. Het verzoek ging 's ochtends naar het
+     loonbureau en 's middags stond er nog steeds "geen contract vastgelegd" —
+     een zin die je aanspoort tot iets wat je al hebt gedaan. */
+  it('zegt dat je op het loonbureau wacht, en zegt dat rustig', () => {
+    const p = persoon({
+      contract_door_loonbureau: true,
+      loonbureau_verstuurd_op: '2026-10-26T08:21:15Z',
+    })
+    const [s] = signalenVoor(p, [], '2026-10-26')
+    expect(s.wat).toBe('Wacht op het contract van het loonbureau')
+    expect(s.ernst).toBe('neutraal')
+    expect(s.pil).toBe('bij loonbureau')
+  })
+
+  /* En het dringt niet voor. Een grijs "ik wacht" hoort onder een aanzegging
+     te staan die over drie dagen de deur uit moet. */
+  it('dringt niet voor op iets dat eerder moet', () => {
+    const wachtend = persoon({
+      id: 'wacht',
+      voornaam: 'Nathal',
+      contract_door_loonbureau: true,
+      loonbureau_verstuurd_op: '2026-10-26T08:21:15Z',
+    })
+    const [s] = signalenVoor(wachtend, [], '2026-10-26')
+    expect(s.dagen).toBeGreaterThan(3)
+  })
+
+  /* Maar niet eindeloos rustig. Blijft het contract weg, dan is stilte iets
+     om achteraan te gaan en hoort het seintje weer op te vallen. */
+  it('wordt na tien dagen wel een herinnering', () => {
+    const p = persoon({
+      contract_door_loonbureau: true,
+      loonbureau_verstuurd_op: '2026-10-01T08:00:00Z',
+    })
+    const [s] = signalenVoor(p, [], '2026-10-26')
+    expect(s.wat).toBe('Loonbureau heeft het contract nog niet gestuurd — 25 dagen geleden gevraagd')
+    expect(s.ernst).toBe('letop')
+    expect(s.pil).toBe('herinneren')
+  })
+
+  /* Het geval van Maartje Bulterman: het loonbureau maakt het contract, maar
+     er is nog niets verstuurd. Dan is er wél iets te doen, en hoort er te
+     staan wat. */
+  it('zegt bij een onverstuurd verzoek wat er nog moet', () => {
+    const p = persoon({ contract_door_loonbureau: true })
+    const [s] = signalenVoor(p, [], '2026-10-26')
+    expect(s.wat).toBe('Nog geen contract — het verzoek is nog niet naar het loonbureau')
+    expect(s.ernst).toBe('letop')
+  })
+
+  /* Maak je het contract zelf, dan is er niets om op te wachten en blijft de
+     oude tekst staan. */
+  it('houdt de oude tekst aan als jij het contract zelf maakt', () => {
+    const [s] = signalenVoor(persoon({ contract_door_loonbureau: false }), [], '2026-10-26')
+    expect(s.wat).toBe('Geen contract vastgelegd — de app kan niets rekenen')
+  })
 })
 
 describe('verjaardag', () => {

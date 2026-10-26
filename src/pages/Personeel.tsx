@@ -168,7 +168,13 @@ function Regel({
             onleesbaar, en dat is juist de regel waar het om gaat. */}
         {signaal && (
           <span
-            className={`block text-sm ${signaal.ernst === 'fout' ? 'text-bad' : 'text-warn'}`}
+            className={`block text-sm ${
+              signaal.ernst === 'fout'
+                ? 'text-bad'
+                : signaal.ernst === 'neutraal'
+                  ? 'text-muted'
+                  : 'text-warn'
+            }`}
           >
             {signaal.wat}
           </span>

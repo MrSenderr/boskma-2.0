@@ -66,7 +66,10 @@ const ISO = /^\d{4}-\d{2}-\d{2}/
    contract getekend en vastgelegd is — weken waarin je elke dag ziet dat je
    iets moet doen wat je al hebt gedaan. */
 
-export type Ernst = 'fout' | 'letop'
+/* 'neutraal' is er sinds 26 oktober 2026, voor het geval dat je niets kúnt
+   doen: wachten op een contract dat het loonbureau opstelt. Dat hoort te
+   blijken, maar niet in dezelfde kleur als iets dat van jou wordt verwacht. */
+export type Ernst = 'fout' | 'letop' | 'neutraal'
 
 export type Signaal = {
   persoonId: string
@@ -102,10 +105,16 @@ export type Signaal = {
 
 /** Velden die de waker nodig heeft — geen onboarding_data. */
 const WAKER_VELDEN =
-  'id,voornaam,achternaam,status,fase,uit_dienst_op,is_eigenaar,geboortedatum,in_dienst_sinds'
+  'id,voornaam,achternaam,status,fase,uit_dienst_op,is_eigenaar,geboortedatum,in_dienst_sinds,' +
+  // Voor het onderscheid tussen "jij moet nog iets doen" en "je wacht op het
+  // loonbureau". Zonder deze twee zien die twee er hetzelfde uit.
+  'loonbureau_verstuurd_op,contract_door_loonbureau'
 
-/** De velden van een contract die de waker gebruikt. */
-const CONTRACT_VELDEN = 'id,medewerker_id,werkgever,soort,duur,begint,eindigt,beeindigd_op'
+/* De velden van een contract die de waker gebruikt. uurloon hoort erbij sinds
+   het verjaardagsseintje kan zeggen of het bedrag straks onder de cao zakt;
+   zonder dat veld blijft dat seintje altijd op de algemene tekst staan. */
+const CONTRACT_VELDEN =
+  'id,medewerker_id,werkgever,soort,duur,begint,eindigt,beeindigd_op,uurloon'
 
 /** De velden van een voorstel die de waker gebruikt. */
 const VOORSTEL_VELDEN =
@@ -123,6 +132,10 @@ const VOORUIT = {
 }
 /** Binnen zoveel dagen wordt het rood. */
 const DRINGEND = 7
+
+/* Hoe lang je het loonbureau rustig zijn werk laat doen. Een contract maken
+   kost een paar dagen; daarna is stilte iets om achteraan te gaan. */
+const GEDULD = 10
 
 function ernstVan(dagen: number): Ernst {
   return dagen <= DRINGEND ? 'fout' : 'letop'
@@ -181,13 +194,48 @@ export function signalenVoor(
   const uit: Signaal[] = []
   const basis = { persoonId: p.id, naam: naamVan(p) }
 
-  // 1: niets vastgelegd
+  /* 1: niets vastgelegd.
+   *
+   * Drie verschillende situaties die er tot 26 oktober 2026 identiek uitzagen.
+   * Bij Nathal van Beurden stond "Geen contract vastgelegd" terwijl het
+   * verzoek diezelfde ochtend naar het loonbureau was gegaan — een zin die je
+   * aanspoort tot iets wat je al hebt gedaan, en waar je verder niets aan kunt
+   * veranderen. */
   if (contracten.length === 0) {
+    const verstuurd = p.loonbureau_verstuurd_op?.slice(0, 10) ?? null
+
+    // a. Het loonbureau maakt het contract en het verzoek is de deur uit.
+    if (p.contract_door_loonbureau && verstuurd) {
+      const wacht = dagenTussen(verstuurd, vandaag)
+      const lang = wacht > GEDULD
+      return [
+        {
+          ...basis,
+          soort: 'geen_contract',
+          wat: lang
+            ? `Loonbureau heeft het contract nog niet gestuurd — ${wacht} dagen geleden gevraagd`
+            : 'Wacht op het contract van het loonbureau',
+          uiterlijk: verstuurd,
+          /* De lijst staat op volgorde van `dagen`, laag eerst. Zolang je
+             rustig wacht telt dit af naar de dag waarop het een herinnering
+             wordt, zodat het netjes onder de dingen blijft die eerder moeten.
+             Daarna is het wél te laat en hoort het bovenaan. */
+          dagen: lang ? -wacht : GEDULD - wacht,
+          ernst: lang ? 'letop' : 'neutraal',
+          pil: lang ? 'herinneren' : 'bij loonbureau',
+        },
+      ]
+    }
+
+    // b. Het loonbureau zou het maken, maar er is nog niets verstuurd.
+    // c. Je maakt het contract zelf en hebt het nog niet vastgelegd.
     return [
       {
         ...basis,
         soort: 'geen_contract',
-        wat: 'Geen contract vastgelegd — de app kan niets rekenen',
+        wat: p.contract_door_loonbureau
+          ? 'Nog geen contract — het verzoek is nog niet naar het loonbureau'
+          : 'Geen contract vastgelegd — de app kan niets rekenen',
         uiterlijk: vandaag,
         dagen: 0,
         ernst: 'letop',
