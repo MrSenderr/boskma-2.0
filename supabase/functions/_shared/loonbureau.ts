@@ -1,9 +1,11 @@
 /* Wat elke mail naar het loonbureau nodig heeft: het adres, de testmodus en de
  * balk die in testmodus bovenaan staat.
  *
- * stuur-loonbureau heeft deze stukken nog in zijn eigen bestand. Die is
- * goedgekeurd en draait; overzetten kan bij de volgende keer dat hij toch open
- * moet. */
+ * stuur-loonbureau gebruikt sinds 26 oktober 2026 bufNaarBase64 hiervandaan;
+ * zijn eigen kopie ging byte voor byte en liep op het geheugen stuk. De
+ * overige stukken — het adres, de testmodus, de balk — staan daar nog dubbel.
+ * Die draaien en zijn goedgekeurd; overzetten kan bij de volgende keer dat die
+ * functie toch open moet. */
 
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -11,6 +13,19 @@ const SB_SERVICE = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SE
 export const TO_STANDAARD = "info@lbwf.nl";
 export const CC_EMAIL     = "sander@boskmafoodservice.nl";
 export const FROM_EMAIL   = "onboarding@boskmafoodservice.nl";
+
+/* Hoe de afzender in de inbox van het loonbureau komt te staan.
+ *
+ * Het adres blijft onboarding@boskmafoodservice.nl — dat is het adres dat bij
+ * Resend is gecontroleerd en daar mag niet zomaar iets anders staan. Maar een
+ * mail heeft naast het adres ook een naam, en die was leeg. Dan toont Outlook
+ * het adres zelf, en las het loonbureau post over een arbeidscontract als
+ * afkomstig van "onboarding" — alsof er een machine aan de andere kant zit in
+ * plaats van de werkgever.
+ *
+ * Alleen voor post naar het loonbureau. Mail aan een sollicitant of een
+ * medewerker gaat over iets anders en blijft zoals hij was. */
+export const VAN_LOONBUREAU = `"Sander Boskma — Boskma Foodservice" <${FROM_EMAIL}>`;
 
 export const service = { apikey: SB_SERVICE, Authorization: `Bearer ${SB_SERVICE}` };
 
@@ -50,6 +65,15 @@ export function testBalk(echteOntvanger: string) {
   </div>`;
 }
 
+/* Een bestand naar base64, in blokken van tweeëndertigduizend tekens.
+ *
+ * Niet byte voor byte, zoals stuur-loonbureau het tot 26 oktober 2026 deed.
+ * Dat gaat goed bij een kleine PDF, maar een foto van een identiteitsbewijs is
+ * zo drie megabyte, en dan vraagt zo'n lus drie miljoen keer om geheugen.
+ * Nagemeten op een bestand van 3,3 MB: byte voor byte 113 MB en 162 ms, in
+ * blokken nul meetbare megabytes en 73 ms, met hetzelfde resultaat. Met drie
+ * bijlagen liep de functie zo tegen de geheugengrens aan en kreeg je in de app
+ * alleen "Edge Function returned a non-2xx status code" te zien. */
 export function bufNaarBase64(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let bin = "";

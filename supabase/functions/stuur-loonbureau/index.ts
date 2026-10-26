@@ -10,13 +10,17 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { wieBelt } from "../_shared/beller.ts";
-import { isOefenkaart, oefenBalk } from "../_shared/loonbureau.ts";
+import { VAN_LOONBUREAU, bufNaarBase64, isOefenkaart, oefenBalk } from "../_shared/loonbureau.ts";
 
 const GOTENBERG_URL  = Deno.env.get("GOTENBERG_URL")!;
 const RESEND_KEY     = Deno.env.get("RESEND_API_KEY")!;
-const FROM_EMAIL     = "onboarding@boskmafoodservice.nl";
 const TO_STANDAARD   = "info@lbwf.nl";
 const CC_EMAIL       = "sander@boskmafoodservice.nl";
+
+/* Resend neemt een mail van hooguit veertig megabyte aan, en base64 maakt een
+   bestand een derde groter. Twintig megabyte aan bijlagen blijft daar ruim
+   onder en is voor een mutatieformulier met een paar scans meer dan zat. */
+const MAX_BIJLAGEN_BYTES = 20 * 1024 * 1024;
 
 const SB_URL     = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = (Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -88,6 +92,7 @@ serve(async (req) => {
     if (!mutatie_html || !emp_naam) return jsonErr("mutatie_html en emp_naam zijn vereist", 400);
 
     const attachments: { filename: string; content: string }[] = [];
+    let bytesTotaal = 0;
 
     // 1. Genereer mutatieformulier PDF via Gotenberg
     const formData = new FormData();
@@ -105,7 +110,7 @@ serve(async (req) => {
         const pdfBuf = await gRes.arrayBuffer();
         attachments.push({
           filename: `${safeName(bestandsnaam || "mutatieformulier")}_${safeName(emp_naam)}.pdf`,
-          content: bufToBase64(pdfBuf),
+          content: bufNaarBase64(pdfBuf),
         });
       } else {
         const errTxt = await gRes.text();
@@ -133,7 +138,20 @@ serve(async (req) => {
         const fRes = await fetch(bron.adres, { headers: bron.headers });
         if (!fRes.ok) continue;
         const buf = await fRes.arrayBuffer();
-        attachments.push({ filename: f.filename, content: bufToBase64(buf) });
+        /* Een grens, zodat een te zware bijlage een melding oplevert die
+           uitlegt wat er aan de hand is. Zonder dit loopt de functie stuk op
+           het geheugen en krijg je alleen "non-2xx status code" te zien — een
+           zin waar niemand iets aan heeft. */
+        bytesTotaal += buf.byteLength;
+        if (bytesTotaal > MAX_BIJLAGEN_BYTES) {
+          return jsonErr(
+            `De bijlagen zijn samen te groot (meer dan ${Math.round(MAX_BIJLAGEN_BYTES / 1024 / 1024)} MB). ` +
+              `Het struikelblok is meestal een foto van een identiteitsbewijs die rechtstreeks ` +
+              `van een telefoon komt. Maak die kleiner en zet hem opnieuw in het dossier.`,
+            413,
+          );
+        }
+        attachments.push({ filename: f.filename, content: bufNaarBase64(buf) });
       } catch (e) {
         console.warn("[stuur-loonbureau] Bestand overgeslagen:", f.url ?? f.pad, e);
       }
@@ -156,7 +174,7 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: FROM_EMAIL,
+        from: VAN_LOONBUREAU,
         to: [ontvanger],
         ...(binnenhouden ? {} : { cc: [CC_EMAIL] }),
         subject: `${oefening ? "[OEFENING] " : tm.aan ? "[TEST] " : ""}${
@@ -188,13 +206,6 @@ serve(async (req) => {
     return jsonErr(err.message, 500);
   }
 });
-
-function bufToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
 
 function safeName(name: string): string {
   return name.replace(/\s+/g, "_").replace(/[^\w-]/g, "");

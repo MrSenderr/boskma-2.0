@@ -12,7 +12,7 @@
 
 import { wieBelt } from "../_shared/beller.ts";
 import {
-  CC_EMAIL, FROM_EMAIL, bufNaarBase64, isOefenkaart, leesOntvanger, leesTestmodus, oefenBalk,
+  CC_EMAIL, VAN_LOONBUREAU, bufNaarBase64, isOefenkaart, leesOntvanger, leesTestmodus, oefenBalk,
   service, testBalk,
 } from "../_shared/loonbureau.ts";
 
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: FROM_EMAIL,
+        from: VAN_LOONBUREAU,
         to: [naar],
         ...(binnenhouden ? {} : { cc: [CC_EMAIL] }),
         subject: `${oefening ? "[OEFENING] " : tm.aan ? "[TEST] " : ""}Getekend contract — ${naam}`,
