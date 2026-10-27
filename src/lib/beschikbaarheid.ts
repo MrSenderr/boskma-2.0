@@ -16,6 +16,20 @@
  * **"Ik kan wel" is ook informatie.** Een oproepkracht die voor zaterdag heeft
  * opgegeven dat hij kan, is wie je het eerst belt als er iemand uitvalt. Dat
  * staat apart, want het is iets anders dan niets weten.
+ *
+ * **En er is een derde antwoord.** Eitje kent naast "kan" en "kan niet" ook
+ * "deels": Nathal die op maandag school heeft, Justin die moet helpen
+ * opruimen. Die mag je wél inroosteren, maar niet voor een hele dienst. Dat
+ * antwoord viel hier eerst tussen wal en schip — niet weg, niet beschikbaar,
+ * dus nergens — en dan rooster je iemand in alsof er niets aan de hand is.
+ *
+ * Daarom is de regel omgedraaid: alleen "available" telt als onbeperkt kunnen.
+ * Alles wat eitje er verder bij verzint komt onder "deels" te staan, met de
+ * term er letterlijk bij. Een status die we niet kennen hoort op het scherm,
+ * niet in de prullenbak.
+ *
+ * De tijden zelf geeft de API niet — alleen de dag, de status en de opmerking
+ * die iemand erbij typte. Voor "tot hoe laat" moet je dus in eitje kijken.
  */
 
 import { useQuery } from '@tanstack/react-query'
@@ -62,6 +76,8 @@ export type Beschikbaar = {
 
 export type DagStand = {
   weg: Weg[]
+  /** Kan wel, maar niet de hele dienst. De tijden staan in eitje. */
+  deels: Beschikbaar[]
   kan: Beschikbaar[]
 }
 
@@ -118,6 +134,8 @@ export function standVanDag(
   }
 
   const kan: Beschikbaar[] = []
+  const deels: Beschikbaar[] = []
+
   for (const o of opgaven) {
     if (o.datum !== dag) continue
     const s = sleutel(o)
@@ -136,17 +154,33 @@ export function standVanDag(
 
     /* Wie zegt dat hij kan maar die dag verlof heeft of ziek is, kan niet. De
        opgave is dan ouder dan de werkelijkheid. */
-    if (o.status === 'available' && !weg.has(s) && !staatErAl.has(s)) {
-      kan.push({
-        naam: naamVan(o),
-        toelichting: o.opmerking,
-        medewerker_id: o.medewerker_id,
-      })
+    if (weg.has(s)) continue
+
+    if (o.status === 'available') {
+      if (staatErAl.has(s)) continue
+      kan.push({ naam: naamVan(o), toelichting: o.opmerking, medewerker_id: o.medewerker_id })
+      continue
     }
+
+    /* Alles wat geen "kan" en geen "kan niet" is. Bij eitje heet dat
+       "partly_unavailable" — Nathal die school heeft, Justin die moet helpen
+       opruimen. Die mag je wél inroosteren, maar niet voor een hele dienst.
+       Deze tak vangt ook een status die eitje er later bij verzint: dan staat
+       de term er letterlijk bij in plaats van dat de regel verdwijnt. Iemand
+       die hier wegvalt, rooster je in alsof er niets aan de hand is. */
+    deels.push({
+      naam: naamVan(o),
+      toelichting: o.opmerking ?? (o.status === 'partly_unavailable' ? null : o.status),
+      medewerker_id: o.medewerker_id,
+    })
   }
 
   const opNaam = (a: { naam: string }, b: { naam: string }) => a.naam.localeCompare(b.naam, 'nl')
-  return { weg: [...weg.values()].sort(opNaam), kan: kan.sort(opNaam) }
+  return {
+    weg: [...weg.values()].sort(opNaam),
+    deels: deels.sort(opNaam),
+    kan: kan.sort(opNaam),
+  }
 }
 
 /* --------------------------------------------------------------- ophalen --- */

@@ -147,8 +147,8 @@ function WieKanEr({ datum, gepland }: { datum: string; gepland: Shift[] }) {
   const ingeroosterd = gepland.map((d) =>
     wieSleutel({ medewerker_id: d.medewerker_id, naam: naamUit(d) }),
   )
-  const { weg, kan } = standVanDag(datum, data.opgaven, data.afwezig, ingeroosterd)
-  if (weg.length === 0 && kan.length === 0) return null
+  const { weg, deels, kan } = standVanDag(datum, data.opgaven, data.afwezig, ingeroosterd)
+  if (weg.length === 0 && deels.length === 0 && kan.length === 0) return null
 
   return (
     <Kaart className="flex flex-col gap-2 p-4">
@@ -169,10 +169,33 @@ function WieKanEr({ datum, gepland }: { datum: string; gepland: Shift[] }) {
         </div>
       )}
 
+      {/* Deels beschikbaar: wél inzetbaar, maar niet de hele dienst. Dat moet
+          je zien óók als die persoon al op het rooster staat — dan staat er
+          iemand ingepland die er niet de hele avond is. De tijden geeft de API
+          niet, alleen de dag en wat hij erbij typte. */}
+      {deels.length > 0 && (
+        <div className={`flex flex-col gap-1 ${weg.length > 0 ? 'border-t border-line pt-2' : ''}`}>
+          <p className="text-sm font-semibold text-muted">Deels beschikbaar</p>
+          {deels.map((d) => (
+            <p key={d.naam} className="text-sm">
+              <span className="font-semibold">{d.naam}</span>
+              <span className="text-muted">
+                {d.toelichting ? ` — ${d.toelichting}` : ' — niet de hele dienst'}
+              </span>
+            </p>
+          ))}
+          <p className="text-xs text-muted">Tot hoe laat staat in eitje; dat geeft de API niet.</p>
+        </div>
+      )}
+
       {/* Wie heeft opgegeven dat hij kan is wie je belt als er iemand uitvalt.
           Dat is iets anders dan niets weten, en daarom staat het er apart. */}
       {kan.length > 0 && (
-        <div className="flex flex-col gap-1 border-t border-line pt-2">
+        <div
+          className={`flex flex-col gap-1 ${
+            weg.length > 0 || deels.length > 0 ? 'border-t border-line pt-2' : ''
+          }`}
+        >
           <p className="text-sm font-semibold text-muted">Kan wel, staat niet ingeroosterd</p>
           {kan.map((k) => (
             <p key={k.naam} className="text-sm">

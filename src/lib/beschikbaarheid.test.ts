@@ -163,7 +163,58 @@ describe('de stand van een dag', () => {
     expect(uit.kan).toHaveLength(0)
   })
 
+  /* Eitje kent een derde antwoord: "deels". Nathal die school heeft, Justin
+     die moet helpen opruimen. Die viel eerst tussen wal en schip — niet weg,
+     niet beschikbaar, dus nergens — en dan rooster je hem in alsof er niets
+     aan de hand is. */
+  describe('deels beschikbaar', () => {
+    it('zet "partly_unavailable" apart, met de reden erbij', () => {
+      const uit = standVanDag(
+        dag,
+        [opgave({ status: 'partly_unavailable', opmerking: 'school', naam: 'Nathal van Beurden' })],
+        [],
+      )
+      expect(uit.weg).toHaveLength(0)
+      expect(uit.kan).toHaveLength(0)
+      expect(uit.deels).toEqual([
+        { naam: 'Nathal van Beurden', toelichting: 'school', medewerker_id: 'evi' },
+      ])
+    })
+
+    it('kan ook zonder opmerking', () => {
+      const uit = standVanDag(dag, [opgave({ status: 'partly_unavailable', opmerking: null })], [])
+      expect(uit.deels[0].toelichting).toBeNull()
+    })
+
+    /* Een status die we niet kennen hoort op het scherm, niet in de
+       prullenbak. Dan zie je dat er iets nieuws is in plaats van dat er
+       stilletjes iemand uit de lijst valt. */
+    it('laat een onbekende status zien in plaats van hem weg te gooien', () => {
+      const uit = standVanDag(dag, [opgave({ status: 'iets_nieuws', opmerking: null })], [])
+      expect(uit.deels).toHaveLength(1)
+      expect(uit.deels[0].toelichting).toBe('iets_nieuws')
+    })
+
+    it('telt niet mee als die persoon die dag toch ziek is', () => {
+      const uit = standVanDag(
+        dag,
+        [opgave({ status: 'partly_unavailable' })],
+        [afwezig({ bron_id: 'ziek:1', soort: 'ziek', van: dag, tot: dag })],
+      )
+      expect(uit.deels).toHaveLength(0)
+      expect(uit.weg[0].reden).toBe('ziek')
+    })
+
+    /* Anders dan bij "kan wel": wie deels beschikbaar is en al ingeroosterd
+       staat, wil je juist zien — dan staat er iemand op het rooster die er niet
+       de hele dienst is. */
+    it('blijft staan ook als die persoon al is ingeroosterd', () => {
+      const uit = standVanDag(dag, [opgave({ status: 'partly_unavailable' })], [], ['evi'])
+      expect(uit.deels).toHaveLength(1)
+    })
+  })
+
   it('valt niet om zonder gegevens', () => {
-    expect(standVanDag(dag, [], [])).toEqual({ weg: [], kan: [] })
+    expect(standVanDag(dag, [], [])).toEqual({ weg: [], deels: [], kan: [] })
   })
 })
