@@ -5,7 +5,10 @@ import {
   klokUit,
   koppelEitjeUsers,
   minutenVan,
+  naarBeschikbaarheid,
   naarUrenrij,
+  naarVerlof,
+  naarZiek,
   namenKaart,
   soortUit,
   splitsInStukken,
@@ -361,5 +364,136 @@ describe('wie is wie', () => {
     ])
     expect(kaart.get(10)).toBe('abc')
     expect(kaart.get(11)).toBeNull()
+  })
+})
+
+describe('wie er kan', () => {
+  const namen = namenKaart([
+    { id: 10, first_name: 'Nathal', last_name: 'van Beurden' },
+    { id: 137461, first_name: 'Sander', last_name: 'Boskma' },
+  ])
+  const koppeling = new Map([
+    [10, 'nathal'],
+    [137461, 'sander'],
+  ])
+
+  describe('beschikbaarheid', () => {
+    const opgave = (extra = {}) => ({
+      id: 12,
+      date: '2026-11-07',
+      status: 'unavailable',
+      remarks: 'bruiloft',
+      user: { id: 10, name: 'Nathal van Beurden' },
+      ...extra,
+    })
+
+    it('bewaart wat iemand zelf heeft opgegeven, met zijn reden erbij', () => {
+      expect(naarBeschikbaarheid(opgave(), namen, koppeling)).toEqual({
+        bron_id: 'beschikbaar:12',
+        datum: '2026-11-07',
+        status: 'unavailable',
+        opmerking: 'bruiloft',
+        naam: 'Nathal van Beurden',
+        eitje_user_id: 10,
+        medewerker_id: 'nathal',
+      })
+    })
+
+    it('houdt ook een "ik kan wel" vast', () => {
+      // Wie zegt dat hij kan, is net zo goed informatie als wie zegt dat hij niet kan.
+      expect(naarBeschikbaarheid(opgave({ status: 'Available', remarks: null })).status).toBe(
+        'available',
+      )
+    })
+
+    /* De eigenaar werkt mee en vult zijn eigen beschikbaarheid in. Hij hoort
+       dus door dezelfde molen te gaan als ieder ander; een uitzondering voor
+       de baas is precies waar dit soort code gaat rammelen. */
+    it('behandelt de meewerkend eigenaar als ieder ander', () => {
+      const uit = naarBeschikbaarheid(
+        opgave({ id: 99, user: { id: 137461, name: 'Sander Boskma' } }),
+        namen,
+        koppeling,
+      )
+      expect(uit.medewerker_id).toBe('sander')
+    })
+
+    it('laat een lege opmerking leeg in plaats van een lege tekst', () => {
+      expect(naarBeschikbaarheid(opgave({ remarks: '   ' })).opmerking).toBeNull()
+    })
+  })
+
+  describe('verlof', () => {
+    const verlof = (extra = {}) => ({
+      id: 21,
+      status: 'accepted',
+      reason: 'Bruiloft',
+      start_datetime: '2026-12-24T00:00:00.000000+01:00',
+      end_datetime: '2026-12-26T23:59:59.000000+01:00',
+      user: { id: 10, name: 'Nathal van Beurden' },
+      ...extra,
+    })
+
+    /* Alleen de dag telt. Zou een datumfunctie die tijdstippen naar UTC
+       rekenen, dan begint verlof dat om middernacht ingaat een dag te vroeg. */
+    it('houdt de dagen zoals ze in de agenda staan', () => {
+      expect(naarVerlof(verlof(), namen, koppeling)).toMatchObject({
+        bron_id: 'verlof:21',
+        soort: 'verlof',
+        van: '2026-12-24',
+        tot: '2026-12-26',
+        status: 'accepted',
+        reden: 'Bruiloft',
+        medewerker_id: 'nathal',
+      })
+    })
+
+    it('laat een einddatum leeg als eitje er geen geeft', () => {
+      expect(naarVerlof(verlof({ end_datetime: null })).tot).toBeNull()
+    })
+  })
+
+  describe('ziek', () => {
+    const ziek = (extra = {}) => ({
+      id: 21,
+      start_date: '2026-10-01',
+      end_date: '2026-10-04',
+      finalized_at: '2026-10-05T09:00:00.000000Z',
+      user: { id: 10, name: 'Nathal van Beurden' },
+      ...extra,
+    })
+
+    it('bewaart de periode en of hij is afgerond', () => {
+      expect(naarZiek(ziek(), namen, koppeling)).toMatchObject({
+        bron_id: 'ziek:21',
+        soort: 'ziek',
+        van: '2026-10-01',
+        tot: '2026-10-04',
+        status: 'afgerond',
+        medewerker_id: 'nathal',
+      })
+    })
+
+    /* Geen einddatum betekent bij eitje: loopt nog. Zou daar de begindag
+       ingezet worden, dan stond iemand die al drie weken ziek thuis zit vanaf
+       dag twee weer als inzetbaar in het rooster. */
+    it('laat een lopende ziekmelding open', () => {
+      const uit = naarZiek(ziek({ end_date: null, finalized_at: null }))
+      expect(uit.tot).toBeNull()
+      expect(uit.status).toBe('loopt')
+    })
+
+    /* Verlof 21 en ziekmelding 21 bestaan naast elkaar: twee lijsten, twee
+       nummerreeksen. Zonder het soort ervoor zou de één de ander overschrijven
+       en verdween er een afwezigheid uit beeld. */
+    it('botst niet met een verlofaanvraag met hetzelfde nummer', () => {
+      expect(naarZiek(ziek()).bron_id).not.toBe(naarVerlof({ id: 21 }).bron_id)
+    })
+
+    it('draait een periode niet om als de datums verwisseld zijn', () => {
+      expect(naarZiek(ziek({ start_date: '2026-10-04', end_date: '2026-10-01' })).tot).toBe(
+        '2026-10-04',
+      )
+    })
   })
 })

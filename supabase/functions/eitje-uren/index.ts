@@ -49,10 +49,16 @@ import {
   koppelEitjeUsers,
   naarUrenrij,
   namenKaart,
+  naarBeschikbaarheid,
+  naarVerlof,
+  naarZiek,
   splitsInStukken,
+  type ApiBeschikbaarheid,
   type ApiShift,
   type ApiUser,
   type AppKandidaat,
+  type ApiVerlof,
+  type ApiZiek,
   type Persoonskoppeling,
 } from "./gedeeld/eitjeApi.ts";
 import { type Afspraak } from "./gedeeld/koppelen.ts";
@@ -131,6 +137,14 @@ async function schrijf(pad: string, rijen: unknown[], extra: Record<string, stri
   if (!r.ok) throw new Error(`wegschrijven mislukt: ${r.status} ${await r.text()}`);
 }
 
+async function verwijder(pad: string) {
+  const r = await fetch(`${SB_URL}/rest/v1/${pad}`, {
+    method: "DELETE",
+    headers: { ...h, Prefer: "return=minimal" },
+  });
+  if (!r.ok) throw new Error(`opruimen mislukt: ${r.status} ${await r.text()}`);
+}
+
 /* ------------------------------------------------------------------ eitje --- */
 
 /* Eitje vraagt om ongeveer één aanvraag per seconde. Dat is geen harde limiet
@@ -150,6 +164,30 @@ const wacht = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * nacht over, dan valt die nacht nog binnen het venster van de volgende. Mist
  * hij er meer, dan haal je dat gat op met "Uren terughalen". */
 const BIJ_DAGEN = 2;
+
+/* Hoe ver vooruit "wie kan er" wordt opgehaald.
+ *
+ * Zeven weken voor beschikbaarheid, en dat getal komt uit de instellingen van
+ * eitje zelf: Boskma maakt roosters van vier weken, twee weken van tevoren, op
+ * dinsdag. Het blok dat op een dinsdag dichtgaat loopt dus van ongeveer dertien
+ * tot veertig dagen vooruit. Haal je vier weken op, dan heb je precies de weken
+ * die al gepland zíjn en niet die je aan het plannen bent.
+ *
+ * Verlof kijkt een half jaar vooruit. Dat kost bijna niets — eitje geeft er
+ * negentig dagen per aanvraag van, tegen zeven voor beschikbaarheid — en een
+ * zomervakantie die in maart wordt aangevraagd wil je in juni niet hoeven
+ * ontdekken.
+ *
+ * Ziekte kijkt even ver als beschikbaarheid: verder vooruit ziek zijn bestaat
+ * niet. Een melding die nu nog loopt komt sowieso mee, want eitje geeft lopende
+ * periodes terug ook als je een latere week opvraagt. */
+const VOORUIT_DAGEN = 49;
+const VERLOF_DAGEN = 180;
+
+/* Wat eitje per aanvraag aankan, in dagen en inclusief geteld. Staat niet in
+   één tabel in hun documentatie maar per endpoint verspreid, en eraan voorbij
+   gaan levert een 400 op met de grens erin. */
+const VENSTER = { beschikbaar: 7, verlof: 90, ziek: 30 };
 
 function sleutelsOntbreken(): string[] {
   return Object.entries(EITJE_SLEUTELS)
@@ -282,6 +320,105 @@ async function logboek(regel: Record<string, unknown>): Promise<number> {
   return rij.id as number;
 }
 
+/* ------------------------------------------------------- wie er kan --- */
+
+/* Beschikbaarheid, verlof en ziekte ophalen voor de weken die nog komen.
+ *
+ * Alleen vooruit. Of iemand vorige maand verlof had verandert niets meer aan
+ * een rooster dat al gedraaid is; wat telt is wie er volgende week kan.
+ *
+ * Opruimen gaat op tijdstip en niet op lijst. Alles wat eitje teruggaf is
+ * zojuist aangeraakt, dus wat in dit venster nog een ouder tijdstip draagt is
+ * ingetrokken of verwijderd. Dat scheelt een URL met honderden nummers erin,
+ * en het is bestand tegen een aanvraag die halverwege afbreekt: dan blijft het
+ * oude gewoon staan. */
+async function haalWieKan(
+  vanaf: string,
+  dagen: number,
+  namen: Map<number, { voornaam: string | null; achternaam: string | null }>,
+  kaart: Map<number, string | null>,
+) {
+  const tot = schuif(vanaf, Math.max(1, dagen));
+  const verlofTot = schuif(vanaf, Math.max(1, dagen, VERLOF_DAGEN));
+  const begonnen = new Date().toISOString();
+  let aanvragen = 0;
+
+  const stuksgewijs = async (pad: string, grens: number, eind: string) => {
+    const uit: unknown[] = [];
+    for (const stuk of splitsInStukken(vanaf, eind, grens)) {
+      if (aanvragen > 0) await wacht(PAUZE_MS);
+      aanvragen++;
+      uit.push(
+        ...(await eitjeHaal(pad, {
+          "filters[start_date]": stuk.van,
+          "filters[end_date]": stuk.tot,
+        })),
+      );
+    }
+    return uit;
+  };
+
+  const opgaven = (await stuksgewijs(
+    "availability_shifts",
+    VENSTER.beschikbaar,
+    tot,
+  )) as ApiBeschikbaarheid[];
+  const verlof = (await stuksgewijs(
+    "leave_requests",
+    VENSTER.verlof,
+    verlofTot,
+  )) as ApiVerlof[];
+  const ziek = (await stuksgewijs("sick_periods", VENSTER.ziek, tot)) as ApiZiek[];
+
+  /* Overlappende stukken kunnen dezelfde regel twee keer geven. Het laatste
+     exemplaar wint; wegschrijven zou anders op zichzelf botsen. */
+  const uniek = <T extends { bron_id: string }>(rijen: T[]) => [
+    ...new Map(rijen.map((r) => [r.bron_id, r])).values(),
+  ];
+
+  const beschikbaar = uniek(opgaven.map((b) => naarBeschikbaarheid(b, namen, kaart)));
+  const afwezig = uniek([
+    ...verlof.map((v) => naarVerlof(v, namen, kaart)),
+    ...ziek.map((z) => naarZiek(z, namen, kaart)),
+  ]);
+
+  const merge = { Prefer: "return=minimal,resolution=merge-duplicates" };
+  const stempel = <T,>(rijen: T[]) => rijen.map((r) => ({ ...r, bijgewerkt_op: begonnen }));
+
+  for (let i = 0; i < beschikbaar.length; i += 200) {
+    await schrijf("beschikbaarheid?on_conflict=bron_id", stempel(beschikbaar.slice(i, i + 200)), merge);
+  }
+  for (let i = 0; i < afwezig.length; i += 200) {
+    await schrijf("afwezigheid?on_conflict=bron_id", stempel(afwezig.slice(i, i + 200)), merge);
+  }
+
+  /* Wat niet is teruggekomen is ingetrokken. Bij afwezigheid alleen wat in dit
+     venster begint: een ziekmelding van vorige maand die nog loopt hoort niet
+     te verdwijnen omdat zijn begindag buiten het venster valt. */
+  await verwijder(`beschikbaarheid?datum=gte.${vanaf}&datum=lte.${tot}&bijgewerkt_op=lt.${begonnen}`);
+  /* Verlof is verder vooruit opgehaald dan ziekte, dus mag er ook verder
+     vooruit opgeruimd worden. Ziekte buiten het korte venster laten we met
+     rust: daar hebben we deze ronde niet naar gekeken, en wat je niet hebt
+     nagekeken hoor je niet weg te gooien. */
+  await verwijder(
+    `afwezigheid?soort=eq.verlof&van=gte.${vanaf}&van=lte.${verlofTot}&bijgewerkt_op=lt.${begonnen}`,
+  );
+  await verwijder(
+    `afwezigheid?soort=eq.ziek&van=gte.${vanaf}&van=lte.${tot}&bijgewerkt_op=lt.${begonnen}`,
+  );
+
+  return {
+    van: vanaf,
+    tot,
+    verlof_tot: verlofTot,
+    aanvragen,
+    beschikbaarheid: beschikbaar.length,
+    niet_beschikbaar: beschikbaar.filter((b) => b.status === "unavailable").length,
+    verlof: afwezig.filter((a) => a.soort === "verlof").length,
+    ziek: afwezig.filter((a) => a.soort === "ziek").length,
+  };
+}
+
 /* ------------------------------------------------------------------- doen --- */
 
 serve(async (req) => {
@@ -290,7 +427,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { sleutel, modus = "bij", van, tot, stukken = 8 } = body ?? {};
+    const { sleutel, modus = "bij", van, tot, stukken = 8, dagen } = body ?? {};
 
     /* Wie mag wat.
      *
@@ -432,6 +569,22 @@ serve(async (req) => {
     const kaart = alsKaart(koppelingen);
     const vastgelegd = await legNummersVast(koppelingen);
 
+    /* ---- wiekan: beschikbaarheid, verlof en ziekte ---- */
+    const vooruit = () =>
+      haalWieKan(van ?? vandaag(), Number(dagen) || VOORUIT_DAGEN, namen, kaart);
+
+    if (modus === "wiekan") {
+      return json({
+        ok: true,
+        modus,
+        nummers_vastgelegd: vastgelegd,
+        ...(await vooruit()),
+        ...(zonderNamen
+          ? { niet_gekoppeld_aantal: open.length }
+          : { niet_gekoppeld: open.map((k) => ({ naam: k.naam, reden: k.reden })) }),
+      });
+    }
+
     const opGewijzigd = modus === "bij";
     const reeks = opGewijzigd
       ? [{ van: schuif(vandaag(), -(BIJ_DAGEN - 1)), tot: vandaag() }]
@@ -459,10 +612,15 @@ serve(async (req) => {
     const bestaand = await welkeBestaan(rijen.map((r) => r.bron_id));
     const nieuw = rijen.filter((r) => !bestaand.has(r.bron_id)).length;
 
-    const dagen = rijen.map((r) => r.datum).sort();
+    /* Niet `dagen`: die naam is nu de parameter waarmee je instelt hoe ver
+       vooruit er gekeken wordt. Twee keer dezelfde naam in dezelfde scope is
+       geen waarschuwing maar een fout, en dan start de hele functie niet. */
+    const dagenMetUren = rijen.map((r) => r.datum).sort();
     const importId = await logboek({
-      periode_van: opGewijzigd ? (dagen[0] ?? null) : tedoen[0].van,
-      periode_tot: opGewijzigd ? (dagen[dagen.length - 1] ?? null) : tedoen[tedoen.length - 1].tot,
+      periode_van: opGewijzigd ? (dagenMetUren[0] ?? null) : tedoen[0].van,
+      periode_tot: opGewijzigd
+        ? (dagenMetUren[dagenMetUren.length - 1] ?? null)
+        : tedoen[tedoen.length - 1].tot,
       geexporteerd_op: new Date().toISOString(),
       aantal_regels: rijen.length,
       aantal_nieuw: nieuw,
@@ -485,10 +643,16 @@ serve(async (req) => {
       throw e;
     }
 
+    /* De nachtelijke taak doet allebei: de uren van gisteren ophalen en
+       vooruitkijken wie er de komende weken kan. Twee taken naast elkaar zou
+       betekenen dat er twee dingen stil kunnen vallen in plaats van één. */
+    const wiekan = opGewijzigd ? await vooruit() : null;
+
     const rest = reeks.slice(tedoen.length);
     return json({
       ok: true,
       modus,
+      ...(wiekan ? { wiekan } : {}),
       periode: { van: tedoen[0].van, tot: tedoen[tedoen.length - 1].tot },
       weken: tedoen.length,
       regels: rijen.length,

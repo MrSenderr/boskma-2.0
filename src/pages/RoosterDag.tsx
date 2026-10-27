@@ -6,10 +6,18 @@ import {
   dagnaam,
   dagoverzicht,
   datumKort,
+  naamUit,
   useRooster,
   verschuif,
   type Dagregel,
+  type Shift,
 } from '../lib/rooster'
+import {
+  REDENTEKST,
+  standVanDag,
+  useWieKanEr,
+  wieSleutel,
+} from '../lib/beschikbaarheid'
 import { standVanDeDag, useRooster as useOpeningstijden, vandaagStr } from '../lib/openingstijden'
 import { balk, dagtijdlijn, naarTijd, uurstreepjes, type Dagtijdlijn } from '../lib/tijdlijn'
 
@@ -126,6 +134,58 @@ function Tijdlijn({ t }: { t: Dagtijdlijn }) {
   )
 }
 
+/* Wie er die dag niet is, en wie juist heeft gezegd dat hij kan.
+ *
+ * Staat boven de tijdlijn en niet eronder: dit is wat je wilt weten vóórdat je
+ * naar het rooster kijkt. Een lege kaart verschijnt niet — niets opgegeven is
+ * iets anders dan iedereen beschikbaar, en daar hoort de app niet over mee te
+ * praten. */
+function WieKanEr({ datum, gepland }: { datum: string; gepland: Shift[] }) {
+  const { data } = useWieKanEr(datum, datum)
+  if (!data) return null
+
+  const ingeroosterd = gepland.map((d) =>
+    wieSleutel({ medewerker_id: d.medewerker_id, naam: naamUit(d) }),
+  )
+  const { weg, kan } = standVanDag(datum, data.opgaven, data.afwezig, ingeroosterd)
+  if (weg.length === 0 && kan.length === 0) return null
+
+  return (
+    <Kaart className="flex flex-col gap-2 p-4">
+      {weg.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold text-muted">Niet inzetbaar</p>
+          {weg.map((w) => (
+            <p key={`${w.reden}-${w.naam}`} className="text-sm">
+              <span className="font-semibold">{w.naam}</span>
+              <span className="text-muted">
+                {' — '}
+                {REDENTEKST[w.reden]}
+                {w.onzeker && ' (nog niet goedgekeurd)'}
+                {w.toelichting && `: ${w.toelichting}`}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Wie heeft opgegeven dat hij kan is wie je belt als er iemand uitvalt.
+          Dat is iets anders dan niets weten, en daarom staat het er apart. */}
+      {kan.length > 0 && (
+        <div className="flex flex-col gap-1 border-t border-line pt-2">
+          <p className="text-sm font-semibold text-muted">Kan wel, staat niet ingeroosterd</p>
+          {kan.map((k) => (
+            <p key={k.naam} className="text-sm">
+              <span className="font-semibold">{k.naam}</span>
+              {k.toelichting && <span className="text-muted">{` — ${k.toelichting}`}</span>}
+            </p>
+          ))}
+        </div>
+      )}
+    </Kaart>
+  )
+}
+
 export function RoosterDag() {
   const [datum, setDatum] = useState(() => vandaagStr())
   const { data, isPending, error, refetch } = useRooster(datum, datum)
@@ -188,6 +248,9 @@ export function RoosterDag() {
               </p>
             )}
           </Kaart>
+
+          {/* ------------------------------------------------ wie er kan --- */}
+          <WieKanEr datum={datum} gepland={data.gepland} />
 
           {/* ------------------------------------------------- tijdlijn --- */}
           {t.diensten.length > 0 ? (

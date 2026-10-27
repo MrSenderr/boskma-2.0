@@ -342,3 +342,144 @@ export function namenKaart(
     ]),
   )
 }
+
+/* ------------------------------------------------------- wie er kan --- */
+
+/* Drie dingen bepalen of iemand op een dag inzetbaar is, en eitje weet ze
+ * alle drie: wat hij zelf heeft opgegeven, of hij verlof heeft, en of hij ziek
+ * is. De app wist er geen van.
+ *
+ * Ze komen uit drie verschillende endpoints met drie verschillende vormen, en
+ * belanden hier in twee tabellen. Beschikbaarheid is een losse dag met een
+ * oordeel erover; verlof en ziekte zijn periodes. Die twee vormen door elkaar
+ * husselen levert een tabel op waarin de helft van de kolommen altijd leeg is.
+ */
+
+export type ApiBeschikbaarheid = {
+  id: number
+  date: string
+  /** "available" of "unavailable". */
+  status?: string | null
+  remarks?: string | null
+  user?: { id: number; name?: string | null } | null
+}
+
+export type ApiVerlof = {
+  id: number
+  status?: string | null
+  reason?: string | null
+  start_datetime?: string | null
+  end_datetime?: string | null
+  user?: { id: number; name?: string | null } | null
+}
+
+export type ApiZiek = {
+  id: number
+  start_date?: string | null
+  end_date?: string | null
+  finalized_at?: string | null
+  user?: { id: number; name?: string | null } | null
+}
+
+export type Beschikbaarheidsrij = {
+  bron_id: string
+  datum: string
+  status: string | null
+  opmerking: string | null
+  naam: string | null
+  eitje_user_id: number | null
+  medewerker_id: string | null
+}
+
+export type Afwezigheidsrij = {
+  bron_id: string
+  soort: 'verlof' | 'ziek'
+  van: string
+  /** Leeg betekent: loopt nog, einde onbekend. */
+  tot: string | null
+  status: string | null
+  reden: string | null
+  naam: string | null
+  eitje_user_id: number | null
+  medewerker_id: string | null
+}
+
+/* Verlof en ziekte hebben allebei een nummer van eitje, maar uit twee aparte
+   lijsten. Verlof 21 en ziekmelding 21 bestaan dus naast elkaar; zonder het
+   soort ervoor zou de één de ander overschrijven. */
+const sleutel = (soort: string, id: number) => `${soort}:${id}`
+
+function wie(
+  user: { id: number; name?: string | null } | null | undefined,
+  namen: Map<number, { voornaam: string | null; achternaam: string | null }>,
+  koppelingen: Map<number, string | null>,
+) {
+  const id = user?.id ?? null
+  const uitLijst = id === null ? undefined : namen.get(id)
+  const naam = uitLijst
+    ? [uitLijst.voornaam, uitLijst.achternaam].filter(Boolean).join(' ')
+    : (user?.name ?? '').trim()
+  return {
+    naam: naam || null,
+    eitje_user_id: id,
+    medewerker_id: id === null ? null : koppelingen.get(id) ?? null,
+  }
+}
+
+export function naarBeschikbaarheid(
+  b: ApiBeschikbaarheid,
+  namen: Map<number, { voornaam: string | null; achternaam: string | null }> = new Map(),
+  koppelingen: Map<number, string | null> = new Map(),
+): Beschikbaarheidsrij {
+  return {
+    bron_id: sleutel('beschikbaar', b.id),
+    datum: dagUit(b.date) ?? b.date,
+    status: (b.status ?? '').trim().toLowerCase() || null,
+    opmerking: (b.remarks ?? '').trim() || null,
+    ...wie(b.user, namen, koppelingen),
+  }
+}
+
+export function naarVerlof(
+  v: ApiVerlof,
+  namen: Map<number, { voornaam: string | null; achternaam: string | null }> = new Map(),
+  koppelingen: Map<number, string | null> = new Map(),
+): Afwezigheidsrij {
+  /* De tijdstippen dragen een zone. Alleen de dag telt, en die wordt
+     letterlijk uit de tekst gelezen — zou een datumfunctie hem naar UTC
+     rekenen, dan begint verlof dat om middernacht ingaat een dag te vroeg. */
+  const van = dagUit(v.start_datetime) ?? ''
+  const tot = dagUit(v.end_datetime)
+  return {
+    bron_id: sleutel('verlof', v.id),
+    soort: 'verlof',
+    van,
+    tot: tot && tot < van ? van : tot,
+    status: (v.status ?? '').trim().toLowerCase() || null,
+    reden: (v.reason ?? '').trim() || null,
+    ...wie(v.user, namen, koppelingen),
+  }
+}
+
+export function naarZiek(
+  z: ApiZiek,
+  namen: Map<number, { voornaam: string | null; achternaam: string | null }> = new Map(),
+  koppelingen: Map<number, string | null> = new Map(),
+): Afwezigheidsrij {
+  const van = dagUit(z.start_date) ?? ''
+  /* Geen einddatum betekent bij eitje dat de ziekmelding nog loopt — zij geven
+     lopende periodes ook terug als je een latere week opvraagt. Die blijft hier
+     dus leeg, en niet gelijk aan de begindag: dat laatste zou iemand die al
+     drie weken ziek thuis zit vanaf dag twee weer als inzetbaar tonen. Wie dat
+     uitleest moet een lege einddatum lezen als "loopt nog". */
+  const tot = dagUit(z.end_date)
+  return {
+    bron_id: sleutel('ziek', z.id),
+    soort: 'ziek',
+    van,
+    tot: tot && tot < van ? van : tot,
+    status: z.finalized_at ? 'afgerond' : 'loopt',
+    reden: null,
+    ...wie(z.user, namen, koppelingen),
+  }
+}
