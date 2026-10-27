@@ -43,6 +43,22 @@ het overzicht vaste dagen. Zo hoeft hij nergens op naam te worden uitgezonderd.
 Geen regel betekent **onbekend**: nog niet beoordeeld. Dat is iets anders dan
 "nood". De app mag het dan wel, maar zegt erbij dat het een gok is.
 
+## De zeven zijn inclusief Sander
+
+Bevestigd op 27 oktober 2026. De zeven paar handen op vrijdag, zaterdag en
+zondag zijn inclusief de meewerkend eigenaar zelf. Er hoeft dus geen achtste
+bij, en het voorstel plant hem in als ieder ander.
+
+Dat sluit aan op het weeksjabloon (`docs/Modules/rooster.md`): vrijdag drie
+dagdiensten plus vier avonddiensten is zeven, en dagdiensten lopen door tot
+sluitingstijd. Weekbezetting en spitsindeling zijn hetzelfde ding van twee
+kanten bekeken.
+
+Op dinsdag, woensdag en donderdag zit de spits anders in elkaar: dezelfde
+werkplekken, maar lang niet allemaal bezet. Dat hoeft nergens vastgelegd — de
+verdeling rangschikt al op `belang`, dus met vier man worden de vier zwaarste
+plekken bezet en blijft de rest leeg.
+
 ## Hoe de verdeling wordt gemaakt
 
 Elke combinatie van persoon en plek krijgt punten:
