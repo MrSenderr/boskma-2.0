@@ -138,6 +138,21 @@ uren voor nul mee. En de datumstukken overlappen met een dag, omdat nergens
 staat of eitje de einddatum meerekent — een dag dubbel ophalen overschrijft
 zichzelf, een dag missen maakt het totaal een zevende te laag.
 
+**Eitje telt dagen inclusief.** Van eergisteren tot en met vandaag zijn er bij
+hen drie, niet twee. Dat staat nergens, en het kwam aan het licht doordat
+"bijwerken" omviel met *"the maximum amount of days is 2. You requested 3
+days"*. De grens is zeven dagen voor gewone datumfilters en twee voor filteren
+op gewijzigd; `BIJ_DAGEN` in de serverfunctie staat daarom op 2.
+
+**Wie de koppeling mag starten.** Een ingelogde beheerder mag alles; de functie
+vraagt daarvoor `is_app_user()` met de inlog van de beller. De nachtelijke taak
+(`eitje-uren-nachtelijks`, 5:10 UTC) heeft geen inlog en meldt zich met de
+publieke anon-sleutel, net als de andere taken. Zo'n beller mag alleen
+bijwerken, hoogstens één keer per uur, en krijgt geen namen terug. Dat uurslot
+is er omdat elke oproep twee aanvragen bij eitje kost: zonder slot zou iemand
+met de publieke sleutel onze koppeling op eitje kunnen laten rammen, en dan is
+het onze toegang die eraan gaat.
+
 **De proef.** De urenregels worden bewaard onder het nummer dat eitje aan de
 dienst geeft, zodat opnieuw ophalen overschrijft in plaats van stapelt. Of dat
 dezelfde nummers zijn als het "support ID" uit de Excel was bij het bouwen niet

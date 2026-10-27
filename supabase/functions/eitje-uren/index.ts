@@ -139,6 +139,18 @@ async function schrijf(pad: string, rijen: unknown[], extra: Record<string, stri
 const PAUZE_MS = 1100;
 const wacht = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/* Hoeveel dagen "bijwerken" terugkijkt.
+ *
+ * Eitje telt dagen inclusief: eergisteren tot en met vandaag zijn er bij hen
+ * drie, niet twee. En bij filteren op gewijzigd ligt de grens op twee. Dit
+ * stond eerst op drie dagen en viel daarop om met "the maximum amount of days
+ * is 2. You requested 3 days".
+ *
+ * Twee dagen is genoeg voor een taak die elke nacht draait: slaat hij één
+ * nacht over, dan valt die nacht nog binnen het venster van de volgende. Mist
+ * hij er meer, dan haal je dat gat op met "Uren terughalen". */
+const BIJ_DAGEN = 2;
+
 function sleutelsOntbreken(): string[] {
   return Object.entries(EITJE_SLEUTELS)
     .filter(([, waarde]) => !waarde)
@@ -280,12 +292,38 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { sleutel, modus = "bij", van, tot, stukken = 8 } = body ?? {};
 
-    /* Twee manieren om binnen te komen: de nachtelijke taak stuurt de sleutel
-       mee, een beheerder in de app zijn eigen inlog. Niemand anders, want deze
-       functie schrijft in de urenadministratie. */
-    const metSleutel = Boolean(SLEUTEL) && sleutel === SLEUTEL;
-    if (!metSleutel && !(await isAppGebruiker(req.headers.get("Authorization")))) {
-      return json({ ok: false, error: "geen toegang" }, 401);
+    /* Wie mag wat.
+     *
+     * Een beheerder in de app mag alles: hij stuurt zijn eigen inlog mee. De
+     * oude gedeelde sleutel ook, want die hoort al bij de roosteradministratie.
+     *
+     * De nachtelijke taak heeft geen van beide. Die draait in de database en
+     * meldt zich met de publieke sleutel, en die staat in de app-bundel — dus
+     * van iedereen. Daarom mag zo'n beller maar drie dingen niet: iets anders
+     * dan bijwerken, vaker dan één keer per uur, en namen terugkrijgen.
+     *
+     * Het uurslot is er omdat elke oproep twee aanvragen bij eitje kost. Zonder
+     * dat slot zou iemand met de publieke sleutel eitje kunnen laten rammen met
+     * onze koppeling, en dan is het onze toegang die eraan gaat. */
+    const beheerder =
+      (Boolean(SLEUTEL) && sleutel === SLEUTEL) ||
+      (await isAppGebruiker(req.headers.get("Authorization")));
+
+    let zonderNamen = false;
+    if (!beheerder) {
+      if (modus !== "bij") return json({ ok: false, error: "geen toegang" }, 401);
+
+      const eenUurTerug = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const kortgeleden = await haal(
+        `rooster_imports?select=op&door=eq.eitje-api&op=gte.${eenUurTerug}&limit=1`,
+      );
+      if ((kortgeleden as unknown[]).length > 0) {
+        /* Geen fout: er is net al bijgewerkt. Een taak die hierop afknapt zou
+           elke nacht als kapot in het logboek staan terwijl er niets aan de
+           hand is. */
+        return json({ ok: true, modus, overgeslagen: "minder dan een uur geleden al bijgewerkt" });
+      }
+      zonderNamen = true;
     }
 
     const mist = sleutelsOntbreken();
@@ -396,7 +434,7 @@ serve(async (req) => {
 
     const opGewijzigd = modus === "bij";
     const reeks = opGewijzigd
-      ? [{ van: schuif(vandaag(), -2), tot: vandaag() }]
+      ? [{ van: schuif(vandaag(), -(BIJ_DAGEN - 1)), tot: vandaag() }]
       : splitsInStukken(van ?? schuif(vandaag(), -6), tot ?? vandaag());
 
     if (reeks.length === 0) {
@@ -463,7 +501,10 @@ serve(async (req) => {
          waar hij gebleven is. */
       volgende: rest.length > 0 ? rest[0].van : null,
       nog_te_gaan: rest.length,
-      niet_gekoppeld: open.map((k) => ({ naam: k.naam, reden: k.reden })),
+      // Namen alleen voor wie is ingelogd; zie "Wie mag wat" hierboven.
+      ...(zonderNamen
+        ? { niet_gekoppeld_aantal: open.length }
+        : { niet_gekoppeld: open.map((k) => ({ naam: k.naam, reden: k.reden })) }),
     });
   } catch (e) {
     return json({ ok: false, error: String((e as Error).message ?? e) }, 500);
