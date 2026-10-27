@@ -651,3 +651,27 @@ async function foutTekst(fout: unknown): Promise<string> {
   }
   return fout instanceof Error ? fout.message : 'Dit lukte niet.'
 }
+
+/* De dagvoorkeuren, uit de bron en niet uit het overzicht.
+ *
+ * `vaste_dagen_overzicht` sluit de meewerkend eigenaar uit, en met reden: dat
+ * overzicht hoort bij het invulformulier en bij het nabellen van wie het nog
+ * niet heeft ingevuld. Daar heeft de baas niets te zoeken.
+ *
+ * Maar een voorkeur voor een weekdag is iets anders dan een invulformulier.
+ * Sander wil zijn donderdag zoveel mogelijk vrijhouden voor administratie, en
+ * die wens hoort het rooster gewoon te kennen. Vandaar dat het voorstel de
+ * onderliggende tabel leest: dezelfde gegevens, zonder de uitzondering die
+ * voor een ander doel is gemaakt. */
+export function useVoorkeuren() {
+  return useQuery({
+    queryKey: ['rooster-voorkeuren'],
+    queryFn: async (): Promise<{ persoon_id: string | null }[]> => {
+      const { data, error } = await supabase
+        .from('rooster_voorkeuren_laatste')
+        .select('persoon_id,di,wo,do,vr,za,zo')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as { persoon_id: string | null }[]
+    },
+  })
+}

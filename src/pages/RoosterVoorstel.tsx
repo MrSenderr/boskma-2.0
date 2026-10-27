@@ -3,7 +3,6 @@ import { AlertTriangle, CircleDashed, Phone, Send, Wand2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil, Veld } from '../components/ui'
 import { dagnaam, datumKort, maandagVan } from '../lib/rooster'
 import { useWieKanEr } from '../lib/beschikbaarheid'
-import { useVasteDagenOverzicht } from '../lib/vasteDagen'
 import { SOORTTEKST, klok, useSjabloon, useVasteDiensten, type Soort } from '../lib/weeksjabloon'
 import {
   maakVoorstel,
@@ -11,6 +10,7 @@ import {
   useEitjeTeam,
   useNaarEitje,
   useRoosterMensen,
+  useVoorkeuren,
   volgendBlok,
   wensenUit,
   type Dienstvoorstel,
@@ -313,9 +313,9 @@ export function RoosterVoorstel() {
   const vast = useVasteDiensten()
   const mensen = useRoosterMensen()
   const wieKan = useWieKanEr(periode?.van ?? van, periode?.tot ?? tot)
-  const overzicht = useVasteDagenOverzicht()
+  const voorkeuren = useVoorkeuren()
 
-  const klaar = sjabloon.data && vast.data && mensen.data && wieKan.data && overzicht.data
+  const klaar = sjabloon.data && vast.data && mensen.data && wieKan.data && voorkeuren.data
 
   const voorstel = useMemo(() => {
     if (!periode || !klaar) return null
@@ -327,10 +327,10 @@ export function RoosterVoorstel() {
       mensen: mensen.data!,
       opgaven: wieKan.data!.opgaven,
       afwezig: wieKan.data!.afwezig,
-      wensen: wensenUit(overzicht.data! as unknown as { persoon_id: string | null }[]),
+      wensen: wensenUit(voorkeuren.data!),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periode, klaar, sjabloon.data, vast.data, mensen.data, wieKan.data, overzicht.data])
+  }, [periode, klaar, sjabloon.data, vast.data, mensen.data, wieKan.data, voorkeuren.data])
 
   const weken = useMemo(() => {
     const kaart = new Map<string, Dienstvoorstel[]>()
@@ -343,7 +343,7 @@ export function RoosterVoorstel() {
   }, [voorstel])
 
   const totalen = voorstel ? samenvatten(voorstel) : null
-  const fout = sjabloon.error ?? vast.error ?? mensen.error ?? wieKan.error ?? overzicht.error
+  const fout = sjabloon.error ?? vast.error ?? mensen.error ?? wieKan.error ?? voorkeuren.error
 
   return (
     <div className="flex flex-col gap-5">
