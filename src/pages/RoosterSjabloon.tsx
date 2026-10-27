@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
 import { useKandidaten } from '../lib/rooster'
 import {
   DAGEN,
   SOORTEN,
   SOORTTEKST,
+  controleer,
   klok,
   telDag,
   useRegelToevoegen,
@@ -301,6 +302,42 @@ function VasteDiensten() {
   )
 }
 
+/* Wat er niet rondloopt tussen het sjabloon en de afspraken.
+ *
+ * Die twee worden los van elkaar ingevuld, dus ze kunnen uit elkaar lopen —
+ * en dat merk je anders pas als het voorstel iemand niet kwijt kan of een plek
+ * stilletjes dubbel bezet. Staat bovenaan: een fout in de opzet hoort je op te
+ * vallen voordat je gaat zitten schuiven. */
+function Scheef() {
+  const sjabloon = useSjabloon()
+  const vast = useVasteDiensten()
+  const mensen = useKandidaten()
+
+  if (!sjabloon.data || !vast.data) return null
+
+  const naamVan = (id: string) => {
+    const m = (mensen.data ?? []).find((k) => k.id === id)
+    return m ? (m.voornaam ?? 'Onbekend') : 'Onbekend'
+  }
+
+  const meldingen = controleer(sjabloon.data, vast.data, naamVan)
+  if (meldingen.length === 0) return null
+
+  return (
+    <Kaart className="flex flex-col gap-2 border-warn p-4">
+      {meldingen.map((m) => (
+        <p key={`${m.dag}-${m.tekst}`} className="flex items-start gap-2 text-sm">
+          <AlertTriangle
+            className={`mt-0.5 size-4 shrink-0 ${m.ernst === 'fout' ? 'text-bad' : 'text-warn'}`}
+            aria-hidden
+          />
+          <span className={m.ernst === 'fout' ? '' : 'text-muted'}>{m.tekst}</span>
+        </p>
+      ))}
+    </Kaart>
+  )
+}
+
 export function RoosterSjabloon() {
   const sjabloon = useSjabloon()
 
@@ -323,6 +360,8 @@ export function RoosterSjabloon() {
 
       {sjabloon.data && (
         <>
+          <Scheef />
+
           <div className="flex flex-col gap-3">
             {DAGEN.map((d) => (
               <Dag key={d.nr} dag={d.nr} naam={d.naam} regels={sjabloon.data} />

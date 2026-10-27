@@ -197,3 +197,89 @@ export function useVasteDienstWeg() {
     onSuccess: () => verversen(qc),
   })
 }
+
+/* ------------------------------------------------------- loopt het rond --- */
+
+/* Past wat je hebt afgesproken op wat je nodig hebt?
+ *
+ * Een vaste dienst is een afspraak met een mens; het sjabloon is wat de zaak
+ * nodig heeft. Die twee worden los van elkaar ingevuld en kunnen dus uit elkaar
+ * lopen — en dat merk je anders pas als het voorstel iemand niet kwijt kan, of
+ * stilletjes een plek dubbel bezet.
+ *
+ * Twee soorten meldingen, want het zijn twee verschillende problemen:
+ *
+ * **Te veel** is een fout. Staan er twee mensen vast op de voorbereiding
+ * terwijl je er één nodig hebt, dan moet er iets wijken — een van de twee
+ * afspraken, of het sjabloon. Dat kan de app niet voor je kiezen.
+ *
+ * **Een andere tijd** is een vraag. Begint Daan om 11:00 terwijl de
+ * voorbereiding om 10:00 staat ingepland, dan kan dat kloppen (hij begint nu
+ * eenmaal later) of een vergissing zijn. Daarom een melding en geen slot.
+ */
+
+export type Scheefheid = {
+  dag: number
+  ernst: 'fout' | 'letop'
+  tekst: string
+}
+
+export function controleer(
+  sjabloon: Sjabloonregel[],
+  vast: VasteDienst[],
+  naamVan: (medewerkerId: string) => string,
+): Scheefheid[] {
+  const uit: Scheefheid[] = []
+
+  for (const { nr, naam } of DAGEN) {
+    const regels = sjabloon.filter((r) => r.dag === nr)
+    const afspraken = vast.filter((v) => v.dag === nr)
+
+    for (const soort of SOORTEN) {
+      const plekken = regels
+        .filter((r) => r.soort === soort)
+        .reduce((som, r) => som + r.aantal, 0)
+      const vastgelegd = afspraken.filter((v) => v.soort === soort)
+      if (vastgelegd.length === 0) continue
+
+      if (vastgelegd.length > plekken) {
+        const wie = vastgelegd.map((v) => naamVan(v.medewerker_id)).join(' en ')
+        uit.push({
+          dag: nr,
+          ernst: 'fout',
+          tekst:
+            plekken === 0
+              ? `${wie} ${vastgelegd.length === 1 ? 'staat' : 'staan'} vast op ${SOORTTEKST[soort].toLowerCase()}, maar die staat ${naam.toLowerCase()} niet in het sjabloon.`
+              : `${wie} staan vast op ${SOORTTEKST[soort].toLowerCase()}, maar ${naam.toLowerCase()} is er maar ${plekken === 1 ? 'één' : plekken} van nodig.`,
+        })
+      }
+
+      /* Begintijden die niet voorkomen in het sjabloon. Eén melding per tijd,
+         niet per persoon: drie mensen die allemaal om 11:00 beginnen terwijl er
+         10:00 staat, is één vraag en geen drie. */
+      const tijden = new Set(regels.filter((r) => r.soort === soort).map((r) => r.begint))
+      const afwijkend = [...new Set(vastgelegd.map((v) => v.begint))].filter(
+        (t) => !tijden.has(t),
+      )
+      for (const tijd of afwijkend) {
+        const namen = vastgelegd
+          .filter((v) => v.begint === tijd)
+          .map((v) => naamVan(v.medewerker_id))
+        const wie = namen.join(' en ')
+        // "Daan en Justin begint" is geen Nederlands.
+        const werkwoord = namen.length === 1 ? 'begint' : 'beginnen'
+        const verwacht = [...tijden].map(klok).join(' of ')
+        uit.push({
+          dag: nr,
+          ernst: 'letop',
+          tekst: verwacht
+            ? `${wie} ${werkwoord} ${naam.toLowerCase()} om ${klok(tijd)}, terwijl ${SOORTTEKST[soort].toLowerCase()} in het sjabloon om ${verwacht} begint.`
+            : `${wie} ${werkwoord} ${naam.toLowerCase()} om ${klok(tijd)} aan ${SOORTTEKST[soort].toLowerCase()}.`,
+        })
+      }
+    }
+  }
+
+  // Fouten eerst: die moet je oplossen, de rest mag je wegwuiven.
+  return uit.sort((a, b) => (a.ernst === b.ernst ? a.dag - b.dag : a.ernst === 'fout' ? -1 : 1))
+}
