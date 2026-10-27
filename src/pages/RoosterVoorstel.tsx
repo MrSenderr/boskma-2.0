@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, CircleDashed, Phone, Wand2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil, Veld } from '../components/ui'
-import { dagnaam, datumKort } from '../lib/rooster'
+import { dagnaam, datumKort, maandagVan } from '../lib/rooster'
 import { useWieKanEr } from '../lib/beschikbaarheid'
 import { useVasteDagenOverzicht } from '../lib/vasteDagen'
-import { SOORTTEKST, klok, useSjabloon, useVasteDiensten } from '../lib/weeksjabloon'
+import { SOORTTEKST, klok, useSjabloon, useVasteDiensten, type Soort } from '../lib/weeksjabloon'
 import {
   maakVoorstel,
   samenvatten,
@@ -21,72 +21,180 @@ import { vandaagStr } from '../lib/openingstijden'
  * plekken er per dag te vullen zijn, de vaste diensten liggen al vast, eitje
  * weet wie er kan, en de vaste dagen zeggen wat iemand liever wil.
  *
- * Dit scherm schrijft niets weg — niet hier en niet in eitje. Je kijkt ernaar,
- * en wat je ervan vindt bepaalt of het de moeite waard is om het echt te laten
- * wegschrijven. Een voorstel dat meteen ergens landt is geen voorstel.
+ * Dit scherm schrijft niets weg — niet hier en niet in eitje. Een voorstel dat
+ * meteen ergens landt is geen voorstel.
  *
- * Bij elke dienst staat waarom die persoon daar staat. Een voorstel dat dat
- * niet kan uitleggen kun je niet nakijken, en dan keur je het goed omdat de
- * computer het zei.
+ * **Waarom een raster en geen lijst.** Een blok is vier weken; als lijst zijn
+ * dat achtentwintig kaarten met samen ruim honderd regels, en dan lees je geen
+ * rooster meer maar scrol je langs tekst. Een week hoort op één scherm te
+ * passen zoals een rooster eruitziet: dagen naast elkaar, soorten diensten
+ * onder elkaar.
+ *
+ * De uitleg per dienst is daarmee niet verdwenen maar verplaatst. Klik een
+ * naam aan en hij staat erboven. Zonder uitleg kun je een rooster niet
+ * nakijken, maar hem bij alle honderdveertig diensten tegelijk tonen maakt het
+ * onleesbaar — en dan kijk je nergens meer naar.
  *
  * Wat hier níet gebeurt: wie op welke werkplek komt te staan. Dit verdeelt
- * diensten — wie werkt er wanneer. De verdeling over kassa, patat en de rest
- * doet de spitsindeling, en die draait op het rooster dat hieruit komt.
+ * diensten; de indeling over kassa, patat en de rest doet de spitsindeling.
  */
 
-function Dienst({ d }: { d: Dienstvoorstel }) {
-  const open = !d.medewerker_id
+const SOORTEN: Soort[] = ['voorbereiding', 'dag', 'avond']
+
+/** De eerste kolom blijft staan als je opzij schuift; anders weet je bij zes
+ *  dagen naast elkaar niet meer welke rij je leest. */
+const EERSTE = 'sticky left-0 z-10 bg-surface'
+
+function Cel({
+  diensten,
+  tijdErbij,
+  gekozen,
+  onKies,
+}: {
+  diensten: Dienstvoorstel[]
+  tijdErbij: boolean
+  gekozen: Dienstvoorstel | null
+  onKies: (d: Dienstvoorstel) => void
+}) {
+  if (diensten.length === 0) return <span className="text-sm text-muted">—</span>
 
   return (
-    <li className="flex flex-col gap-0.5 px-4 py-2.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className={`font-semibold ${open ? 'text-bad' : ''}`}>
-          {open ? 'Nog niemand' : d.naam}
-        </span>
-        <span className="text-sm tabular-nums text-muted">
-          {klok(d.begint)}–{klok(d.eindigt)} · {SOORTTEKST[d.soort].toLowerCase()}
-        </span>
-      </div>
-      <span className="text-sm text-muted">{d.uitleg}</span>
-      {d.waarschuwing && (
-        <span className="flex items-center gap-1.5 text-sm text-warn">
-          <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
-          {d.waarschuwing}
-        </span>
-      )}
-      {/* Open plekken rondappen is wat er nu met de hand gebeurt, dus hoort de
-          lijst hier te staan in plaats van dat je hem zelf bij elkaar zoekt.
-          Wie met verlof is staat er niet bij: iemand bellen die er niet is, is
-          erger dan niemand bellen. */}
-      {open && d.teVragen && d.teVragen.length > 0 && (
-        <span className="flex items-start gap-1.5 text-sm text-muted">
-          <Phone className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          Te vragen: {d.teVragen.join(', ')}
-        </span>
-      )}
-    </li>
+    <div className="flex flex-col gap-0.5">
+      {diensten.map((d, i) => {
+        const open = !d.medewerker_id
+        const dit = gekozen === d
+        return (
+          <button
+            key={`${d.begint}-${d.medewerker_id ?? `open${i}`}`}
+            type="button"
+            onClick={() => onKies(d)}
+            className={`flex flex-wrap items-baseline gap-x-1.5 rounded-[3px] px-1 py-0.5 text-left text-sm transition-colors hover:bg-surface-2 ${
+              dit ? 'bg-surface-2 ring-1 ring-accent' : ''
+            }`}
+          >
+            <span className={open ? 'font-semibold text-bad' : ''}>
+              {open ? 'Nog niemand' : (d.naam ?? '').split(' ')[0]}
+            </span>
+            {/* De tijd staat er alleen bij als hij op die dag afwijkt. Overal
+                de klok erbij zetten verdubbelt de hoogte voor iets dat bijna
+                altijd hetzelfde is. */}
+            {tijdErbij && <span className="text-xs tabular-nums text-muted">{klok(d.begint)}</span>}
+            {d.waarschuwing && <AlertTriangle className="size-3 shrink-0 text-warn" aria-hidden />}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
-function Dag({ datum, diensten }: { datum: string; diensten: Dienstvoorstel[] }) {
+function Week({
+  maandag,
+  diensten,
+  gekozen,
+  onKies,
+}: {
+  maandag: string
+  diensten: Dienstvoorstel[]
+  gekozen: Dienstvoorstel | null
+  onKies: (d: Dienstvoorstel) => void
+}) {
+  const dagen = useMemo(() => [...new Set(diensten.map((d) => d.datum))].sort(), [diensten])
   const open = diensten.filter((d) => !d.medewerker_id).length
 
+  /* Per dag en soort: staan er meerdere begintijden door elkaar? Alleen dan
+     hoort de klok in de cel. */
+  const gemengd = useMemo(() => {
+    const uit = new Set<string>()
+    for (const dag of dagen) {
+      for (const soort of SOORTEN) {
+        const tijden = new Set(
+          diensten.filter((d) => d.datum === dag && d.soort === soort).map((d) => d.begint),
+        )
+        if (tijden.size > 1) uit.add(`${dag}|${soort}`)
+      }
+    }
+    return uit
+  }, [dagen, diensten])
+
+  if (dagen.length === 0) return null
+
   return (
-    <Kaart className="flex flex-col">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
-        <p className="font-semibold">
-          {dagnaam(datum, true)} {datumKort(datum)}
-        </p>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <Kopje>Week van {datumKort(maandag)}</Kopje>
         <span className="text-sm text-muted">
-          {diensten.length} {diensten.length === 1 ? 'dienst' : 'diensten'}
+          {diensten.length} diensten
           {open > 0 && <span className="text-bad">{` · ${open} open`}</span>}
         </span>
       </div>
-      <ul className="flex flex-col divide-y divide-line">
-        {diensten.map((d, i) => (
-          <Dienst key={`${d.datum}-${d.begint}-${d.medewerker_id ?? `open${i}`}`} d={d} />
-        ))}
-      </ul>
+
+      <Kaart className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-muted">
+              <th className={`${EERSTE} py-2 pl-4 pr-3 font-semibold`} />
+              {dagen.map((dag) => (
+                <th key={dag} className="whitespace-nowrap px-3 py-2 text-left font-semibold">
+                  {dagnaam(dag, true)}
+                  <span className="block text-xs font-normal">{datumKort(dag)}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SOORTEN.map((soort) => (
+              <tr key={soort} className="border-b border-line align-top last:border-0">
+                <th className={`${EERSTE} whitespace-nowrap py-2 pl-4 pr-3 text-left font-semibold`}>
+                  {SOORTTEKST[soort]}
+                </th>
+                {dagen.map((dag) => (
+                  <td key={dag} className="px-3 py-2">
+                    <Cel
+                      diensten={diensten.filter((d) => d.datum === dag && d.soort === soort)}
+                      tijdErbij={gemengd.has(`${dag}|${soort}`)}
+                      gekozen={gekozen}
+                      onKies={onKies}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Kaart>
+    </div>
+  )
+}
+
+/* De uitleg bij de dienst die je hebt aangeklikt. Zonder uitleg kun je een
+   rooster niet nakijken; met uitleg bij alles tegelijk kijk je nergens meer
+   naar. Vandaar: op verzoek, en één tegelijk. */
+function Uitleg({ d }: { d: Dienstvoorstel }) {
+  const open = !d.medewerker_id
+  return (
+    <Kaart className={`flex flex-col gap-1 p-4 ${open ? 'border-bad' : ''}`}>
+      <p className="flex flex-wrap items-baseline gap-x-2">
+        <span className={`font-semibold ${open ? 'text-bad' : ''}`}>
+          {open ? 'Nog niemand' : d.naam}
+        </span>
+        <span className="text-sm text-muted">
+          {dagnaam(d.datum, true)} {datumKort(d.datum)} · {klok(d.begint)}–{klok(d.eindigt)} ·{' '}
+          {SOORTTEKST[d.soort].toLowerCase()}
+        </span>
+      </p>
+      <p className="text-sm text-muted">{d.uitleg}</p>
+      {d.waarschuwing && (
+        <p className="flex items-center gap-1.5 text-sm text-warn">
+          <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
+          {d.waarschuwing}
+        </p>
+      )}
+      {open && d.teVragen && d.teVragen.length > 0 && (
+        <p className="flex items-start gap-1.5 text-sm">
+          <Phone className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+          Te vragen: {d.teVragen.join(', ')}
+        </p>
+      )}
     </Kaart>
   )
 }
@@ -98,6 +206,7 @@ export function RoosterVoorstel() {
   /* Pas rekenen als je erom vraagt. Meteen een voorstel tonen zodra het scherm
      opent, wekt de indruk dat er al iets besloten is. */
   const [periode, setPeriode] = useState<{ van: string; tot: string } | null>(null)
+  const [gekozen, setGekozen] = useState<Dienstvoorstel | null>(null)
 
   const sjabloon = useSjabloon()
   const vast = useVasteDiensten()
@@ -105,8 +214,7 @@ export function RoosterVoorstel() {
   const wieKan = useWieKanEr(periode?.van ?? van, periode?.tot ?? tot)
   const overzicht = useVasteDagenOverzicht()
 
-  const klaar =
-    sjabloon.data && vast.data && mensen.data && wieKan.data && overzicht.data
+  const klaar = sjabloon.data && vast.data && mensen.data && wieKan.data && overzicht.data
 
   const voorstel = useMemo(() => {
     if (!periode || !klaar) return null
@@ -123,13 +231,14 @@ export function RoosterVoorstel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periode, klaar, sjabloon.data, vast.data, mensen.data, wieKan.data, overzicht.data])
 
-  const perDag = useMemo(() => {
+  const weken = useMemo(() => {
     const kaart = new Map<string, Dienstvoorstel[]>()
     for (const d of voorstel ?? []) {
-      if (!kaart.has(d.datum)) kaart.set(d.datum, [])
-      kaart.get(d.datum)!.push(d)
+      const week = maandagVan(d.datum)
+      if (!kaart.has(week)) kaart.set(week, [])
+      kaart.get(week)!.push(d)
     }
-    return [...kaart.entries()]
+    return [...kaart.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [voorstel])
 
   const totalen = voorstel ? samenvatten(voorstel) : null
@@ -140,8 +249,8 @@ export function RoosterVoorstel() {
       <div className="flex flex-col gap-1">
         <p className="max-w-2xl text-sm text-muted">
           Een voorstel op basis van je weeksjabloon, je vaste diensten en wie er volgens eitje kan.
-          Er wordt niets weggeschreven — niet hier en niet in eitje. Je kijkt ernaar, en daarna
-          bepaal je of het goed genoeg is om echt te gebruiken.
+          Er wordt niets weggeschreven — niet hier en niet in eitje. Klik een naam aan om te zien
+          waarom hij daar staat.
         </p>
         <p className="max-w-2xl text-sm text-muted">
           Wie op welke werkplek komt te staan zit hier niet in. Dit verdeelt diensten; de indeling
@@ -154,7 +263,10 @@ export function RoosterVoorstel() {
         <Veld label="Tot en met" type="date" value={tot} onChange={(e) => setTot(e.target.value)} />
         <Knop
           disabled={!van || !tot || van > tot || !klaar}
-          onClick={() => setPeriode({ van, tot })}
+          onClick={() => {
+            setGekozen(null)
+            setPeriode({ van, tot })
+          }}
         >
           <Wand2 className="size-4" aria-hidden />
           Maak voorstel
@@ -181,8 +293,22 @@ export function RoosterVoorstel() {
             )}
           </div>
 
-          {/* Wie hoeveel krijgt. Dit is het eerste waar je naar kijkt als je
-              wilt weten of een voorstel eerlijk is uitgevallen. */}
+          {gekozen && <Uitleg d={gekozen} />}
+
+          <div className="flex flex-col gap-5">
+            {weken.map(([maandag, diensten]) => (
+              <Week
+                key={maandag}
+                maandag={maandag}
+                diensten={diensten}
+                gekozen={gekozen}
+                onKies={(d) => setGekozen((vorige) => (vorige === d ? null : d))}
+              />
+            ))}
+          </div>
+
+          {/* Wie hoeveel krijgt. Staat onder het rooster en niet erboven: eerst
+              kijk je of de weken kloppen, daarna of het eerlijk is verdeeld. */}
           <div className="flex flex-col gap-2">
             <Kopje>Diensten per persoon</Kopje>
             <Kaart>
@@ -202,12 +328,6 @@ export function RoosterVoorstel() {
                 nergens op. Dat kan kloppen, maar het is het nakijken waard.
               </p>
             )}
-          </div>
-
-          <div className="flex flex-col gap-3">
-            {perDag.map(([datum, diensten]) => (
-              <Dag key={datum} datum={datum} diensten={diensten} />
-            ))}
           </div>
         </>
       )}

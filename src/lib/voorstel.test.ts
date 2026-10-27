@@ -430,3 +430,53 @@ describe('de voorbereiding kan niet iedereen', () => {
     expect(uit[0].teVragen).toEqual(['Ilona Test'])
   })
 })
+
+describe('de belijst wordt pas gemaakt als de dag rond is', () => {
+  /* Precies wat er misging op vrijdag 13 november. Justin heeft die dag een
+     vaste voorbereiding maar is er niet; Daan heeft er ook een. Justins dienst
+     komt als eerste langs, en op dat moment stond Daan nog niet ingepland —
+     zijn eigen vaste dienst kwam een regel later. Zo werd Daan voorgesteld om
+     te bellen voor een dag waarop hij gewoon werkt. */
+  it('noemt niemand die verderop diezelfde dag nog wordt ingepland', () => {
+    const daan = mens('daan', 'Daan', { inplannen: 'alleen_vast', kan_voorbereiding: true })
+    const justin = mens('justin', 'Justin', { kan_voorbereiding: true })
+
+    const vast: VasteDienst[] = [
+      // Justin eerst, zoals ze uit de database komen.
+      { id: 'v1', medewerker_id: 'justin', dag: 6, soort: 'voorbereiding', begint: '11:00:00', eindigt: '20:00:00', opmerking: null },
+      { id: 'v2', medewerker_id: 'daan', dag: 6, soort: 'voorbereiding', begint: '11:00:00', eindigt: '20:00:00', opmerking: null },
+    ]
+
+    const uit = maakVoorstel(
+      opdracht({
+        sjabloon: [regel({ soort: 'voorbereiding', begint: '11:00:00', aantal: 2 })],
+        mensen: [justin, daan],
+        vast,
+        afwezig: [afwezig({ medewerker_id: 'justin', naam: 'Justin Test' })],
+      }),
+    )
+
+    const open = uit.find((d) => !d.medewerker_id)!
+    expect(open.uitleg).toContain('Justin')
+    expect(open.teVragen).toEqual([])
+    // En Daan staat er gewoon op.
+    expect(uit.some((d) => d.medewerker_id === 'daan')).toBe(true)
+  })
+
+  it('noemt hem wel als hij die dag niets heeft', () => {
+    const daan = mens('daan', 'Daan', { inplannen: 'alleen_vast', kan_voorbereiding: true })
+    const justin = mens('justin', 'Justin', { kan_voorbereiding: true })
+    const vast: VasteDienst[] = [
+      { id: 'v1', medewerker_id: 'justin', dag: 6, soort: 'voorbereiding', begint: '11:00:00', eindigt: '20:00:00', opmerking: null },
+    ]
+    const uit = maakVoorstel(
+      opdracht({
+        sjabloon: [regel({ soort: 'voorbereiding', begint: '11:00:00', aantal: 1 })],
+        mensen: [justin, daan],
+        vast,
+        afwezig: [afwezig({ medewerker_id: 'justin', naam: 'Justin Test' })],
+      }),
+    )
+    expect(uit[0].teVragen).toEqual(['Daan Test'])
+  })
+})

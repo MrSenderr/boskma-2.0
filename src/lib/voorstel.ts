@@ -221,6 +221,12 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
 
     const dag = weekdag(datum)
     const bezet = new Set<string>()
+    /* De open plekken van deze dag, om ze aan het eind pas een belijst te
+       geven. Tijdens het verdelen is `bezet` nog niet compleet: de vaste
+       diensten worden één voor één afgelopen, en wie verderop in de rij staat
+       telt dan nog niet mee. Zo kwam Daan in de lijst "te vragen" terwijl zijn
+       eigen vaste dienst een regel later werd neergezet. */
+    const openVandaag: Dienstvoorstel[] = []
 
     /* Wie houdt zijn beschikbaarheid bij? Dat wordt over de hele periode
        bekeken en niet per dag: iemand die deze week drie keer iets opgaf en
@@ -256,7 +262,7 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
       if (weg?.hard) {
         /* Een vaste dienst is een afspraak, geen aanwezigheid. Wie verlof heeft
            staat er niet, en die plek hoort open te blijven zodat je hem ziet. */
-        uit.push({
+        const leeg: Dienstvoorstel = {
           datum,
           soort: afspraak.soort,
           begint: afspraak.begint,
@@ -266,8 +272,9 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
           reden: 'open',
           uitleg: `${naamVan(mens)} heeft hier een vaste dienst, maar is er niet: ${weg.tekst}.`,
           waarschuwing: 'vaste dienst niet ingevuld',
-          teVragen: teVragenOp(o, datum, afspraak.soort, bezet),
-        })
+        }
+        uit.push(leeg)
+        openVandaag.push(leeg)
         continue
       }
 
@@ -330,7 +337,7 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
 
       const beste = kandidaten[0]
       if (!beste) {
-        uit.push({
+        const leeg: Dienstvoorstel = {
           datum,
           soort: plek.soort,
           begint: plek.begint,
@@ -343,8 +350,9 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
               ? 'niemand die de mep kan draaien is nog vrij'
               : 'niemand beschikbaar die nog niet staat ingepland',
           waarschuwing: 'open dienst',
-          teVragen: teVragenOp(o, datum, plek.soort, bezet),
-        })
+        }
+        uit.push(leeg)
+        openVandaag.push(leeg)
         continue
       }
 
@@ -366,6 +374,12 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
         ),
         waarschuwing: beste.weg ? beste.weg.tekst : null,
       })
+    }
+
+    /* Nu pas, met de dag helemaal rond: wie je kunt bellen. Eerder gaf dat de
+       naam van iemand die verderop diezelfde dag nog werd ingepland. */
+    for (const leeg of openVandaag) {
+      leeg.teVragen = teVragenOp(o, datum, leeg.soort, bezet)
     }
   }
 
