@@ -5,9 +5,18 @@ import { dagnaam, datumKort, maandagVan } from '../lib/rooster'
 import { useWieKanEr } from '../lib/beschikbaarheid'
 import { SOORTTEKST, klok, useSjabloon, useVasteDiensten, type Soort } from '../lib/weeksjabloon'
 import {
+  isDoordeweeks,
+  maakIndeling,
+  stoelenVan,
+  stoelnaam,
+  useNiveaus,
+  useWerkplekken,
+} from '../lib/spits'
+import {
   maakVoorstel,
   samenvatten,
   useEitjeTeam,
+  inDeSpits,
   useNaarEitje,
   useRoosterMensen,
   useVoorkeuren,
@@ -95,11 +104,15 @@ function Week({
   diensten,
   gekozen,
   onKies,
+  gekozenDag,
+  onKiesDag,
 }: {
   maandag: string
   diensten: Dienstvoorstel[]
   gekozen: Dienstvoorstel | null
   onKies: (d: Dienstvoorstel) => void
+  gekozenDag: string | null
+  onKiesDag: (datum: string) => void
 }) {
   const dagen = useMemo(() => [...new Set(diensten.map((d) => d.datum))].sort(), [diensten])
   const open = diensten.filter((d) => !d.medewerker_id).length
@@ -138,8 +151,19 @@ function Week({
               <th className={`${EERSTE} py-2 pl-4 pr-3 font-semibold`} />
               {dagen.map((dag) => (
                 <th key={dag} className="whitespace-nowrap px-3 py-2 text-left font-semibold">
-                  {dagnaam(dag, true)}
-                  <span className="block text-xs font-normal">{datumKort(dag)}</span>
+                  {/* Aanklikbaar: dan zie je eronder wie er die dag waar staat.
+                      Zes werkplekken per dag in het raster zetten zou het
+                      onleesbaar maken. */}
+                  <button
+                    type="button"
+                    onClick={() => onKiesDag(dag)}
+                    className={`rounded-[3px] px-1 py-0.5 text-left transition-colors hover:bg-surface-2 ${
+                      gekozenDag === dag ? 'bg-surface-2 ring-1 ring-accent' : ''
+                    }`}
+                  >
+                    {dagnaam(dag, true)}
+                    <span className="block text-xs font-normal">{datumKort(dag)}</span>
+                  </button>
                 </th>
               ))}
             </tr>
@@ -300,6 +324,76 @@ function NaarEitje({ voorstel }: { voorstel: Dienstvoorstel[] }) {
   )
 }
 
+/* Wie waar staat tijdens de spits van één dag.
+ *
+ * Hetzelfde rekenwerk als het spitsscherm, alleen op het voorstel in plaats van
+ * op het ingelezen rooster. Er wordt echt gezocht en niet van boven naar
+ * beneden gevuld: de beste kassa is soms ook de beste patatbakker, en dan moet
+ * er één schuiven.
+ *
+ * Doordeweeks geldt een eigen volgorde van belang, dus met vier man worden
+ * andere plekken bezet dan in het weekend. Dat hoort hier mee te doen —
+ * anders kijk je naar een indeling die op zaterdag klopt en op dinsdag niet.
+ *
+ * Staat hier een plek leeg, dan is dat geen fout van de indeling maar een paar
+ * handen dat je niet hebt: een open dienst in het voorstel erboven. */
+function Plekindeling({ datum, voorstel }: { datum: string; voorstel: Dienstvoorstel[] }) {
+  const werkplekken = useWerkplekken()
+  const niveaus = useNiveaus()
+
+  const indeling = useMemo(() => {
+    if (!werkplekken.data || !niveaus.data) return null
+    const mensen = inDeSpits(voorstel, datum)
+    if (mensen.length === 0) return null
+    return maakIndeling({
+      stoelen: stoelenVan(werkplekken.data, isDoordeweeks(datum)),
+      mensen,
+      niveaus: niveaus.data,
+    })
+  }, [datum, voorstel, werkplekken.data, niveaus.data])
+
+  if (!indeling) return null
+
+  return (
+    <Kaart className="flex flex-col gap-2 p-4">
+      <p className="flex flex-wrap items-baseline gap-x-2">
+        <span className="font-semibold">Plekken om 17:00</span>
+        <span className="text-sm text-muted">
+          {dagnaam(datum, true)} {datumKort(datum)}
+          {isDoordeweeks(datum) && ' · doordeweekse volgorde'}
+        </span>
+      </p>
+
+      <ul className="flex flex-col divide-y divide-line">
+        {indeling.plekken.map((p) => (
+          <li key={p.stoel.sleutel} className="flex items-baseline justify-between gap-3 py-1.5">
+            <span className="text-sm text-muted">{stoelnaam(p.stoel)}</span>
+            <span className={`text-sm font-semibold ${p.persoon ? '' : 'text-bad'}`}>
+              {p.persoon ? p.persoon.naam : 'leeg'}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {indeling.onbezet.length > 0 && (
+        <p className="text-sm text-muted">
+          {indeling.onbezet.map(stoelnaam).join(', ')} {indeling.onbezet.length === 1 ? 'blijft' : 'blijven'}{' '}
+          leeg: er staan te weinig mensen. Dat is geen keuze van de indeling maar een open dienst
+          hierboven.
+        </p>
+      )}
+
+      {indeling.over.length > 0 && (
+        <p className="text-sm text-muted">
+          Zonder plek: {indeling.over.map((o) => o.persoon.naam).join(', ')}
+          {indeling.over.some((o) => o.reden === 'kan_niks') &&
+            ' — voor wie nergens op staat beoordeeld, of overal op "nooit".'}
+        </p>
+      )}
+    </Kaart>
+  )
+}
+
 export function RoosterVoorstel() {
   const blok = useMemo(() => volgendBlok(vandaagStr()), [])
   const [van, setVan] = useState(blok.van)
@@ -308,6 +402,7 @@ export function RoosterVoorstel() {
      opent, wekt de indruk dat er al iets besloten is. */
   const [periode, setPeriode] = useState<{ van: string; tot: string } | null>(null)
   const [gekozen, setGekozen] = useState<Dienstvoorstel | null>(null)
+  const [gekozenDag, setGekozenDag] = useState<string | null>(null)
 
   const sjabloon = useSjabloon()
   const vast = useVasteDiensten()
@@ -351,11 +446,11 @@ export function RoosterVoorstel() {
         <p className="max-w-2xl text-sm text-muted">
           Een voorstel op basis van je weeksjabloon, je vaste diensten en wie er volgens eitje kan.
           Er wordt niets weggeschreven — niet hier en niet in eitje. Klik een naam aan om te zien
-          waarom hij daar staat.
+          waarom hij daar staat, of een dag om te zien wie er dan waar staat.
         </p>
         <p className="max-w-2xl text-sm text-muted">
-          Wie op welke werkplek komt te staan zit hier niet in. Dit verdeelt diensten; de indeling
-          over kassa, patat en de rest doet de spits.
+          Dit verdeelt diensten over mensen. Welke plek iemand tijdens de spits krijgt, rekent de
+          spitsmodule erbij zodra je een dag aanklikt.
         </p>
       </div>
 
@@ -366,6 +461,7 @@ export function RoosterVoorstel() {
           disabled={!van || !tot || van > tot || !klaar}
           onClick={() => {
             setGekozen(null)
+            setGekozenDag(null)
             setPeriode({ van, tot })
           }}
         >
@@ -395,6 +491,7 @@ export function RoosterVoorstel() {
           </div>
 
           {gekozen && <Uitleg d={gekozen} />}
+          {gekozenDag && <Plekindeling datum={gekozenDag} voorstel={voorstel!} />}
 
           <NaarEitje key={`${periode?.van}-${periode?.tot}`} voorstel={voorstel!} />
 
@@ -406,6 +503,8 @@ export function RoosterVoorstel() {
                 diensten={diensten}
                 gekozen={gekozen}
                 onKies={(d) => setGekozen((vorige) => (vorige === d ? null : d))}
+                gekozenDag={gekozenDag}
+                onKiesDag={(dag) => setGekozenDag((vorige) => (vorige === dag ? null : dag))}
               />
             ))}
           </div>

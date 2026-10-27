@@ -694,3 +694,25 @@ export function useVoorkeuren() {
     },
   })
 }
+
+/* ------------------------------------------------------- wie waar staat --- */
+
+/* Wie er om vijf uur in de zaak staat.
+ *
+ * Niet alleen de avonddiensten: een dagdienst loopt door tot sluitingstijd en
+ * staat er dus gewoon bij. Dat is precies waarom vrijdag met drie overdag en
+ * vier 's avonds op zeven paar handen uitkomt — de zeven waar de spitsindeling
+ * op rekent.
+ *
+ * Een open dienst levert geen handen op. Die plek blijft in de indeling leeg,
+ * en dat hoort zo: een dienst die je nog moet vullen is een paar handen dat je
+ * niet hebt. */
+export function inDeSpits(
+  voorstel: Dienstvoorstel[],
+  datum: string,
+  om = '17:00:00',
+): { id: string; naam: string }[] {
+  return voorstel
+    .filter((d) => d.datum === datum && d.medewerker_id && d.begint <= om && d.eindigt > om)
+    .map((d) => ({ id: d.medewerker_id!, naam: d.naam ?? 'Onbekend' }))
+}

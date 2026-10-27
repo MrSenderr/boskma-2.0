@@ -9,6 +9,7 @@ import {
   samenvatten,
   weekdag,
   wensenUit,
+  inDeSpits,
   volgendBlok,
   type Opdracht,
   type Persoon,
@@ -543,5 +544,59 @@ describe('liever niet is een laatste keus, geen aftrek', () => {
       opdracht({ mensen: [sander], wensen: new Map([['sander', { 6: 'nee' as const }]]) }),
     )
     expect(uit[0].medewerker_id).toBeNull()
+  })
+})
+
+describe('wie er om vijf uur staat', () => {
+  const dienst = (anders: Partial<import('./voorstel').Dienstvoorstel>) => ({
+    datum: ZA,
+    soort: 'avond' as const,
+    begint: '17:00:00',
+    eindigt: '20:00:00',
+    medewerker_id: 'evi',
+    naam: 'Evi Test',
+    reden: 'verdeeld' as const,
+    uitleg: '',
+    waarschuwing: null,
+    ...anders,
+  })
+
+  /* Een dagdienst loopt door tot sluitingstijd en staat er om vijf uur dus
+     gewoon bij. Dat is precies waarom vrijdag met drie overdag en vier
+     's avonds op zeven paar handen uitkomt. */
+  it('telt de dagdiensten mee', () => {
+    const uit = inDeSpits(
+      [
+        dienst({ soort: 'dag', begint: '12:00:00', medewerker_id: 'daan', naam: 'Daan' }),
+        dienst({}),
+      ],
+      ZA,
+    )
+    expect(uit.map((p) => p.id).sort()).toEqual(['daan', 'evi'])
+  })
+
+  it('telt de voorbereiding ook mee, die loopt door', () => {
+    const uit = inDeSpits(
+      [dienst({ soort: 'voorbereiding', begint: '11:00:00', medewerker_id: 'justin' })],
+      ZA,
+    )
+    expect(uit).toHaveLength(1)
+  })
+
+  /* Een dienst die je nog moet vullen is een paar handen dat je niet hebt. */
+  it('telt een open dienst niet als handen', () => {
+    expect(inDeSpits([dienst({ medewerker_id: null, naam: null })], ZA)).toEqual([])
+  })
+
+  it('telt niemand mee die om vijf uur al weg is', () => {
+    const uit = inDeSpits(
+      [dienst({ soort: 'dag', begint: '10:00:00', eindigt: '16:00:00' })],
+      ZA,
+    )
+    expect(uit).toEqual([])
+  })
+
+  it('kijkt alleen naar de gevraagde dag', () => {
+    expect(inDeSpits([dienst({ datum: '2026-11-15' })], ZA)).toEqual([])
   })
 })
