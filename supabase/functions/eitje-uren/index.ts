@@ -1,6 +1,9 @@
 // eitje-uren
 //
-// POST { sleutel, modus, van?, tot?, stukken? }
+// POST { modus, van?, tot?, stukken?, sleutel? }
+//
+// Te starten door een ingelogde beheerder in de app, of door de nachtelijke
+// taak met de sleutel uit ROOSTER_SLEUTEL.
 //
 // Haalt de gewerkte uren uit eitje op via hun API en zet ze in dezelfde
 // tabellen waar de Excel-import ze ook neerzet. De Excel-route blijft naast
@@ -57,6 +60,7 @@ import { type Afspraak } from "./gedeeld/koppelen.ts";
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SERVICE = Deno.env.get("SERVICE_ROLE_JWT") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SLEUTEL = Deno.env.get("ROOSTER_SLEUTEL") ?? "";
+const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
 const EITJE = Deno.env.get("EITJE_URL") ?? "https://open-api.eitje.app/open_api";
 const EITJE_SLEUTELS = {
@@ -91,6 +95,30 @@ async function haal(pad: string) {
   const r = await fetch(`${SB_URL}/rest/v1/${pad}`, { headers: h });
   if (!r.ok) throw new Error(`ophalen mislukt: ${r.status} ${await r.text()}`);
   return await r.json();
+}
+
+/* Of de beller een ingelogde app-gebruiker is.
+ *
+ * verify_jwt laat ook de publieke anon-sleutel door. Die staat in de
+ * app-bundel en is dus van iedereen; hij zegt niets over wie je bent. Daarom
+ * hier dezelfde vraag die de database bij elke tabel stelt: is_app_user(). Die
+ * draait met de inlog van de beller, niet met die van de serverfunctie. */
+async function isAppGebruiker(auth: string | null): Promise<boolean> {
+  if (!auth || !auth.toLowerCase().startsWith("bearer ")) return false;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/is_app_user`, {
+      method: "POST",
+      headers: {
+        apikey: SB_ANON || auth.slice(7),
+        Authorization: auth,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    return r.ok && (await r.json()) === true;
+  } catch {
+    return false;
+  }
 }
 
 async function schrijf(pad: string, rijen: unknown[], extra: Record<string, string> = {}) {
@@ -252,8 +280,12 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { sleutel, modus = "bij", van, tot, stukken = 8 } = body ?? {};
 
-    if (!SLEUTEL || sleutel !== SLEUTEL) {
-      return json({ ok: false, error: "sleutel klopt niet" }, 401);
+    /* Twee manieren om binnen te komen: de nachtelijke taak stuurt de sleutel
+       mee, een beheerder in de app zijn eigen inlog. Niemand anders, want deze
+       functie schrijft in de urenadministratie. */
+    const metSleutel = Boolean(SLEUTEL) && sleutel === SLEUTEL;
+    if (!metSleutel && !(await isAppGebruiker(req.headers.get("Authorization")))) {
+      return json({ ok: false, error: "geen toegang" }, 401);
     }
 
     const mist = sleutelsOntbreken();
@@ -305,6 +337,8 @@ serve(async (req) => {
         return json({
           ok: true,
           modus,
+          /* Geen oude regels betekent dat er niets te verdubbelen valt. */
+          veilig: true,
           uitkomst: "niets om mee te vergelijken",
           uitleg:
             "Er staan nog geen urenregels uit de Excel-import, dus er is geen " +
@@ -322,6 +356,10 @@ serve(async (req) => {
       );
 
       const passen = bestaand.size;
+      /* Alleen groen licht als er daadwerkelijk nummers op elkaar passen.
+         Kon er niets vergeleken worden, dan is dat geen bewijs maar een
+         onbekende, en een onbekende is hier geen groen licht. */
+      const veilig = passen > 0;
       const uitkomst =
         shifts.length === 0
           ? "eitje heeft geen uren in deze week"
@@ -334,6 +372,7 @@ serve(async (req) => {
       return json({
         ok: true,
         modus,
+        veilig,
         week: { van: weekVan, tot: peildag },
         uit_eitje: shifts.length,
         staat_hier_al: (alHier as unknown[]).length,

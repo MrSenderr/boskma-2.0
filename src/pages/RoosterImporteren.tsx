@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { CheckCircle2, FileSpreadsheet, TriangleAlert, Upload } from 'lucide-react'
 import { Kaart, Knop, Kopje, Leeg, Mislukt, Pil } from '../components/ui'
+import { EitjeKoppeling } from '../components/EitjeKoppeling'
 import { leesWerkboek } from '../lib/xlsx-lezen'
 import { leesEitje, naarKlok, type Eitjebestand } from '../lib/eitje'
 import {
@@ -91,11 +92,17 @@ export function RoosterImporteren() {
   const uren = voorstel?.regels.reduce((som, r) => som + r.regel.minuten, 0) ?? 0
 
   const automatisch = (imports.data ?? []).filter((r) => r.door === 'eitje')
-  const metDeHand = (imports.data ?? []).filter((r) => r.door !== 'eitje')
+  const metDeHand = (imports.data ?? []).filter((r) => r.door !== 'eitje' && r.door !== 'eitje-api')
   const laatsteAutomatisch = automatisch[0] ?? null
+  /* De koppeling schrijft onder een eigen naam in het logboek, zodat op dit
+     scherm te zien is of hij loopt. Stilte is anders niet te zien. */
+  const laatsteKoppeling = (imports.data ?? []).find((r) => r.door === 'eitje-api') ?? null
 
   return (
     <div className="flex flex-col gap-5">
+      {/* -------------------------------------------------- koppeling --- */}
+      <EitjeKoppeling laatste={laatsteKoppeling} />
+
       {/* ------------------------------------------------------ kiezen --- */}
       <Kaart
         onDragOver={(e) => {
