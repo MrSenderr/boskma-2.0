@@ -8,6 +8,8 @@ import {
   punten,
   samenvatten,
   weekdag,
+  wensenUit,
+  volgendBlok,
   type Opdracht,
   type Persoon,
 } from './voorstel'
@@ -302,5 +304,45 @@ describe('de samenvatting', () => {
       }),
     )
     expect(samenvatten(uit).perPersoon[0]).toMatchObject({ naam: 'Evi Test', diensten: 2 })
+  })
+})
+
+describe('de wenslijst', () => {
+  it('zet de kolommen om naar weekdagnummers', () => {
+    const uit = wensenUit([
+      { persoon_id: 'brian', di: 'liever_niet', wo: 'graag', do: null, vr: 'graag', za: null, zo: null },
+    ])
+    expect(uit.get('brian')).toEqual({ 2: 'liever_niet', 3: 'graag', 5: 'graag' })
+  })
+
+  /* Van de dertien mensen hebben er twee iets ingevuld. Een lege kolom is geen
+     "maakt niet uit" maar een onbekende: die hoort geen punten te geven en
+     geen punten te kosten. */
+  it('slaat iemand over die niets heeft ingevuld', () => {
+    const uit = wensenUit([{ persoon_id: 'evi', di: null, wo: null, do: null, vr: null, za: null, zo: null }])
+    expect(uit.has('evi')).toBe(false)
+  })
+
+  it('negeert een waarde die geen wens is', () => {
+    const uit = wensenUit([{ persoon_id: 'evi', di: 'misschien', wo: 'graag' }])
+    expect(uit.get('evi')).toEqual({ 3: 'graag' })
+  })
+
+  it('slaat een rij zonder persoon over', () => {
+    expect(wensenUit([{ persoon_id: null, di: 'graag' }]).size).toBe(0)
+  })
+})
+
+describe('het volgende roosterblok', () => {
+  /* Vier weken, beginnend op de maandag over twee weken. Dat is het ritme dat
+     in eitje staat: roosters van vier weken, twee weken van tevoren. */
+  it('begint op de maandag over twee weken en duurt vier weken', () => {
+    // Dinsdag 27 oktober 2026.
+    expect(volgendBlok('2026-10-27')).toEqual({ van: '2026-11-09', tot: '2026-12-06' })
+  })
+
+  it('rekent vanaf de maandag, ook als je het op zondag opent', () => {
+    // Zondag 1 november hoort bij de week van maandag 26 oktober.
+    expect(volgendBlok('2026-11-01')).toEqual({ van: '2026-11-09', tot: '2026-12-06' })
   })
 })

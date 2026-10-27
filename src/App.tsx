@@ -29,6 +29,7 @@ import { Rooster } from './pages/Rooster'
 import { RoosterDag } from './pages/RoosterDag'
 import { RoosterGewerkteUren } from './pages/RoosterGewerkteUren'
 import { RoosterSjabloon } from './pages/RoosterSjabloon'
+import { RoosterVoorstel } from './pages/RoosterVoorstel'
 import { RoosterVasteDagen } from './pages/RoosterVasteDagen'
 import { RoosterSpits } from './pages/RoosterSpits'
 import { RoosterWerkplekken } from './pages/RoosterWerkplekken'
@@ -129,6 +130,7 @@ function Poort() {
           <Route path="medewerkers" element={<Navigate to="/rooster/gewerkte-uren" replace />} />
           <Route path="spits" element={<RoosterSpits />} />
           <Route path="sjabloon" element={<RoosterSjabloon />} />
+          <Route path="voorstel" element={<RoosterVoorstel />} />
           <Route path="vaste-dagen" element={<RoosterVasteDagen />} />
           <Route path="werkplekken" element={<RoosterWerkplekken />} />
           <Route path="importeren" element={<RoosterImporteren />} />

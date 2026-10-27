@@ -398,3 +398,50 @@ export function samenvatten(voorstel: Dienstvoorstel[]): Samenvatting {
       .sort((a, b) => b.diensten - a.diensten || a.naam.localeCompare(b.naam, 'nl')),
   }
 }
+
+/* ------------------------------------------------------------- de wensen --- */
+
+/** Zoals de kolommen in `vaste_dagen_overzicht` heten, per weekdagnummer. */
+const WENSKOLOM: Record<number, 'di' | 'wo' | 'do' | 'vr' | 'za' | 'zo'> = {
+  2: 'di',
+  3: 'wo',
+  4: 'do',
+  5: 'vr',
+  6: 'za',
+  7: 'zo',
+}
+
+const ISWENS = (w: unknown): w is Wens =>
+  w === 'graag' || w === 'liever_niet' || w === 'nee'
+
+/* De wenslijst omzetten naar wat het voorstel ervan kan gebruiken.
+ *
+ * Alleen wat er staat. Van de dertien mensen hebben er twee iets ingevuld, en
+ * een lege kolom is geen "maakt niet uit" maar een onbekende — die hoort geen
+ * punten te geven en geen punten te kosten. */
+export function wensenUit(
+  regels: { persoon_id: string | null; [kolom: string]: unknown }[],
+): Wensen {
+  const uit: Wensen = new Map()
+  for (const r of regels) {
+    if (!r.persoon_id) continue
+    const perDag: Partial<Record<number, Wens>> = {}
+    for (const [nr, kolom] of Object.entries(WENSKOLOM)) {
+      const w = r[kolom]
+      if (ISWENS(w)) perDag[Number(nr)] = w
+    }
+    if (Object.keys(perDag).length > 0) uit.set(r.persoon_id, perDag)
+  }
+  return uit
+}
+
+/* Het eerstvolgende roosterblok: vier weken, beginnend op de maandag over twee
+   weken. Dat is het ritme dat in eitje staat ingesteld — roosters van vier
+   weken, twee weken van tevoren, op dinsdag. */
+export function volgendBlok(vandaag: string): { van: string; tot: string } {
+  const d = new Date(`${vandaag}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 14)
+  const van = d.toISOString().slice(0, 10)
+  d.setUTCDate(d.getUTCDate() + 27)
+  return { van, tot: d.toISOString().slice(0, 10) }
+}

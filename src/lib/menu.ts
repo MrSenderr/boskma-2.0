@@ -66,6 +66,7 @@ export const MENU: {
       { pad: '/rooster/spits', label: 'Spits indelen' },
       { pad: '/rooster/gewerkte-uren', label: 'Gewerkte uren' },
       { pad: '/rooster/sjabloon', label: 'Wat ik nodig heb' },
+      { pad: '/rooster/voorstel', label: 'Voorstel maken' },
       { pad: '/rooster/vaste-dagen', label: 'Vaste dagen' },
       { pad: '/rooster/werkplekken', label: 'Werkplekken' },
       { pad: '/rooster/importeren', label: 'Importeren' },
