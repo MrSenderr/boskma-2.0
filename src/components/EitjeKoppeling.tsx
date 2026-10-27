@@ -10,6 +10,7 @@ import {
   type Openstaand,
   type Ophaalstand,
   type Proefuitslag,
+  type WieKan,
   type Verkenning,
 } from '../lib/eitjeKoppeling'
 import { datumKort } from '../lib/rooster'
@@ -286,7 +287,32 @@ function OphaalBericht({ stand, bezig }: { stand: Ophaalstand; bezig: boolean })
           . Daarmee hoeft er bij hen nooit meer op naam geraden te worden.
         </p>
       )}
+      {stand.wiekan && <WieKanBericht wiekan={stand.wiekan} />}
       <Namen namen={stand.niet_gekoppeld} />
+    </div>
+  )
+}
+
+function WieKanBericht({ wiekan }: { wiekan: WieKan }) {
+  const stukjes = [
+    `${wiekan.niet_beschikbaar} keer "kan niet"`,
+    `${wiekan.verlof} verlofaanvragen`,
+    `${wiekan.ziek} ziekmeldingen`,
+  ]
+  return (
+    <div className="flex flex-col gap-1 border-t border-line pt-2">
+      <p className="text-sm">
+        Vooruit tot {datumKort(wiekan.tot)}: {stukjes.join(', ')}. Staat bij Rooster → Dag.
+      </p>
+      {/* Niets kunnen ophalen en niets te melden hebben zien er hetzelfde uit.
+          Daarom staat het erbij als eitje een onderdeel niet vrijgeeft. */}
+      {wiekan.niet_opgehaald && wiekan.niet_opgehaald.length > 0 && (
+        <p className="text-sm text-warn">
+          Niet opgehaald: {wiekan.niet_opgehaald.join(' en ')}. Eitje geeft die niet vrij voor
+          onze sleutels. Wat er al stond blijft staan; vraag het na bij Eitje als je het nodig
+          hebt.
+        </p>
+      )}
     </div>
   )
 }

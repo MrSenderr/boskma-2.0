@@ -195,12 +195,27 @@ function sleutelsOntbreken(): string[] {
     .map(([naam]) => naam);
 }
 
-async function eitjeHaal(pad: string, params: Record<string, string> = {}) {
+/* Een lijst ophalen bij eitje.
+ *
+ * `optioneel` maakt van een 404 geen fout maar een `null`. Niet elke endpoint
+ * is voor elke klant vrijgegeven: ziekmeldingen gaven 404 op onze sleutels
+ * terwijl het pad gewoon in hun documentatie staat. Zonder dit onderscheid
+ * sleept zo'n endpoint de hele ronde mee de afgrond in, en komt ook de
+ * beschikbaarheid die wél binnenkwam niet in de administratie.
+ *
+ * Alleen 404. Een 400 blijft een fout — dat is een verkeerde vraag van ons,
+ * en die hoor je te zien en op te lossen, niet weg te slikken. */
+async function eitjeHaal(
+  pad: string,
+  params: Record<string, string> = {},
+  optioneel = false,
+): Promise<unknown[] | null> {
   const url = new URL(`${EITJE}/${pad}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
   const r = await fetch(url, { headers: EITJE_SLEUTELS });
   const tekst = await r.text();
+  if (r.status === 404 && optioneel) return null;
   if (!r.ok) {
     throw new Error(`eitje gaf ${r.status} op ${pad}: ${tekst.slice(0, 300)}`);
   }
@@ -222,7 +237,7 @@ async function haalShifts(van: string, tot: string, opGewijzigd = false): Promis
     "filters[end_date]": tot,
   };
   if (opGewijzigd) params["filters[date_filter_type]"] = "updated";
-  return (await eitjeHaal("time_registration_shifts", params)) as ApiShift[];
+  return ((await eitjeHaal("time_registration_shifts", params)) ?? []) as ApiShift[];
 }
 
 /* ----------------------------------------------------------- wie is wie --- */
@@ -343,17 +358,21 @@ async function haalWieKan(
   const begonnen = new Date().toISOString();
   let aanvragen = 0;
 
+  /* Geeft `null` terug als eitje deze endpoint niet kent. Dat is iets anders
+     dan een lege lijst: bij leeg mag er opgeruimd worden, bij onbekend niet —
+     wat je niet hebt nagekeken hoor je niet weg te gooien. */
   const stuksgewijs = async (pad: string, grens: number, eind: string) => {
     const uit: unknown[] = [];
     for (const stuk of splitsInStukken(vanaf, eind, grens)) {
       if (aanvragen > 0) await wacht(PAUZE_MS);
       aanvragen++;
-      uit.push(
-        ...(await eitjeHaal(pad, {
-          "filters[start_date]": stuk.van,
-          "filters[end_date]": stuk.tot,
-        })),
+      const deel = await eitjeHaal(
+        pad,
+        { "filters[start_date]": stuk.van, "filters[end_date]": stuk.tot },
+        true,
       );
+      if (deel === null) return null;
+      uit.push(...deel);
     }
     return uit;
   };
@@ -362,13 +381,19 @@ async function haalWieKan(
     "availability_shifts",
     VENSTER.beschikbaar,
     tot,
-  )) as ApiBeschikbaarheid[];
+  )) as ApiBeschikbaarheid[] | null;
   const verlof = (await stuksgewijs(
     "leave_requests",
     VENSTER.verlof,
     verlofTot,
-  )) as ApiVerlof[];
-  const ziek = (await stuksgewijs("sick_periods", VENSTER.ziek, tot)) as ApiZiek[];
+  )) as ApiVerlof[] | null;
+  const ziek = (await stuksgewijs("sick_periods", VENSTER.ziek, tot)) as ApiZiek[] | null;
+
+  const ontbreekt = [
+    opgaven === null ? "beschikbaarheid" : null,
+    verlof === null ? "verlof" : null,
+    ziek === null ? "ziekmeldingen" : null,
+  ].filter(Boolean) as string[];
 
   /* Overlappende stukken kunnen dezelfde regel twee keer geven. Het laatste
      exemplaar wint; wegschrijven zou anders op zichzelf botsen. */
@@ -376,10 +401,10 @@ async function haalWieKan(
     ...new Map(rijen.map((r) => [r.bron_id, r])).values(),
   ];
 
-  const beschikbaar = uniek(opgaven.map((b) => naarBeschikbaarheid(b, namen, kaart)));
+  const beschikbaar = uniek((opgaven ?? []).map((b) => naarBeschikbaarheid(b, namen, kaart)));
   const afwezig = uniek([
-    ...verlof.map((v) => naarVerlof(v, namen, kaart)),
-    ...ziek.map((z) => naarZiek(z, namen, kaart)),
+    ...(verlof ?? []).map((v) => naarVerlof(v, namen, kaart)),
+    ...(ziek ?? []).map((z) => naarZiek(z, namen, kaart)),
   ]);
 
   const merge = { Prefer: "return=minimal,resolution=merge-duplicates" };
@@ -395,17 +420,26 @@ async function haalWieKan(
   /* Wat niet is teruggekomen is ingetrokken. Bij afwezigheid alleen wat in dit
      venster begint: een ziekmelding van vorige maand die nog loopt hoort niet
      te verdwijnen omdat zijn begindag buiten het venster valt. */
-  await verwijder(`beschikbaarheid?datum=gte.${vanaf}&datum=lte.${tot}&bijgewerkt_op=lt.${begonnen}`);
+  if (opgaven !== null) {
+    await verwijder(
+      `beschikbaarheid?datum=gte.${vanaf}&datum=lte.${tot}&bijgewerkt_op=lt.${begonnen}`,
+    );
+  }
   /* Verlof is verder vooruit opgehaald dan ziekte, dus mag er ook verder
      vooruit opgeruimd worden. Ziekte buiten het korte venster laten we met
      rust: daar hebben we deze ronde niet naar gekeken, en wat je niet hebt
-     nagekeken hoor je niet weg te gooien. */
-  await verwijder(
-    `afwezigheid?soort=eq.verlof&van=gte.${vanaf}&van=lte.${verlofTot}&bijgewerkt_op=lt.${begonnen}`,
-  );
-  await verwijder(
-    `afwezigheid?soort=eq.ziek&van=gte.${vanaf}&van=lte.${tot}&bijgewerkt_op=lt.${begonnen}`,
-  );
+     nagekeken hoor je niet weg te gooien. Datzelfde geldt voor een endpoint
+     die eitje helemaal niet kent — dan blijft staan wat er stond. */
+  if (verlof !== null) {
+    await verwijder(
+      `afwezigheid?soort=eq.verlof&van=gte.${vanaf}&van=lte.${verlofTot}&bijgewerkt_op=lt.${begonnen}`,
+    );
+  }
+  if (ziek !== null) {
+    await verwijder(
+      `afwezigheid?soort=eq.ziek&van=gte.${vanaf}&van=lte.${tot}&bijgewerkt_op=lt.${begonnen}`,
+    );
+  }
 
   return {
     van: vanaf,
@@ -416,6 +450,10 @@ async function haalWieKan(
     niet_beschikbaar: beschikbaar.filter((b) => b.status === "unavailable").length,
     verlof: afwezig.filter((a) => a.soort === "verlof").length,
     ziek: afwezig.filter((a) => a.soort === "ziek").length,
+    /* Wat eitje niet kent. Staat er expres bij in plaats van stil te blijven:
+       een lege lijst omdat niemand ziek is, en een lege lijst omdat we het niet
+       mogen vragen, zien er op het scherm hetzelfde uit. */
+    ...(ontbreekt.length > 0 ? { niet_opgehaald: ontbreekt } : {}),
   };
 }
 
@@ -478,7 +516,7 @@ serve(async (req) => {
 
     /* Altijd eerst de medewerkerslijst: die geeft het vaste nummer per persoon,
        en zonder dat nummer is er niets om uren aan te hangen. Eén aanvraag. */
-    const users = (await eitjeHaal("users")) as ApiUser[];
+    const users = ((await eitjeHaal("users")) ?? []) as ApiUser[];
     const koppelingen = await koppelPersonen(users);
     const open = koppelingen.filter((k) => !k.medewerker_id);
 

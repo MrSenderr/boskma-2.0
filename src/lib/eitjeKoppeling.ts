@@ -39,6 +39,20 @@ export type Proefuitslag = {
   niet_gekoppeld?: Openstaand[]
 }
 
+export type WieKan = {
+  van: string
+  tot: string
+  verlof_tot: string
+  beschikbaarheid: number
+  niet_beschikbaar: number
+  verlof: number
+  ziek: number
+  /* Wat eitje niet kent voor onze sleutels. Staat er expres bij: een lege
+     lijst omdat niemand ziek is en een lege lijst omdat we het niet mogen
+     vragen, zien er op het scherm hetzelfde uit. */
+  niet_opgehaald?: string[]
+}
+
 export type Ophaalstand = {
   periode: { van: string; tot: string }
   weken: number
@@ -50,6 +64,8 @@ export type Ophaalstand = {
   volgende: string | null
   nog_te_gaan: number
   niet_gekoppeld: Openstaand[]
+  /** Alleen bij bijwerken: wie er de komende weken kan. */
+  wiekan?: WieKan
 }
 
 /* Wat de serverfunctie zegt als het misgaat, in plaats van "non-2xx status
