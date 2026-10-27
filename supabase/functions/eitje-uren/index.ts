@@ -223,6 +223,29 @@ async function eitjeHaal(
   return (body.items ?? []) as unknown[];
 }
 
+/* Iets wegschrijven bij eitje.
+ *
+ * Tot nu toe werd er alleen gelezen. Schrijven is een ander soort handeling:
+ * wat hier misgaat staat bij het personeel op het scherm. Daarom geen stille
+ * fouten — elke mislukte aanvraag geeft de melding van eitje zelf terug, want
+ * "het lukte niet" is geen bericht waar iemand iets mee kan. */
+async function eitjeStuur(
+  pad: string,
+  methode: "POST" | "PUT" | "DELETE",
+  body?: unknown,
+): Promise<Record<string, unknown> | null> {
+  const r = await fetch(`${EITJE}/${pad}`, {
+    method: methode,
+    headers: { ...EITJE_SLEUTELS, "Content-Type": "application/json" },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  const tekst = await r.text();
+  if (!r.ok) {
+    throw new Error(`eitje gaf ${r.status} op ${methode} ${pad}: ${tekst.slice(0, 300)}`);
+  }
+  return tekst ? (JSON.parse(tekst).item ?? null) : null;
+}
+
 const vandaag = () => new Date().toISOString().slice(0, 10);
 
 function schuif(datum: string, dagen: number): string {
@@ -457,6 +480,108 @@ async function haalWieKan(
   };
 }
 
+/* --------------------------------------------------- rooster wegschrijven --- */
+
+/* Een conceptrooster in eitje zetten.
+ *
+ * Ongepubliceerd. In de documentatie van eitje staat dat ongepubliceerde
+ * diensten alleen voor beheerders zichtbaar zijn, dus Sander kijkt het daar na
+ * en geeft het zelf vrij. Een rooster dat meteen bij het personeel op het
+ * scherm staat is geen voorstel maar een mededeling.
+ *
+ * **Eerst weghalen, dan schrijven.** Een voorstel wijzigt: iemand meldt zich
+ * ziek, er wordt geschoven, je draait het opnieuw. Zou er dan een tweede
+ * rooster bijkomen in plaats van eroverheen, dan staat alles dubbel in eitje en
+ * mag iemand dat met de hand uit elkaar halen. Daarom houdt `eitje_concept`
+ * bij welke diensten de app heeft aangemaakt, en worden precies die eerst
+ * verwijderd — een dienst die in eitje met de hand is gezet staat daar niet in
+ * en wordt nooit aangeraakt.
+ *
+ * Per week één aanvraag vanuit de app. Een blok van vier weken is ruim
+ * honderd diensten, en die passen met een seconde pauze ertussen niet binnen
+ * de tijdslimiet van één serverfunctie. */
+async function schrijfRooster(
+  van: string,
+  tot: string,
+  diensten: {
+    datum: string;
+    begint: string;
+    eindigt: string;
+    medewerker_id: string | null;
+  }[],
+  teamId: number,
+) {
+  // 1. opruimen wat de app hier eerder neerzette
+  const eerder: { bron_id: string }[] = await haal(
+    `eitje_concept?select=bron_id&datum=gte.${van}&datum=lte.${tot}`,
+  );
+  let weggehaald = 0;
+  for (const rij of eerder) {
+    if (weggehaald > 0) await wacht(PAUZE_MS);
+    try {
+      await eitjeStuur(`planning_shifts/${rij.bron_id}`, "DELETE");
+    } catch (e) {
+      /* Al weg in eitje, of met de hand omgezet in gewerkte uren. Dat is geen
+         reden om te stoppen: de bedoeling was dat hij weg was. */
+      if (!String((e as Error).message).includes("404")) throw e;
+    }
+    weggehaald++;
+  }
+  if (eerder.length > 0) {
+    await verwijder(`eitje_concept?datum=gte.${van}&datum=lte.${tot}`);
+  }
+
+  // 2. wie is wie
+  const mensen: { id: string; eitje_user_id: number | null }[] = await haal(
+    "sollicitaties?select=id,eitje_user_id&fase=eq.medewerker&is_apparaat=eq.false",
+  );
+  const nummers = new Map(mensen.map((m) => [m.id, m.eitje_user_id]));
+
+  // 3. wegschrijven
+  const gemaakt: Record<string, unknown>[] = [];
+  let zonderNaam = 0;
+  for (const d of diensten) {
+    await wacht(PAUZE_MS);
+    const userId = d.medewerker_id ? nummers.get(d.medewerker_id) ?? null : null;
+    if (d.medewerker_id && !userId) zonderNaam++;
+
+    const item = await eitjeStuur("planning_shifts", "POST", {
+      /* Zonder zone, zoals in hun eigen voorbeeld. Eitje staat in Nederland en
+         de klok in het sjabloon is de klok aan de muur; een zone meesturen zou
+         die juist verschuiven. */
+      start: `${d.datum}T${d.begint}`,
+      end: `${d.datum}T${d.eindigt}`,
+      team_id: teamId,
+      ...(userId ? { user_id: userId } : {}),
+      published: false,
+    });
+    if (!item) continue;
+
+    gemaakt.push({
+      bron_id: String(item.id),
+      datum: d.datum,
+      begint: d.begint,
+      eindigt: d.eindigt,
+      medewerker_id: d.medewerker_id,
+      eitje_user_id: userId,
+    });
+  }
+
+  for (let i = 0; i < gemaakt.length; i += 200) {
+    await schrijf("eitje_concept", gemaakt.slice(i, i + 200));
+  }
+
+  return {
+    van,
+    tot,
+    weggehaald,
+    geschreven: gemaakt.length,
+    /* Diensten die aan een persoon hingen die in eitje niet bekend is. Die
+       staan er nu als open dienst, en dat hoor je te weten. */
+    zonder_naam: zonderNaam,
+  };
+}
+
 /* ------------------------------------------------------------------- doen --- */
 
 serve(async (req) => {
@@ -465,7 +590,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { sleutel, modus = "bij", van, tot, stukken = 8, dagen } = body ?? {};
+    const { sleutel, modus = "bij", van, tot, stukken = 8, dagen, diensten, team_id } =
+      body ?? {};
 
     /* Wie mag wat.
      *
@@ -606,6 +732,46 @@ serve(async (req) => {
     const namen = namenKaart(users);
     const kaart = alsKaart(koppelingen);
     const vastgelegd = await legNummersVast(koppelingen);
+
+    /* ---- rooster: een concept in eitje zetten ---- */
+    if (modus === "rooster") {
+      if (!van || !tot || !Array.isArray(diensten)) {
+        return json({ ok: false, error: "geef van, tot en diensten mee" }, 400);
+      }
+
+      /* Een dienst moet bij een team horen; dat eist eitje. Meestal is er maar
+         één en dan hoeft er niets gekozen te worden. Zijn er meer, dan noemt de
+         melding ze bij naam in plaats van dat de app er een gokt. */
+      const teams = ((await eitjeHaal("teams")) ?? []) as { id: number; name?: string }[];
+      const gekozen = team_id
+        ? teams.find((t) => t.id === Number(team_id))
+        : teams.length === 1
+          ? teams[0]
+          : undefined;
+
+      if (!gekozen) {
+        return json(
+          {
+            ok: false,
+            error:
+              teams.length === 0
+                ? "eitje geeft geen teams terug; zonder team kan een dienst niet worden aangemaakt"
+                : `Er zijn meerdere teams in eitje. Stuur team_id mee: ${teams
+                    .map((t) => `${t.name ?? "naamloos"} (${t.id})`)
+                    .join(", ")}`,
+            teams: teams.map((t) => ({ id: t.id, naam: t.name ?? null })),
+          },
+          400,
+        );
+      }
+
+      return json({
+        ok: true,
+        modus,
+        team: { id: gekozen.id, naam: gekozen.name ?? null },
+        ...(await schrijfRooster(van, tot, diensten, gekozen.id)),
+      });
+    }
 
     /* ---- wiekan: beschikbaarheid, verlof en ziekte ---- */
     const vooruit = () =>

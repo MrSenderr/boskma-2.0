@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CircleDashed, Phone, Wand2 } from 'lucide-react'
+import { AlertTriangle, CircleDashed, Phone, Send, Wand2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil, Veld } from '../components/ui'
 import { dagnaam, datumKort, maandagVan } from '../lib/rooster'
 import { useWieKanEr } from '../lib/beschikbaarheid'
@@ -8,10 +8,12 @@ import { SOORTTEKST, klok, useSjabloon, useVasteDiensten, type Soort } from '../
 import {
   maakVoorstel,
   samenvatten,
+  useNaarEitje,
   useRoosterMensen,
   volgendBlok,
   wensenUit,
   type Dienstvoorstel,
+  type Weekuitslag,
 } from '../lib/voorstel'
 import { vandaagStr } from '../lib/openingstijden'
 
@@ -199,6 +201,98 @@ function Uitleg({ d }: { d: Dienstvoorstel }) {
   )
 }
 
+/* Het voorstel ongepubliceerd in eitje zetten.
+ *
+ * Met een tussenstap, want dit schrijft in een systeem waar het personeel in
+ * kijkt. Niet omdat het gevaarlijk is — ongepubliceerde diensten zijn volgens
+ * eitje alleen voor beheerders zichtbaar — maar omdat één muisklik te weinig
+ * afstand is tot iets wat buiten de app gebeurt.
+ *
+ * Twee keer drukken vervangt wat er stond. De serverfunctie haalt eerst weg
+ * wat de app er eerder neerzette en schrijft daarna opnieuw; diensten die jij
+ * in eitje met de hand hebt gemaakt blijven staan. */
+function NaarEitje({ voorstel }: { voorstel: Dienstvoorstel[] }) {
+  const [vraagt, setVraagt] = useState(false)
+  const [weken, setWeken] = useState<Weekuitslag[]>([])
+  const sturen = useNaarEitje()
+
+  const totaal = weken.reduce((som, w) => som + w.geschreven, 0)
+  const vervangen = weken.reduce((som, w) => som + w.weggehaald, 0)
+  const zonderNaam = weken.reduce((som, w) => som + w.zonder_naam, 0)
+
+  return (
+    <Kaart className="flex flex-col gap-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="font-semibold">Naar eitje</p>
+          <p className="max-w-xl text-sm text-muted">
+            Zet dit voorstel ongepubliceerd in eitje. Je team ziet er niets van; jij kijkt het daar
+            na en geeft het zelf vrij.
+          </p>
+        </div>
+        {!vraagt && (
+          <Knop soort="rustig" bezig={sturen.isPending} onClick={() => setVraagt(true)}>
+            <Send className="size-4" aria-hidden />
+            Als concept in eitje zetten
+          </Knop>
+        )}
+      </div>
+
+      {vraagt && !sturen.isPending && weken.length === 0 && (
+        <div className="flex flex-col gap-2 rounded-[4px] border border-line-strong p-3">
+          <p className="text-sm">
+            Dit zet <strong>{voorstel.length} diensten</strong> in eitje, ongepubliceerd. Stond er
+            van een eerdere keer al een concept voor deze weken, dan wordt dat eerst weggehaald —
+            diensten die je daar zelf hebt gemaakt blijven staan.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Knop
+              onClick={() =>
+                sturen.mutate(
+                  { voorstel, onWeek: (w) => setWeken((v) => [...v, w]) },
+                  { onError: () => setVraagt(false) },
+                )
+              }
+            >
+              Ja, in eitje zetten
+            </Knop>
+            <Knop soort="rustig" onClick={() => setVraagt(false)}>
+              Toch niet
+            </Knop>
+          </div>
+        </div>
+      )}
+
+      {sturen.isPending && (
+        <p className="text-sm text-muted">
+          Bezig — {weken.length} {weken.length === 1 ? 'week' : 'weken'} gedaan, {totaal} diensten
+          weggeschreven. Dit duurt ongeveer een minuut per week, want eitje wil niet te snel
+          achter elkaar aangesproken worden.
+        </p>
+      )}
+
+      {sturen.error && <Mislukt tekst={sturen.error.message} />}
+
+      {!sturen.isPending && weken.length > 0 && (
+        <div className="flex flex-col gap-1 rounded-[4px] border border-good p-3">
+          <p className="text-sm">
+            <strong>{totaal} diensten</strong> staan nu ongepubliceerd in eitje
+            {vervangen > 0 && `, en ${vervangen} van een eerdere ronde zijn weggehaald`}. Geef ze
+            daar vrij als je tevreden bent.
+          </p>
+          {zonderNaam > 0 && (
+            <p className="flex items-start gap-1.5 text-sm text-warn">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              {zonderNaam} {zonderNaam === 1 ? 'dienst staat' : 'diensten staan'} er als open
+              dienst: die medewerker is in eitje niet bekend.
+            </p>
+          )}
+        </div>
+      )}
+    </Kaart>
+  )
+}
+
 export function RoosterVoorstel() {
   const blok = useMemo(() => volgendBlok(vandaagStr()), [])
   const [van, setVan] = useState(blok.van)
@@ -294,6 +388,8 @@ export function RoosterVoorstel() {
           </div>
 
           {gekozen && <Uitleg d={gekozen} />}
+
+          <NaarEitje key={`${periode?.van}-${periode?.tot}`} voorstel={voorstel!} />
 
           <div className="flex flex-col gap-5">
             {weken.map(([maandag, diensten]) => (

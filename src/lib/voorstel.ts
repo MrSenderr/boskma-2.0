@@ -548,3 +548,83 @@ export function useInplannenWijzigen() {
     },
   })
 }
+
+/* ----------------------------------------------------- naar eitje toe --- */
+
+export type Weekuitslag = {
+  van: string
+  tot: string
+  weggehaald: number
+  geschreven: number
+  zonder_naam: number
+  team?: { id: number; naam: string | null }
+}
+
+/* Het voorstel ongepubliceerd in eitje zetten.
+ *
+ * Per week één aanvraag. Een blok van vier weken is ruim honderd diensten, en
+ * die passen met een seconde pauze ertussen niet binnen de tijdslimiet van één
+ * serverfunctie. De app doet de weken dus één voor één en meldt na elke week
+ * wat er is gebeurd — anders staat er twee minuten niets op het scherm.
+ *
+ * Wat de serverfunctie wegschrijft is exact wat je hier hebt zien staan. Hij
+ * rekent het voorstel niet opnieuw uit: dan zou er iets anders in eitje kunnen
+ * belanden dan wat je hebt goedgekeurd, en precies dat verschil zie je nooit.
+ */
+export function useNaarEitje() {
+  return useMutation({
+    mutationFn: async (opdracht: {
+      voorstel: Dienstvoorstel[]
+      teamId?: number
+      onWeek?: (uitslag: Weekuitslag) => void
+    }) => {
+      const perWeek = new Map<string, Dienstvoorstel[]>()
+      for (const d of opdracht.voorstel) {
+        const week = maandagVanDatum(d.datum)
+        if (!perWeek.has(week)) perWeek.set(week, [])
+        perWeek.get(week)!.push(d)
+      }
+
+      const uitslagen: Weekuitslag[] = []
+      for (const [maandag, diensten] of [...perWeek].sort(([a], [b]) => a.localeCompare(b))) {
+        const dagen = diensten.map((d) => d.datum).sort()
+        const { data, error } = await supabase.functions.invoke('eitje-uren', {
+          body: {
+            modus: 'rooster',
+            van: dagen[0] ?? maandag,
+            tot: dagen[dagen.length - 1] ?? maandag,
+            ...(opdracht.teamId ? { team_id: opdracht.teamId } : {}),
+            diensten: diensten.map((d) => ({
+              datum: d.datum,
+              begint: d.begint,
+              eindigt: d.eindigt,
+              medewerker_id: d.medewerker_id,
+            })),
+          },
+        })
+        if (error) throw new Error(await foutTekst(error))
+        if (data && data.ok === false) throw new Error(data.error ?? 'Wegschrijven lukte niet.')
+
+        uitslagen.push(data as Weekuitslag)
+        opdracht.onWeek?.(data as Weekuitslag)
+      }
+      return uitslagen
+    },
+  })
+}
+
+/* Wat de serverfunctie zegt als het misgaat, in plaats van "non-2xx status
+   code". Die melding zegt niets, en hier gaat het om wat er bij het personeel
+   op het scherm komt te staan. */
+async function foutTekst(fout: unknown): Promise<string> {
+  const antwoord = (fout as { context?: Response } | null)?.context
+  if (antwoord && typeof antwoord.json === 'function') {
+    try {
+      const body = await antwoord.clone().json()
+      if (body?.error) return String(body.error)
+    } catch {
+      // Geen json erin; dan blijft de oorspronkelijke melding over.
+    }
+  }
+  return fout instanceof Error ? fout.message : 'Dit lukte niet.'
+}
