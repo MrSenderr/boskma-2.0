@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CircleDashed, Wand2 } from 'lucide-react'
+import { AlertTriangle, CircleDashed, Phone, Wand2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Leeg, Mislukt, Pil, Veld } from '../components/ui'
-import { dagnaam, datumKort, useKandidaten } from '../lib/rooster'
+import { dagnaam, datumKort } from '../lib/rooster'
 import { useWieKanEr } from '../lib/beschikbaarheid'
 import { useVasteDagenOverzicht } from '../lib/vasteDagen'
 import { SOORTTEKST, klok, useSjabloon, useVasteDiensten } from '../lib/weeksjabloon'
 import {
   maakVoorstel,
   samenvatten,
+  useRoosterMensen,
   volgendBlok,
   wensenUit,
   type Dienstvoorstel,
@@ -53,6 +54,16 @@ function Dienst({ d }: { d: Dienstvoorstel }) {
           {d.waarschuwing}
         </span>
       )}
+      {/* Open plekken rondappen is wat er nu met de hand gebeurt, dus hoort de
+          lijst hier te staan in plaats van dat je hem zelf bij elkaar zoekt.
+          Wie met verlof is staat er niet bij: iemand bellen die er niet is, is
+          erger dan niemand bellen. */}
+      {open && d.teVragen && d.teVragen.length > 0 && (
+        <span className="flex items-start gap-1.5 text-sm text-muted">
+          <Phone className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Te vragen: {d.teVragen.join(', ')}
+        </span>
+      )}
     </li>
   )
 }
@@ -90,7 +101,7 @@ export function RoosterVoorstel() {
 
   const sjabloon = useSjabloon()
   const vast = useVasteDiensten()
-  const mensen = useKandidaten()
+  const mensen = useRoosterMensen()
   const wieKan = useWieKanEr(periode?.van ?? van, periode?.tot ?? tot)
   const overzicht = useVasteDagenOverzicht()
 

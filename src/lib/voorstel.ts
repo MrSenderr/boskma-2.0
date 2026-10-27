@@ -28,14 +28,27 @@
  * dan keur je het goed omdat de computer het zei.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from './supabase'
 import { loopt, wieSleutel, type Afwezig, type Opgave } from './beschikbaarheid'
 import type { Sjabloonregel, Soort, VasteDienst } from './weeksjabloon'
+
+export type Inplannen = 'verdelen' | 'alleen_vast'
 
 export type Persoon = {
   id: string
   voornaam: string | null
   achternaam: string | null
   uit_dienst_op: string | null
+  /* Hoe deze persoon aan diensten komt. `alleen_vast` doet niet mee in de
+     verdeling: Ilona en Lenthe draaien in principe hun vaste dagen en worden
+     voor de rest gebeld, Joost is pure invalkracht. Zouden die meedoen, dan
+     vullen juist zij het rooster — ze geven immers nooit door dat ze niet
+     kunnen — en wordt wie wél doorgeeft eruit gedrukt. */
+  inplannen?: Inplannen
+  /* Of hij de mep kan draaien. Drie mensen doen dat: Sander, Daan en Justin.
+     Een kunnen en geen voorkeur, dus een harde grens. */
+  kan_voorbereiding?: boolean
 }
 
 /** Wat iemand van een weekdag vindt, uit het overzicht vaste dagen. */
@@ -57,6 +70,11 @@ export type Dienstvoorstel = {
   uitleg: string
   /** Iets dat je moet weten maar dat niet tegenhoudt. */
   waarschuwing: string | null
+  /* Wie je kunt bellen voor deze open plek: de mensen die alleen hun vaste
+     dagen draaien en die dag verder vrij zijn. Dat is wat Sander nu met de
+     hand doet — open plekken rondappen — dus hoort de lijst erbij te staan in
+     plaats van dat hij hem zelf bij elkaar zoekt. */
+  teVragen?: string[]
 }
 
 const naamVan = (p: Persoon) => [p.voornaam, p.achternaam].filter(Boolean).join(' ') || 'Onbekend'
@@ -248,6 +266,7 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
           reden: 'open',
           uitleg: `${naamVan(mens)} heeft hier een vaste dienst, maar is er niet: ${weg.tekst}.`,
           waarschuwing: 'vaste dienst niet ingevuld',
+          teVragen: teVragenOp(o, datum, afspraak.soort, bezet),
         })
         continue
       }
@@ -271,6 +290,11 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
     for (const plek of nogTeVullen) {
       const kandidaten = o.mensen
         .filter((m) => !bezet.has(m.id))
+        /* Wie alleen zijn vaste dagen draait doet hier niet mee; die komt
+           hieronder terug als iemand om te bellen. */
+        .filter((m) => (m.inplannen ?? 'verdelen') === 'verdelen')
+        // De mep kan niet iedereen.
+        .filter((m) => plek.soort !== 'voorbereiding' || m.kan_voorbereiding)
         .map((m) => {
           const weg = belemmering(m, datum, o.opgaven, o.afwezig)
           if (weg?.hard) return null
@@ -314,8 +338,12 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
           medewerker_id: null,
           naam: null,
           reden: 'open',
-          uitleg: 'niemand beschikbaar die nog niet staat ingepland',
+          uitleg:
+            plek.soort === 'voorbereiding'
+              ? 'niemand die de mep kan draaien is nog vrij'
+              : 'niemand beschikbaar die nog niet staat ingepland',
           waarschuwing: 'open dienst',
+          teVragen: teVragenOp(o, datum, plek.soort, bezet),
         })
         continue
       }
@@ -342,6 +370,24 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
   }
 
   return uit
+}
+
+/* Wie je kunt bellen voor een open plek.
+ *
+ * De mensen die alleen hun vaste dagen draaien en die dag verder vrij zijn.
+ * Dat is wat Sander nu met de hand doet — open plekken rondappen — dus hoort
+ * die lijst erbij te staan in plaats van dat hij hem zelf bij elkaar zoekt.
+ *
+ * Wie hard verhinderd is staat er niet bij: iemand bellen die met verlof is,
+ * is erger dan niemand bellen. */
+function teVragenOp(o: Opdracht, datum: string, soort: Soort, bezet: Set<string>): string[] {
+  return o.mensen
+    .filter((m) => (m.inplannen ?? 'verdelen') === 'alleen_vast')
+    .filter((m) => !bezet.has(m.id))
+    .filter((m) => soort !== 'voorbereiding' || m.kan_voorbereiding)
+    .filter((m) => !belemmering(m, datum, o.opgaven, o.afwezig)?.hard)
+    .map(naamVan)
+    .sort((a, b) => a.localeCompare(b, 'nl'))
 }
 
 function uitlegVan(
@@ -444,4 +490,47 @@ export function volgendBlok(vandaag: string): { van: string; tot: string } {
   const van = d.toISOString().slice(0, 10)
   d.setUTCDate(d.getUTCDate() + 27)
   return { van, tot: d.toISOString().slice(0, 10) }
+}
+
+/* --------------------------------------------------------------- ophalen --- */
+
+/* De medewerkers zoals het voorstel ze nodig heeft.
+ *
+ * Een eigen query en niet die van de roosterimport. Die levert `Kandidaat`,
+ * en dat type wordt gedeeld met de serverfunctie die namen koppelt — daar twee
+ * velden aan toevoegen die alleen hier iets doen, maakt die kopie zwaarder
+ * zonder dat er iets mee gebeurt. */
+export function useRoosterMensen() {
+  return useQuery({
+    queryKey: ['rooster-mensen'],
+    queryFn: async (): Promise<Persoon[]> => {
+      const { data, error } = await supabase
+        .from('sollicitaties')
+        .select('id,voornaam,achternaam,uit_dienst_op,inplannen,kan_voorbereiding')
+        .eq('fase', 'medewerker')
+        .eq('is_apparaat', false)
+        .eq('is_test', false)
+        .order('voornaam')
+      if (error) throw new Error(error.message)
+      return (data ?? []) as unknown as Persoon[]
+    },
+  })
+}
+
+export function useInplannenWijzigen() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (x: {
+      id: string
+      inplannen?: Inplannen
+      kan_voorbereiding?: boolean
+    }) => {
+      const { id, ...rest } = x
+      const { error } = await supabase.from('sollicitaties').update(rest).eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['rooster-mensen'] })
+    },
+  })
 }

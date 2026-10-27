@@ -346,3 +346,87 @@ describe('het volgende roosterblok', () => {
     expect(volgendBlok('2026-11-01')).toEqual({ van: '2026-11-09', tot: '2026-12-06' })
   })
 })
+
+describe('niet iedereen doet mee in de verdeling', () => {
+  const vastDienst = (wie: string): VasteDienst => ({
+    id: `v-${wie}`,
+    medewerker_id: wie,
+    dag: 6,
+    soort: 'avond',
+    begint: '17:00:00',
+    eindigt: '20:00:00',
+    opmerking: null,
+  })
+
+  const ILONA = mens('ilona', 'Ilona', { inplannen: 'alleen_vast' })
+  const JOOST = mens('joost', 'Joost', { inplannen: 'alleen_vast' })
+
+  /* Dit ging eerst mis: wie zijn beschikbaarheid nooit invult gold als
+     beschikbaar, en kreeg daardoor diensten die Sander in werkelijkheid zelf
+     belt. Zo vulden juist zij het rooster. */
+  it('plant iemand die alleen vaste dagen draait niet zomaar in', () => {
+    const uit = maakVoorstel(opdracht({ mensen: [ILONA] }))
+    expect(uit[0].medewerker_id).toBeNull()
+  })
+
+  it('geeft hem wel gewoon zijn vaste dienst', () => {
+    const uit = maakVoorstel(opdracht({ mensen: [ILONA], vast: [vastDienst('ilona')] }))
+    expect(uit[0]).toMatchObject({ naam: 'Ilona Test', reden: 'afspraak' })
+  })
+
+  /* Open plekken rondappen is wat er nu met de hand gebeurt. Dan hoort die
+     lijst erbij te staan. */
+  it('zet bij een open plek wie je kunt bellen', () => {
+    const uit = maakVoorstel(opdracht({ mensen: [ILONA, JOOST] }))
+    expect(uit[0].teVragen).toEqual(['Ilona Test', 'Joost Test'])
+  })
+
+  it('noemt niemand die die dag al werkt', () => {
+    const uit = maakVoorstel(
+      opdracht({ sjabloon: [regel({ aantal: 2 })], mensen: [ILONA, JOOST], vast: [vastDienst('ilona')] }),
+    )
+    const open = uit.find((d) => !d.medewerker_id)!
+    expect(open.teVragen).toEqual(['Joost Test'])
+  })
+
+  /* Iemand bellen die met verlof is, is erger dan niemand bellen. */
+  it('noemt niemand die er niet is', () => {
+    const uit = maakVoorstel(
+      opdracht({ mensen: [ILONA], afwezig: [afwezig({ medewerker_id: 'ilona', naam: 'Ilona Test' })] }),
+    )
+    expect(uit[0].teVragen).toEqual([])
+  })
+})
+
+describe('de voorbereiding kan niet iedereen', () => {
+  const mep = (anders: Partial<Sjabloonregel> = {}) =>
+    regel({ soort: 'voorbereiding', begint: '11:00:00', ...anders })
+
+  const KAN = mens('daan', 'Daan', { kan_voorbereiding: true })
+  const KAN_NIET = mens('evi', 'Evi')
+
+  it('zet alleen iemand op de mep die het kan', () => {
+    const uit = maakVoorstel(opdracht({ sjabloon: [mep()], mensen: [KAN_NIET, KAN] }))
+    expect(uit[0].naam).toBe('Daan Test')
+  })
+
+  /* Liever een open dienst die je ziet staan dan iemand op de mep die het niet
+     kan. */
+  it('laat de mep open als niemand het kan', () => {
+    const uit = maakVoorstel(opdracht({ sjabloon: [mep()], mensen: [KAN_NIET] }))
+    expect(uit[0].medewerker_id).toBeNull()
+    expect(uit[0].uitleg).toContain('mep')
+  })
+
+  it('houdt de gewone diensten wel open voor iedereen', () => {
+    const uit = maakVoorstel(opdracht({ mensen: [KAN_NIET] }))
+    expect(uit[0].naam).toBe('Evi Test')
+  })
+
+  it('belt voor de mep alleen wie het kan', () => {
+    const inval = mens('joost', 'Joost', { inplannen: 'alleen_vast' })
+    const invalMetMep = mens('ilona', 'Ilona', { inplannen: 'alleen_vast', kan_voorbereiding: true })
+    const uit = maakVoorstel(opdracht({ sjabloon: [mep()], mensen: [inval, invalMetMep] }))
+    expect(uit[0].teVragen).toEqual(['Ilona Test'])
+  })
+})

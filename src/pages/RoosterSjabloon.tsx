@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { Kaart, Knop, Kopje, Laden, Mislukt, Pil, Veld } from '../components/ui'
 import { useKandidaten } from '../lib/rooster'
+import { useInplannenWijzigen, useRoosterMensen, type Inplannen } from '../lib/voorstel'
 import {
   DAGEN,
   SOORTEN,
@@ -338,6 +339,83 @@ function Scheef() {
   )
 }
 
+/* Hoe iemand aan diensten komt.
+ *
+ * De verdeling ging er eerst van uit dat iedereen meedoet, en dat liep meteen
+ * mis: wie zijn beschikbaarheid nooit invult gold als beschikbaar en kreeg
+ * daardoor diensten die in werkelijkheid met een telefoontje geregeld worden.
+ * Zo vulden juist die mensen het rooster, en werd wie wél doorgeeft dat hij kan
+ * eruit gedrukt.
+ *
+ * Twee instellingen, drie patronen. "Alleen vaste dagen" zonder vaste diensten
+ * is de pure invalkracht — die wordt nooit ingepland en blijft over als iemand
+ * om te bellen bij een open plek. */
+function HoeInplannen() {
+  const mensen = useRoosterMensen()
+  const wijzig = useInplannenWijzigen()
+
+  if (!mensen.data) return null
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <Kopje>Hoe plan ik wie in</Kopje>
+        <p className="max-w-2xl text-sm text-muted">
+          <strong className="font-semibold text-text">Verdelen</strong> is het gewone geval: die
+          doet mee in het voorstel.{' '}
+          <strong className="font-semibold text-text">Alleen vaste dagen</strong> krijgt zijn vaste
+          diensten en verder niets — die bel je zelf, en hij staat bij elke open plek in de lijst
+          van wie je kunt vragen. Heeft zo iemand helemaal geen vaste diensten, dan is dat een
+          invalkracht.
+        </p>
+        <p className="max-w-2xl text-sm text-muted">
+          De <strong className="font-semibold text-text">mep</strong> is een kunnen en geen
+          voorkeur: wie het vinkje niet heeft, wordt er nooit op gezet.
+        </p>
+      </div>
+
+      <Kaart>
+        <ul className="flex flex-col divide-y divide-line">
+          {mensen.data.map((m) => (
+            <li
+              key={m.id}
+              className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <span className="min-w-0 font-semibold">
+                {[m.voornaam, m.achternaam].filter(Boolean).join(' ')}
+              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(m.kan_voorbereiding)}
+                    onChange={(e) =>
+                      wijzig.mutate({ id: m.id, kan_voorbereiding: e.target.checked })
+                    }
+                    className="size-4"
+                  />
+                  Kan de mep
+                </label>
+                <select
+                  value={m.inplannen ?? 'verdelen'}
+                  onChange={(e) =>
+                    wijzig.mutate({ id: m.id, inplannen: e.target.value as Inplannen })
+                  }
+                  aria-label={`Hoe ${m.voornaam ?? 'deze medewerker'} wordt ingepland`}
+                  className="min-h-11 rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 text-sm outline-none focus:border-accent"
+                >
+                  <option value="verdelen">Verdelen</option>
+                  <option value="alleen_vast">Alleen vaste dagen</option>
+                </select>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Kaart>
+    </div>
+  )
+}
+
 export function RoosterSjabloon() {
   const sjabloon = useSjabloon()
 
@@ -377,6 +455,8 @@ export function RoosterSjabloon() {
           </div>
 
           <VasteDiensten />
+
+          <HoeInplannen />
         </>
       )}
     </div>
