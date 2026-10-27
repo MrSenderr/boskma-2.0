@@ -62,7 +62,7 @@ function Instelling({ w }: { w: Werkplek }) {
   const wijzig = useWerkplekWijzigen()
 
   return (
-    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_5rem_8rem] sm:items-center sm:gap-4">
+    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_5rem_6rem_8rem] sm:items-center sm:gap-4">
       <span className="min-w-0 truncate font-semibold">{w.naam}</span>
       <Getal
         label="Mensen tegelijk"
@@ -72,12 +72,32 @@ function Instelling({ w }: { w: Werkplek }) {
         onKlaar={(aantal) => wijzig.mutate({ id: w.id, aantal })}
       />
       <Getal
-        label="Belang"
+        label="Weekend"
         waarde={w.belang}
         min={1}
         max={10}
         onKlaar={(belang) => wijzig.mutate({ id: w.id, belang })}
       />
+      {/* Leeg laten betekent: doordeweeks hetzelfde als in het weekend. Zo hoef
+          je alleen in te vullen wat afwijkt, en zegt een ingevuld getal dat er
+          iets bijzonders is met die plek. */}
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-muted">Di/wo/do</span>
+        <input
+          type="number"
+          min={1}
+          max={10}
+          value={w.belang_doordeweeks ?? ''}
+          placeholder={String(w.belang)}
+          onChange={(e) =>
+            wijzig.mutate({
+              id: w.id,
+              belang_doordeweeks: e.target.value === '' ? null : Number(e.target.value),
+            })
+          }
+          className="min-h-11 w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 text-base tabular-nums outline-none transition-colors focus:border-accent"
+        />
+      </label>
       <label className="flex items-center gap-2 text-sm text-muted">
         <input
           type="checkbox"
@@ -94,13 +114,19 @@ function Instelling({ w }: { w: Werkplek }) {
 /* Wat die twee getallen doen, als rijtje. Een belang van 8 zegt niets; "de
    kassa komt na de patat" zegt alles. En bij gelijk belang zie je hier dat het
    dan op de volgorde van de tabel aankomt — dat kun je nergens anders aflezen. */
-function Vulvolgorde({ werkplekken }: { werkplekken: Werkplek[] }) {
-  const rij = vulVolgorde(stoelenVan(werkplekken))
+function Vulvolgorde({
+  werkplekken,
+  doordeweeks,
+}: {
+  werkplekken: Werkplek[]
+  doordeweeks: boolean
+}) {
+  const rij = vulVolgorde(stoelenVan(werkplekken, doordeweeks))
   if (rij.length === 0) return null
 
   return (
     <>
-      <Kopje>Zo vult de app op</Kopje>
+      <Kopje>{doordeweeks ? 'Zo vult hij op di, wo en do' : 'Zo vult hij in het weekend'}</Kopje>
       <p className="text-sm text-muted">
         Heb je te weinig mensen, dan gaat de app deze rij van boven naar beneden af. Staan er vijf
         mensen, dan worden dit de bovenste vijf en blijft de rest leeg.
@@ -232,7 +258,12 @@ export function RoosterWerkplekken() {
             ))}
           </Kaart>
 
-          <Vulvolgorde werkplekken={plekken.data} />
+          {/* Twee rijtjes naast elkaar, want ze lopen uiteen zodra je het
+              doordeweekse getal invult. Zien dát ze verschillen is het hele
+              punt: een belang van 8 zegt niets, "plankjes vóór de tweede
+              snackbakker" zegt alles. */}
+          <Vulvolgorde werkplekken={plekken.data} doordeweeks={false} />
+          <Vulvolgorde werkplekken={plekken.data} doordeweeks />
 
           <Kopje>Wat de niveaus betekenen</Kopje>
           <Kaart className="flex flex-col py-2">

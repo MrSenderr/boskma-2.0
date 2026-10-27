@@ -77,8 +77,27 @@ export type Werkplek = {
   naam: string
   aantal: number
   belang: number
+  /* Belang op dinsdag, woensdag en donderdag. Leeg betekent: hetzelfde als in
+     het weekend. Op zaterdag gaat een tweede snackbakker vóór plankjes en
+     service; op een rustige woensdag wil je dat omgekeerd, en met één getal
+     per plek kon dat niet. */
+  belang_doordeweeks: number | null
   volgorde: number
   actief: boolean
+}
+
+/** De dagen waarop de doordeweekse volgorde geldt: dinsdag, woensdag,
+ *  donderdag. Maandag is de zaak dicht. */
+export const DOORDEWEEKS = [2, 3, 4]
+
+export function isDoordeweeks(datum: string): boolean {
+  const d = new Date(`${datum}T12:00:00`).getDay()
+  return DOORDEWEEKS.includes(d)
+}
+
+/** Het belang dat op deze dag telt. */
+export function belangOp(werkplek: Werkplek, doordeweeks: boolean): number {
+  return doordeweeks ? (werkplek.belang_doordeweeks ?? werkplek.belang) : werkplek.belang
 }
 
 /** Eén plaats om te vullen. Snackbakker levert er twee. */
@@ -91,7 +110,7 @@ export type Stoel = {
   belang: number
 }
 
-export function stoelenVan(werkplekken: Werkplek[]): Stoel[] {
+export function stoelenVan(werkplekken: Werkplek[], doordeweeks = false): Stoel[] {
   return werkplekken
     .filter((w) => w.actief)
     .slice()
@@ -101,7 +120,7 @@ export function stoelenVan(werkplekken: Werkplek[]): Stoel[] {
         sleutel: `${w.id}|${i + 1}`,
         werkplek: w,
         plek: i + 1,
-        belang: Math.max(1, w.belang - i),
+        belang: Math.max(1, belangOp(w, doordeweeks) - i),
       })),
     )
 }
@@ -399,7 +418,7 @@ export function useWerkplekken() {
     queryFn: async (): Promise<Werkplek[]> => {
       const { data, error } = await supabase
         .from('werkplekken')
-        .select('id,naam,aantal,belang,volgorde,actief')
+        .select('id,naam,aantal,belang,belang_doordeweeks,volgorde,actief')
         .order('volgorde')
       if (error) throw new Error(error.message)
       return (data ?? []) as Werkplek[]

@@ -16,15 +16,24 @@ import {
   volgendeSpitsdag,
   vulVolgorde,
   waardering,
+  belangOp,
+  isDoordeweeks,
   type Niveau,
   type Werkplek,
 } from './spits'
 
-const plek = (naam: string, belang: number, volgorde: number, aantal = 1): Werkplek => ({
+const plek = (
+  naam: string,
+  belang: number,
+  volgorde: number,
+  aantal = 1,
+  belang_doordeweeks: number | null = null,
+): Werkplek => ({
   id: naam.toLowerCase(),
   naam,
   aantal,
   belang,
+  belang_doordeweeks,
   volgorde,
   actief: true,
 })
@@ -415,5 +424,40 @@ describe('de volgorde waarop plekken bezet raken', () => {
         volgorde.slice(0, aantal).map(stoelnaam).sort(),
       )
     }
+  })
+})
+
+describe('een eigen volgorde doordeweeks', () => {
+  /* Op zaterdag gaat een tweede snackbakker vóór plankjes en service; op een
+     rustige woensdag wil je dat omgekeerd. Met één getal per plek kon dat
+     niet. */
+  it('gebruikt het doordeweekse getal als dat is ingevuld', () => {
+    const snack = plek('Snackbakker', 10, 3, 2, 6)
+    expect(belangOp(snack, false)).toBe(10)
+    expect(belangOp(snack, true)).toBe(6)
+  })
+
+  /* Leeg betekent: hetzelfde als in het weekend. Zo hoef je alleen in te vullen
+     wat afwijkt, en zegt een ingevuld getal dat er iets bijzonders is. */
+  it('valt terug op het gewone belang als het leeg is', () => {
+    const kassa = plek('Kassa', 10, 1)
+    expect(belangOp(kassa, true)).toBe(10)
+  })
+
+  it('zet de stoelen doordeweeks in een andere volgorde', () => {
+    const plekken = [plek('Snackbakker', 10, 1, 2, 6), plek('Plankjes', 8, 2)]
+    const weekend = stoelenVan(plekken).map((s) => s.belang)
+    const doordeweeks = stoelenVan(plekken, true).map((s) => s.belang)
+    // In het weekend wint zelfs de tweede snackbakker (9) van plankjes (8).
+    expect(weekend).toEqual([10, 9, 8])
+    // Doordeweeks komt plankjes vóór allebei de snackbakkers.
+    expect(doordeweeks).toEqual([6, 5, 8])
+  })
+
+  it('weet welke dagen doordeweeks zijn', () => {
+    expect(isDoordeweeks('2026-11-10')).toBe(true) // dinsdag
+    expect(isDoordeweeks('2026-11-12')).toBe(true) // donderdag
+    expect(isDoordeweeks('2026-11-14')).toBe(false) // zaterdag
+    expect(isDoordeweeks('2026-11-09')).toBe(false) // maandag, dicht
   })
 })
