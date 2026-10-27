@@ -99,15 +99,56 @@ In `docs/voorbeeld-eitje/` staan twee echte exports met verzonnen namen erin.
 Daar toetsen de tests op, zodat een verandering in de vorm van de export opvalt
 voordat een import ermee misgaat.
 
+## Rechtstreeks uit eitje
+
+Sinds 27 oktober 2026 hoeft de uitdraai niet meer per mail. Eitje heeft een open
+API; de serverfunctie `eitje-uren` haalt de gewerkte uren op en zet ze in
+dezelfde tabellen als de Excel-import. Die Excel-route blijft ernaast staan.
+
+**Waar het staat.** De documentatie is een Postman-pagina:
+<https://documenter.getpostman.com/view/443091/2s9YXk2gBR>. Het hulpartikel van
+eitje erover staat op
+<https://intercom.help/eitje/nl/articles/8581248-open-api>. Vragen gaan naar
+info@eitje.app; het partnercontact was Bas Groenewoud.
+
+**Vier sleutels, geen twee.** De authenticatie gaat via vier losse headers:
+`Partner-Username` en `Partner-Password` (die krijg je van eitje als partner) én
+`Api-Username` en `Api-Password` (die staan in eitje zelf onder
+Bedrijfsinstellingen → Organisatie → API, zichtbaar voor wie admin is in álle
+vestigingen). Ze staan in Supabase bij de serverfuncties als
+`EITJE_PARTNER_USERNAME`, `EITJE_PARTNER_PASSWORD`, `EITJE_API_USERNAME` en
+`EITJE_API_PASSWORD`.
+
+**Het vaste nummer.** De API geeft per persoon een nummer, met e-mailadres en
+geboortedatum ernaast. Dat nummer komt in `sollicitaties.eitje_user_id` te
+staan, met een uniek slot erop: twee medewerkers met hetzelfde nummer zou
+betekenen dat de uren van de één op de ander belanden. Is dat nummer er eenmaal,
+dan hoeft er nooit meer op naam geraden te worden — `koppelen.ts` blijft wel
+bestaan voor de eerste keer en voor de Excel.
+
+Een koppeling op alleen een voornaam wordt met opzet níet vastgelegd. Die wordt
+gemeld zodat je hem zelf aanwijst: het nummer is daarna de waarheid, en een
+verkeerd vastgelegd nummer zet jaren uren op de verkeerde persoon zonder dat
+iemand het ziet.
+
+**Twee dingen die stil fout zouden gaan.** Eitje schrijft de soort als
+`gewerkte_uren`, de database als `gewerkte uren`; `VERLOOND` in
+`gewerkteUren.ts` kijkt naar de spatie-versie, dus zonder omzetting tellen de
+uren voor nul mee. En de datumstukken overlappen met een dag, omdat nergens
+staat of eitje de einddatum meerekent — een dag dubbel ophalen overschrijft
+zichzelf, een dag missen maakt het totaal een zevende te laag.
+
+**De proef.** De urenregels worden bewaard onder het nummer dat eitje aan de
+dienst geeft, zodat opnieuw ophalen overschrijft in plaats van stapelt. Of dat
+dezelfde nummers zijn als het "support ID" uit de Excel was bij het bouwen niet
+na te meten. Daarom is er `modus: "proef"`: die legt één week naast wat er al
+staat en schrijft niets. Pas als er nummers op elkaar passen gaat de knop
+"Uren terughalen" aan.
+
 ## Wat er nog niet in zit
 
 - **De planning delen.** Nu kijk je in de app; een weekoverzicht om te
   versturen of op te hangen is er nog niet.
-- **Automatisch ophalen.** De export komt per mail. Een Apps Script dat de
-  bijlage in Drive zet, met een edge function die hem oppakt, kan later op
-  dezelfde importlaag — `leesEitje` hoeft er niet voor te veranderen. Voorlopig
-  is één keer per week slepen minder kwetsbaar dan een keten die stil kan vallen
-  zonder dat iemand het ziet (zie "Verzamelaars" in `CLAUDE.md`).
 - **Verlof en ziek.** eitje kent die soorten; zodra ze in de export staan komen
   ze mee. De kolom `soort` in `gewerkte_uren` heeft daarom met opzet geen
   CHECK — een onbekende soort hoort ingelezen te worden, niet geweigerd.
