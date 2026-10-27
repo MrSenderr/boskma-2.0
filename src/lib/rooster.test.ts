@@ -4,9 +4,11 @@ import {
   beoordeel,
   dagoverzicht,
   maandagVan,
+  perWeek,
   schoonTijd,
   statistiek,
   urenTekst,
+  weekKolommen,
   weeknummer,
   type Shift,
 } from './rooster'
@@ -287,5 +289,91 @@ describe('uren als tekst', () => {
 
   it('kan ook een tekort aan', () => {
     expect(urenTekst(-90)).toBe('-1,5')
+  })
+})
+
+describe('weken naast elkaar', () => {
+  const uur = (
+    datum: string,
+    minuten: number,
+    voornaam = 'Evi',
+    id: string | null = 'evi',
+    achternaam = 'Dudink',
+  ) =>
+    shift({
+      bron_id: `${voornaam}-${datum}-${minuten}`,
+      datum,
+      minuten,
+      voornaam,
+      achternaam,
+      medewerker_id: id,
+    })
+
+  describe('de kolommen', () => {
+    it('loopt van week tot week door de periode heen', () => {
+      expect(weekKolommen('2026-09-07', '2026-09-27')).toEqual([
+        { maandag: '2026-09-07', nummer: 37 },
+        { maandag: '2026-09-14', nummer: 38 },
+        { maandag: '2026-09-21', nummer: 39 },
+      ])
+    })
+
+    /* Een maand begint zelden op maandag. De uren van die eerste dagen horen in
+       de week waarin ze gewerkt zijn, dus begint de eerste kolom ervóór. */
+    it('begint bij de maandag van de week waarin de periode begint', () => {
+      expect(weekKolommen('2026-09-09', '2026-09-20')[0]).toEqual({
+        maandag: '2026-09-07',
+        nummer: 37,
+      })
+    })
+
+    it('geeft één kolom voor één week', () => {
+      expect(weekKolommen('2026-09-07', '2026-09-13')).toHaveLength(1)
+    })
+
+    it('geeft niets terug bij een periode die niet bestaat', () => {
+      expect(weekKolommen('2026-09-20', '2026-09-01')).toEqual([])
+      expect(weekKolommen('', '2026-09-01')).toEqual([])
+    })
+  })
+
+  describe('de uren', () => {
+    it('zet elke dienst in de week waarin hij valt', () => {
+      const [evi] = perWeek([uur('2026-09-07', 300), uur('2026-09-14', 180)])
+      expect(evi.weken).toEqual({ '2026-09-07': 300, '2026-09-14': 180 })
+      expect(evi.totaal).toBe(480)
+      expect(evi.shifts).toBe(2)
+    })
+
+    it('telt twee diensten in dezelfde week bij elkaar op', () => {
+      const [evi] = perWeek([uur('2026-09-07', 300), uur('2026-09-09', 120)])
+      expect(evi.weken['2026-09-07']).toBe(420)
+    })
+
+    /* Zondag hoort bij de week die ervoor begon, niet bij de week erna. */
+    it('rekent zondag bij de week ervoor', () => {
+      const [evi] = perWeek([uur('2026-09-13', 240)])
+      expect(evi.weken).toEqual({ '2026-09-07': 240 })
+    })
+
+    it('houdt mensen uit elkaar en zet de drukste bovenaan', () => {
+      const rijen = perWeek([
+        uur('2026-09-07', 120, 'Daan', 'daan', 'Verhulst'),
+        uur('2026-09-07', 480, 'Evi', 'evi'),
+      ])
+      expect(rijen.map((r) => r.naam)).toEqual(['Evi Dudink', 'Daan Verhulst'])
+    })
+
+    it('laat een regel van nul minuten nergens meetellen', () => {
+      expect(perWeek([uur('2026-09-07', 0)])).toEqual([])
+    })
+
+    it('houdt een naam zonder medewerker apart', () => {
+      const rijen = perWeek([
+        uur('2026-09-07', 120, 'Jasper', null, 'Wijdenes'),
+        uur('2026-09-07', 120, 'Evi', 'evi'),
+      ])
+      expect(rijen.find((r) => !r.medewerker_id)?.naam).toBe('Jasper Wijdenes')
+    })
   })
 })

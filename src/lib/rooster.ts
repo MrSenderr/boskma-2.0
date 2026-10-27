@@ -364,6 +364,83 @@ export function urenTekst(minuten: number): string {
   return uren.toLocaleString('nl-NL', { maximumFractionDigits: 2 })
 }
 
+/* ------------------------------------------------------------- per week --- */
+
+export type WeekKolom = {
+  /** De maandag, als JJJJ-MM-DD. Hieronder staan de uren van die week. */
+  maandag: string
+  nummer: number
+}
+
+/* De weken waar een periode overheen loopt, als kolommen.
+ *
+ * Begint op de maandag van de week waarin de periode begint, ook als die
+ * maandag er nog vóór ligt. Een maand begint zelden op een maandag, en de uren
+ * van die eerste dagen horen in de week waarin ze gewerkt zijn — niet in een
+ * halve week die alleen bestaat omdat de maand daar toevallig begon. */
+export function weekKolommen(van: string, tot: string): WeekKolom[] {
+  if (!van || !tot || van > tot) return []
+  const uit: WeekKolom[] = []
+  let maandag = maandagVan(van)
+  // Een jaar is 53 weken; vierhonderd is ruim genoeg en voorkomt een eindeloze
+  // lus als er ooit een onmogelijke datum binnenkomt.
+  for (let i = 0; i < 400 && maandag <= tot; i++) {
+    uit.push({ maandag, nummer: weeknummer(maandag) })
+    maandag = verschuif(maandag, 7)
+  }
+  return uit
+}
+
+export type PerWeek = {
+  sleutel: string
+  naam: string
+  medewerker_id: string | null
+  /** Minuten per week, met de maandag als sleutel. */
+  weken: Record<string, number>
+  totaal: number
+  shifts: number
+}
+
+/* Wat er per persoon per week gewerkt is.
+ *
+ * De week waarin een dienst valt wordt uit de datum van de dienst gehaald, niet
+ * uit de gekozen periode. Dat scheelt een stille fout: kies je een maand die op
+ * een woensdag begint, dan horen die eerste dagen bij de week ervoor, en zo
+ * komen ze ook in die kolom te staan. */
+export function perWeek(gewerkt: Shift[]): PerWeek[] {
+  const uit = new Map<string, PerWeek>()
+
+  for (const rij of gewerkt) {
+    // Een regel van nul minuten is geen dienst maar een restant; die telt
+    // nergens mee, net als in `statistiek`.
+    if (rij.minuten <= 0) continue
+
+    const sleutel = rij.medewerker_id ?? `naam:${naamSleutel(rij.voornaam, rij.achternaam)}`
+    let p = uit.get(sleutel)
+    if (!p) {
+      p = {
+        sleutel,
+        naam: naamUit(rij),
+        medewerker_id: rij.medewerker_id,
+        weken: {},
+        totaal: 0,
+        shifts: 0,
+      }
+      uit.set(sleutel, p)
+    }
+    // De roosterexport heeft een achternaam, de urenexport niet. De langste
+    // naam is dus de volledigste.
+    if (naamUit(rij).length > p.naam.length) p.naam = naamUit(rij)
+
+    const maandag = maandagVan(rij.datum)
+    p.weken[maandag] = (p.weken[maandag] ?? 0) + rij.minuten
+    p.totaal += rij.minuten
+    p.shifts++
+  }
+
+  return [...uit.values()].sort((a, b) => b.totaal - a.totaal)
+}
+
 /* -------------------------------------------------------------- statistiek --- */
 
 export type Statistiek = {
