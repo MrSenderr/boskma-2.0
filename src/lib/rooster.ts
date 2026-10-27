@@ -348,6 +348,22 @@ export function useImporteren() {
   })
 }
 
+/* ------------------------------------------------------------------ uren --- */
+
+/* Uren als getal, zoals je ze uitspreekt: "12,5 uur".
+ *
+ * Niet "12:30". Dat leest als een kloktijd — half één 's middags — en op een
+ * blad vol uren is dat precies de verwarring die je niet wilt hebben. Vandaar
+ * een gewoon getal met een komma.
+ *
+ * Niet meer cijfers dan nodig, maar ook niet minder: een kwartier is 12,25 en
+ * dat moet blijven staan. Zou dit op één cijfer afronden, dan werd 12,25 uur
+ * ineens 12,3 — en dat getal gaat naar het loonbureau. */
+export function urenTekst(minuten: number): string {
+  const uren = Math.round((minuten / 60) * 100) / 100
+  return uren.toLocaleString('nl-NL', { maximumFractionDigits: 2 })
+}
+
 /* -------------------------------------------------------------- statistiek --- */
 
 export type Statistiek = {
@@ -432,8 +448,14 @@ export function statistiek(gepland: Shift[], gewerkt: Shift[]): Statistiek[] {
   return [...uit.values()].sort((a, b) => b.gewerkt - a.gewerkt || b.gepland - a.gepland)
 }
 
-/** Per persoon per dag, voor "wie werkte er langer door dan er stond". Alleen
- *  de dagen waarop het verschilt; de rest is ruis. */
+/* Per persoon per dag, voor "wie werkte er langer door dan er stond". Alleen
+ * de dagen waarop het verschilt; de rest is ruis.
+ *
+ * Staat nu even stil: het scherm Gewerkte uren laat alleen zien wat er gewerkt
+ * is, omdat de planning nog uit het Excel-bestand komt en niet uit de
+ * koppeling. Deze module blijft staan — met toetsen — voor zodra de planning
+ * ook via de API binnenkomt. Weggooien en opnieuw schrijven is hier duurder
+ * dan laten staan. */
 export function afwijkendeDagen(gepland: Shift[], gewerkt: Shift[], drempel = 30) {
   const per = new Map<string, { naam: string; datum: string; gepland: number; gewerkt: number }>()
   const metUren = new Set(gewerkt.map((r) => r.datum))

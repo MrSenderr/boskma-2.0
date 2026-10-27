@@ -6,6 +6,7 @@ import {
   maandagVan,
   schoonTijd,
   statistiek,
+  urenTekst,
   weeknummer,
   type Shift,
 } from './rooster'
@@ -255,5 +256,36 @@ describe('tijden uit de database', () => {
     // vergelijking daarna klopt en niet op "12:00:00" tegen "12:00" struikelt.
     const bestaand = new Map([['1', { ...shift(), begint: schoonTijd('12:00:00'), eindigt: schoonTijd('20:00:00') }]])
     expect(beoordeel(bestand([regel()]), bestaand, [EVI], new Map()).ongewijzigd).toBe(1)
+  })
+})
+
+describe('uren als tekst', () => {
+  /* "12:30" leest als half één 's middags. Op een blad vol uren is dat precies
+     de verwarring die je niet wilt, dus staat er een gewoon getal. */
+  it('schrijft uren met een komma, niet met een dubbele punt', () => {
+    expect(urenTekst(750)).toBe('12,5')
+  })
+
+  it('laat een heel uur heel', () => {
+    expect(urenTekst(720)).toBe('12')
+    expect(urenTekst(60)).toBe('1')
+    expect(urenTekst(0)).toBe('0')
+  })
+
+  /* Een kwartier moet blijven staan. Zou dit op één cijfer afronden, dan werd
+     12,25 uur ineens 12,3 — en dat getal gaat naar het loonbureau. */
+  it('houdt een kwartier overeind', () => {
+    expect(urenTekst(735)).toBe('12,25')
+    expect(urenTekst(765)).toBe('12,75')
+    expect(urenTekst(15)).toBe('0,25')
+  })
+
+  it('zet een scheidingsteken in grote getallen', () => {
+    // Een jaar aan uren van de hele zaak loopt in de duizenden.
+    expect(urenTekst(60 * 1976)).toBe('1.976')
+  })
+
+  it('kan ook een tekort aan', () => {
+    expect(urenTekst(-90)).toBe('-1,5')
   })
 })
