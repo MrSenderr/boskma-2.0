@@ -29,12 +29,18 @@ function Getal({
   min,
   max,
   onKlaar,
+  plaatshouder,
 }: {
   label: string
-  waarde: number
+  /* Null is een geldige waarde en geen ontbrekende: bij het doordeweekse
+     belang betekent leeg "hetzelfde als in het weekend". Dat staat dan als
+     grijze plaatshouder in het vakje, zodat je ziet wat er geldt zonder dat je
+     het hoeft over te typen. */
+  waarde: number | null
   min: number
   max: number
-  onKlaar: (n: number) => void
+  onKlaar: (n: number | null) => void
+  plaatshouder?: number
 }) {
   return (
     <label className="flex items-center gap-2 sm:block">
@@ -46,11 +52,18 @@ function Getal({
         min={min}
         max={max}
         aria-label={label}
-        defaultValue={waarde}
+        defaultValue={waarde ?? ''}
+        placeholder={plaatshouder === undefined ? undefined : String(plaatshouder)}
         onBlur={(e) => {
+          const leeg = e.target.value.trim() === ''
+          if (leeg) {
+            if (plaatshouder !== undefined && waarde !== null) onKlaar(null)
+            else e.target.value = waarde === null ? '' : String(waarde)
+            return
+          }
           const n = Number(e.target.value)
           if (Number.isInteger(n) && n >= min && n <= max && n !== waarde) onKlaar(n)
-          else e.target.value = String(waarde)
+          else e.target.value = waarde === null ? '' : String(waarde)
         }}
         className="w-16 rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 py-1.5 text-center text-base tabular-nums outline-none focus:border-accent"
       />
@@ -62,42 +75,33 @@ function Instelling({ w }: { w: Werkplek }) {
   const wijzig = useWerkplekWijzigen()
 
   return (
-    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_5rem_6rem_8rem] sm:items-center sm:gap-4">
+    <div className="flex flex-col gap-2 border-b border-line px-4 py-3 last:border-0 sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_5rem_5rem_8rem] sm:items-center sm:gap-4">
       <span className="min-w-0 truncate font-semibold">{w.naam}</span>
       <Getal
         label="Mensen tegelijk"
         waarde={w.aantal}
         min={1}
         max={6}
-        onKlaar={(aantal) => wijzig.mutate({ id: w.id, aantal })}
+        onKlaar={(aantal) => aantal !== null && wijzig.mutate({ id: w.id, aantal })}
       />
       <Getal
         label="Weekend"
         waarde={w.belang}
         min={1}
         max={10}
-        onKlaar={(belang) => wijzig.mutate({ id: w.id, belang })}
+        onKlaar={(belang) => belang !== null && wijzig.mutate({ id: w.id, belang })}
       />
-      {/* Leeg laten betekent: doordeweeks hetzelfde als in het weekend. Zo hoef
-          je alleen in te vullen wat afwijkt, en zegt een ingevuld getal dat er
-          iets bijzonders is met die plek. */}
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-semibold text-muted">Di/wo/do</span>
-        <input
-          type="number"
-          min={1}
-          max={10}
-          value={w.belang_doordeweeks ?? ''}
-          placeholder={String(w.belang)}
-          onChange={(e) =>
-            wijzig.mutate({
-              id: w.id,
-              belang_doordeweeks: e.target.value === '' ? null : Number(e.target.value),
-            })
-          }
-          className="min-h-11 w-full rounded-[4px] border-[1.5px] border-line-strong bg-bg px-2 text-base tabular-nums outline-none transition-colors focus:border-accent"
-        />
-      </label>
+      {/* Leeg laten betekent: doordeweeks hetzelfde als in het weekend. Het
+          weekendgetal staat er dan grijs in, zodat je ziet wat er geldt zonder
+          dat je het hoeft over te typen. */}
+      <Getal
+        label="Belang di/wo/do"
+        waarde={w.belang_doordeweeks}
+        min={1}
+        max={10}
+        plaatshouder={w.belang}
+        onKlaar={(belang_doordeweeks) => wijzig.mutate({ id: w.id, belang_doordeweeks })}
+      />
       <label className="flex items-center gap-2 text-sm text-muted">
         <input
           type="checkbox"
@@ -244,17 +248,21 @@ export function RoosterWerkplekken() {
             <strong className="font-semibold text-text">Mensen tegelijk</strong> is hoeveel mensen er
             op die plek staan — bij de snackbakker twee.{' '}
             <strong className="font-semibold text-text">Belang</strong> is hoe hard de plek bezet
-            moet zijn: 10 is onmisbaar, 1 is meegenomen. Hieronder zie je wat die getallen doen.
+            moet zijn: 10 is onmisbaar, 1 is meegenomen. Dat staat er twee keer, want in het
+            weekend telt een plek anders dan op een rustige woensdag. Laat je{' '}
+            <strong className="font-semibold text-text">Di/wo/do</strong> leeg, dan geldt daar het
+            weekendgetal. Hieronder zie je wat die getallen doen.
           </p>
           <Kaart className="flex flex-col py-2">
-            <div className="hidden grid-cols-[minmax(0,1fr)_5rem_5rem_8rem] gap-4 border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_5rem_5rem_5rem_8rem] gap-4 border-b border-line px-4 pb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:grid">
               <span>Plek</span>
               <span className="text-center">Mensen</span>
-              <span className="text-center">Belang</span>
+              <span className="text-center">Weekend</span>
+              <span className="text-center">Di/wo/do</span>
               <span />
             </div>
             {plekken.data.map((w) => (
-              <Instelling key={`${w.id}-${w.aantal}-${w.belang}`} w={w} />
+              <Instelling key={`${w.id}-${w.aantal}-${w.belang}-${w.belang_doordeweeks}`} w={w} />
             ))}
           </Kaart>
 
