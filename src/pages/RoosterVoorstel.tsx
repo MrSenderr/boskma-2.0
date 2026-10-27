@@ -8,6 +8,7 @@ import { SOORTTEKST, klok, useSjabloon, useVasteDiensten, type Soort } from '../
 import {
   maakVoorstel,
   samenvatten,
+  useEitjeTeam,
   useNaarEitje,
   useRoosterMensen,
   volgendBlok,
@@ -215,6 +216,7 @@ function NaarEitje({ voorstel }: { voorstel: Dienstvoorstel[] }) {
   const [vraagt, setVraagt] = useState(false)
   const [weken, setWeken] = useState<Weekuitslag[]>([])
   const sturen = useNaarEitje()
+  const team = useEitjeTeam()
 
   const totaal = weken.reduce((som, w) => som + w.geschreven, 0)
   const vervangen = weken.reduce((som, w) => som + w.weggehaald, 0)
@@ -228,6 +230,7 @@ function NaarEitje({ voorstel }: { voorstel: Dienstvoorstel[] }) {
           <p className="max-w-xl text-sm text-muted">
             Zet dit voorstel ongepubliceerd in eitje. Je team ziet er niets van; jij kijkt het daar
             na en geeft het zelf vrij.
+            {team.data && ` De diensten komen in het team ${team.data.naam}.`}
           </p>
         </div>
         {!vraagt && (
@@ -249,7 +252,11 @@ function NaarEitje({ voorstel }: { voorstel: Dienstvoorstel[] }) {
             <Knop
               onClick={() =>
                 sturen.mutate(
-                  { voorstel, onWeek: (w) => setWeken((v) => [...v, w]) },
+                  {
+                    voorstel,
+                    teamId: team.data?.id,
+                    onWeek: (w) => setWeken((v) => [...v, w]),
+                  },
                   { onError: () => setVraagt(false) },
                 )
               }

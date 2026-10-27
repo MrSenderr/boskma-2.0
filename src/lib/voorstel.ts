@@ -551,6 +551,29 @@ export function useInplannenWijzigen() {
 
 /* ----------------------------------------------------- naar eitje toe --- */
 
+/* In welk team de diensten komen te staan.
+ *
+ * Eitje eist een team bij elke dienst, en Boskma heeft er twee: "Snackerie
+ * 't Zonnetje" en "Algemeen". De serverfunctie weigert te kiezen — hij noemt ze
+ * bij naam en stopt — en die keuze staat daarom hier, in de instellingen, in
+ * plaats van in de code. Verandert er iets bij eitje, dan is dat één regel in
+ * de database en geen nieuwe uitrol. */
+export function useEitjeTeam() {
+  return useQuery({
+    queryKey: ['instelling', 'eitje_team'],
+    queryFn: async (): Promise<{ id: number; naam: string } | null> => {
+      const { data, error } = await supabase
+        .from('instellingen')
+        .select('waarde')
+        .eq('sleutel', 'eitje_team')
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      const w = (data as { waarde?: { id?: number; naam?: string } } | null)?.waarde
+      return w?.id ? { id: w.id, naam: w.naam ?? '' } : null
+    },
+  })
+}
+
 export type Weekuitslag = {
   van: string
   tot: string
