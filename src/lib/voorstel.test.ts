@@ -480,3 +480,68 @@ describe('de belijst wordt pas gemaakt als de dag rond is', () => {
     expect(uit[0].teVragen).toEqual(['Daan Test'])
   })
 })
+
+describe('liever niet is een laatste keus, geen aftrek', () => {
+  /* Dit ging echt mis. Sander wilde zijn donderdag vrijhouden voor
+     administratie en had "liever niet" ingevuld. Dat kostte 25 punten, maar
+     het spreiden van diensten kost 12 punten per dienst die iemand die week al
+     heeft — dus zodra een collega er drie had, won Sander alsnog en stond hij
+     op zijn vrije dag. Een voorkeur hoort niet te verliezen van een
+     rekensommetje over spreiding. */
+  it('kiest iemand met drie diensten boven iemand die liever niet wil', () => {
+    const sander = mens('sander', 'Sander')
+    const evi = mens('evi', 'Evi')
+
+    const uit = maakVoorstel(
+      opdracht({
+        // Maandag is dicht, dus deze week loopt van dinsdag; vier dagen zodat
+        // Evi er drie kan hebben voordat zaterdag aan de beurt is.
+        van: '2026-11-10',
+        tot: '2026-11-14',
+        sjabloon: [
+          regel({ dag: 2 }),
+          regel({ dag: 3 }),
+          regel({ dag: 4 }),
+          regel({ dag: 5 }),
+        ],
+        mensen: [sander, evi],
+        wensen: new Map([['sander', { 5: 'liever_niet' as const }]]),
+      }),
+    )
+
+    const vrijdag = uit.find((d) => d.datum === '2026-11-13')!
+    expect(vrijdag.naam).toBe('Evi Test')
+  })
+
+  it('zet hem er wel op als er niemand anders is', () => {
+    const sander = mens('sander', 'Sander')
+    const uit = maakVoorstel(
+      opdracht({
+        mensen: [sander],
+        wensen: new Map([['sander', { 6: 'liever_niet' as const }]]),
+      }),
+    )
+    expect(uit[0].naam).toBe('Sander Test')
+  })
+
+  /* Anders lijkt het of zijn voorkeur is genegeerd. */
+  it('zegt erbij dat er niemand anders was', () => {
+    const sander = mens('sander', 'Sander')
+    const uit = maakVoorstel(
+      opdracht({
+        mensen: [sander],
+        wensen: new Map([['sander', { 6: 'liever_niet' as const }]]),
+      }),
+    )
+    expect(uit[0].uitleg).toContain('liever niet')
+    expect(uit[0].uitleg).toContain('niemand anders')
+  })
+
+  it('laat "nee" nog steeds een harde grens', () => {
+    const sander = mens('sander', 'Sander')
+    const uit = maakVoorstel(
+      opdracht({ mensen: [sander], wensen: new Map([['sander', { 6: 'nee' as const }]]) }),
+    )
+    expect(uit[0].medewerker_id).toBeNull()
+  })
+})

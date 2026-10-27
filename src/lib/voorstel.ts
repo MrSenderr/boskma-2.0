@@ -317,6 +317,14 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
           return {
             mens: m,
             weg,
+            /* "Liever niet" is geen aftrek maar een achterste plaats. Met
+               alleen punten verloor een voorkeur van het spreiden: wie die
+               week al drie diensten had zakte 36 punten, en dan won degene die
+               er liever niet stond. Zo kwam Sander op zijn administratiedonder-
+               dag te staan terwijl hij had aangegeven dat liever niet te doen.
+               Nu komt hij pas in beeld als er niemand anders meer is — en dat
+               is precies wat "als het mogelijk is" betekent. */
+            laatsteKeus: wens === 'liever_niet',
             score: punten({
               opgegevenBeschikbaar: opgegeven,
               houdtBeschikbaarheidBij: bijhouder,
@@ -330,10 +338,16 @@ export function maakVoorstel(o: Opdracht): Dienstvoorstel[] {
           }
         })
         .filter((k): k is NonNullable<typeof k> => k !== null)
-        /* Bij gelijke punten op naam, zodat hetzelfde voorstel twee keer
-           draaien hetzelfde oplevert. Een rooster dat elke keer anders uitvalt
-           kun je niet vergelijken met het vorige. */
-        .sort((a, b) => b.score - a.score || naamVan(a.mens).localeCompare(naamVan(b.mens), 'nl'))
+        /* Eerst wie er geen bezwaar tegen heeft, dan pas wie liever niet wil.
+           Daarbinnen op punten, en bij gelijke punten op naam — zodat hetzelfde
+           voorstel twee keer draaien hetzelfde oplevert. Een rooster dat elke
+           keer anders uitvalt kun je niet vergelijken met het vorige. */
+        .sort(
+          (a, b) =>
+            Number(a.laatsteKeus) - Number(b.laatsteKeus) ||
+            b.score - a.score ||
+            naamVan(a.mens).localeCompare(naamVan(b.mens), 'nl'),
+        )
 
       const beste = kandidaten[0]
       if (!beste) {
@@ -410,6 +424,12 @@ function uitlegVan(
   wens: Wens | undefined,
   alDezeWeek: number,
 ): string {
+  /* Wie hier staat terwijl hij het liever niet doet, hoort dat als eerste te
+     lezen — met de reden erbij dat er niemand anders was. Anders lijkt het of
+     zijn voorkeur is genegeerd. */
+  if (wens === 'liever_niet') {
+    return 'werkt liever niet op deze dag, maar er was niemand anders beschikbaar'
+  }
   const delen: string[] = []
   if (opgegeven) delen.push('heeft opgegeven dat hij kan')
   /* Expres een andere zin dan "heeft opgegeven dat hij kan". De uitkomst is
@@ -417,7 +437,6 @@ function uitlegVan(
      welke van de twee het was. */
   else if (!bijhouder) delen.push('vult geen beschikbaarheid in, dus geldt als beschikbaar')
   if (wens === 'graag') delen.push('werkt graag op deze dag')
-  if (wens === 'liever_niet') delen.push('liever niet op deze dag')
   if (alDezeWeek > 0) delen.push(`had al ${alDezeWeek} ${alDezeWeek === 1 ? 'dienst' : 'diensten'} deze week`)
   if (delen.length === 0) return 'niets op tegen, en nog geen diensten deze week'
   return delen.join(', ')
