@@ -11,8 +11,13 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
-export const BESTANDEN = ['xlsx-lezen.ts', 'eitje.ts', 'koppelen.ts']
-const NAAR = 'supabase/functions/rooster-inlezen/gedeeld'
+/* Welke serverfunctie welke modules meekrijgt. koppelen.ts staat bij beide:
+   de Excel-import en de API-koppeling moeten namen op precies dezelfde manier
+   aan mensen koppelen, anders koppelt de ene wat de andere laat liggen. */
+export const KOPIEEN = {
+  'supabase/functions/rooster-inlezen/gedeeld': ['xlsx-lezen.ts', 'eitje.ts', 'koppelen.ts'],
+  'supabase/functions/eitje-uren/gedeeld': ['eitjeApi.ts', 'koppelen.ts'],
+}
 
 export function kopieInhoud(naam) {
   const bron = readFileSync(`src/lib/${naam}`, 'utf8')
@@ -26,9 +31,11 @@ export function kopieInhoud(naam) {
    importeren, dan maakte de toets de kopieën opnieuw en keurde hij zijn eigen
    werk goed. */
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
-  mkdirSync(NAAR, { recursive: true })
-  for (const naam of BESTANDEN) {
-    writeFileSync(`${NAAR}/${naam}`, kopieInhoud(naam))
-    console.log(`gekopieerd: ${naam}`)
+  for (const [naar, bestanden] of Object.entries(KOPIEEN)) {
+    mkdirSync(naar, { recursive: true })
+    for (const naam of bestanden) {
+      writeFileSync(`${naar}/${naam}`, kopieInhoud(naam))
+      console.log(`gekopieerd: ${naam} -> ${naar}`)
+    }
   }
 }

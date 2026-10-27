@@ -40,7 +40,10 @@ export type Afspraak = { medewerker_id: string | null; negeren: boolean }
 function normaliseer(tekst: string | null | undefined): string {
   return (tekst ?? '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    // De accenttekens die NFD losmaakt (U+0300 t/m U+036F). Expres als
+    // codepunten geschreven: als losse tekens zijn ze onzichtbaar, en dan
+    // sneuvelt deze regel bij het eerste knip- en plakwerk.
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
