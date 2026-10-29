@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Images, Layers, Monitor, X } from 'lucide-react'
+import { Images, Layers, Monitor, RotateCcw, X } from 'lucide-react'
 import { Kaart, Knop, Laden, Mislukt, Pil } from '../components/ui'
 import {
   ZONDER_MAP,
   leeftNog,
   mappenVan,
   stilSinds,
+  useOpenstaandeHerstarts,
+  useSchermHerstarten,
   useAfbeeldingen,
   useBewaardeReeksen,
   useLopendeReeksen,
@@ -127,11 +129,14 @@ function SchermKaart({
   scherm,
   lopend,
   bewaard,
+  wacht,
   kies,
 }: {
   scherm: Scherm
   lopend: number
   bewaard: number
+  /** Er staat al een herstart klaar die de Pi nog niet heeft opgehaald. */
+  wacht: boolean
   kies: () => void
 }) {
   const reeks = useReeksZetten()
@@ -204,8 +209,71 @@ function SchermKaart({
         </div>
       </div>
 
+      <Herstarten scherm={scherm} wacht={wacht} />
+
       {fout && <p className="text-sm text-bad">{fout}</p>}
     </Kaart>
+  )
+}
+
+/* Opnieuw opstarten.
+ *
+ * Met een tussenstap, want een scherm dat opstart is ruim een minuut zwart —
+ * en dat hangt in de zaak waar klanten staan. Eén muisklik is te weinig
+ * afstand.
+ *
+ * De app kan niet bij de Pi; de Pi haalt zelf elke dertig seconden op of er
+ * iets voor hem klaarstaat. Bij een scherm dat stil is betekent de knop dus
+ * niet "nu opstarten" maar "opstarten zodra hij zich weer meldt", en dat
+ * hoort er ook te staan. Anders druk je, gebeurt er niets, en denk je dat de
+ * knop stuk is. */
+function Herstarten({ scherm, wacht }: { scherm: Scherm; wacht: boolean }) {
+  const herstart = useSchermHerstarten()
+  const [vraagt, setVraagt] = useState(false)
+  const leeft = leeftNog(scherm)
+
+  if (wacht) {
+    return (
+      <p className="flex items-start gap-2 border-t border-line pt-3 text-sm text-muted">
+        <RotateCcw className="mt-0.5 size-4 shrink-0" aria-hidden />
+        Herstart klaargezet.{' '}
+        {leeft
+          ? 'Het scherm haalt hem binnen een halve minuut op.'
+          : 'Hij wordt uitgevoerd zodra dit scherm zich weer meldt.'}
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-line pt-3">
+      {!vraagt ? (
+        <Knop soort="rustig" className="w-fit" onClick={() => setVraagt(true)}>
+          <RotateCcw className="size-4" aria-hidden />
+          Opnieuw opstarten
+        </Knop>
+      ) : (
+        <>
+          <p className="text-sm">
+            {scherm.naam} gaat dan ruim een minuut uit.
+            {!leeft && ' Dit scherm is nu stil, dus het gebeurt pas als hij zich weer meldt.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Knop
+              bezig={herstart.isPending}
+              onClick={() =>
+                herstart.mutate(scherm.id, { onSuccess: () => setVraagt(false) })
+              }
+            >
+              Ja, opnieuw opstarten
+            </Knop>
+            <Knop soort="rustig" onClick={() => setVraagt(false)}>
+              Toch niet
+            </Knop>
+          </div>
+        </>
+      )}
+      {herstart.error && <p className="text-sm text-bad">{herstart.error.message}</p>}
+    </div>
   )
 }
 
@@ -213,6 +281,7 @@ export function SchermenLijst() {
   const { data, isPending, error, refetch } = useSchermen()
   const { data: lopend } = useLopendeReeksen()
   const { data: bewaard } = useBewaardeReeksen()
+  const herstarts = useOpenstaandeHerstarts()
   const [kiezen, setKiezen] = useState<Scherm | null>(null)
 
   if (isPending) return <Laden tekst="Schermen laden…" />
@@ -235,6 +304,7 @@ export function SchermenLijst() {
           scherm={s}
           lopend={lopend?.[s.id] ?? 0}
           bewaard={bewaard?.[s.id] ?? 0}
+          wacht={herstarts.data?.has(s.id) ?? false}
           kies={() => setKiezen(s)}
         />
       ))}

@@ -228,3 +228,67 @@ export function useAfbeeldingWeggooien() {
     onSuccess: () => client.invalidateQueries({ queryKey: ['schermafbeeldingen'] }),
   })
 }
+
+/* ------------------------------------------------------------ herstarten --- */
+
+/* Een scherm opnieuw laten opstarten.
+ *
+ * De app kan niet bij de Pi's — die hangen niet aan dit netwerk en de
+ * beheeropzet in `boskma-signage` staat nog op voorbeeldadressen. Dat hoeft
+ * ook niet: de daemon op elke Pi kijkt elke dertig seconden zelf in
+ * `screen_commands` of er iets voor hem klaarstaat. Deze knop zet daar een
+ * regel neer; de Pi haalt hem op.
+ *
+ * **Eerst opruimen wat er al stond.** Druk je twee keer, dan staan er twee
+ * opdrachten en start het scherm twee keer achter elkaar op. Bij een scherm
+ * dat al uren stil is, is dat zomaar gebeurd.
+ *
+ * Alleen `reboot`. De daemon kent ook `screen_on` en `screen_off` via de
+ * tv-bediening, en `refresh` — maar die laatste wordt door niets opgepakt:
+ * in de daemon staat dat de browser hem afhandelt, en dat doet hij niet. Een
+ * knop die een opdracht achterlaat waar niemand naar kijkt, is erger dan geen
+ * knop. */
+export function useSchermHerstarten() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (schermId: number) => {
+      const { error: weg } = await supabase
+        .from('screen_commands')
+        .delete()
+        .eq('screen_id', schermId)
+        .eq('command', 'reboot')
+      if (weg) throw new Error(weg.message)
+
+      const { error } = await supabase
+        .from('screen_commands')
+        .insert({ screen_id: schermId, command: 'reboot' })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['schermen'] })
+      void client.invalidateQueries({ queryKey: ['scherm-opdrachten'] })
+    },
+  })
+}
+
+/* Bij welke schermen er nog een herstart klaarstaat.
+ *
+ * Zolang er een staat, heeft de Pi hem niet opgehaald — en dan weet je dat er
+ * nog niets is gebeurd. Een set en niet een lijst-per-scherm: bij één scherm
+ * kunnen meerdere opdrachten staan, en dan moet je er niet één willekeurige
+ * uit overhouden. We vragen de database alleen naar `reboot`, want dat is het
+ * enige dat deze knop neerzet. */
+export function useOpenstaandeHerstarts() {
+  return useQuery({
+    queryKey: ['scherm-opdrachten'],
+    refetchInterval: 10_000,
+    queryFn: async (): Promise<Set<number>> => {
+      const { data, error } = await supabase
+        .from('screen_commands')
+        .select('screen_id')
+        .eq('command', 'reboot')
+      if (error) throw new Error(error.message)
+      return new Set((data ?? []).map((r) => r.screen_id as number))
+    },
+  })
+}
