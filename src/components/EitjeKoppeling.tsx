@@ -1,15 +1,17 @@
 import { useState } from 'react'
-import { AlertTriangle, Check, Link2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Check, Link2, RefreshCw, Search } from 'lucide-react'
 import { Kaart, Knop, Kopje, Mislukt, Pil, Veld } from './ui'
 import {
   redenTekst,
   useEitjeBijwerken,
   useEitjeProef,
   useEitjeTerughalen,
+  useEitjeRondkijken,
   useEitjeVerkennen,
   type Openstaand,
   type Ophaalstand,
   type Proefuitslag,
+  type Rondkijken,
   type WieKan,
   type Verkenning,
 } from '../lib/eitjeKoppeling'
@@ -87,15 +89,22 @@ export function EitjeKoppeling({
   const proef = useEitjeProef()
   const terughalen = useEitjeTerughalen()
   const bijwerken = useEitjeBijwerken()
+  const rondkijken = useEitjeRondkijken()
 
   const [vanaf, setVanaf] = useState('')
   const [ronde, setRonde] = useState<Ophaalstand | null>(null)
 
   const verkenning: Verkenning | undefined = verkennen.data
   const uitslag: Proefuitslag | undefined = proef.data
-  const bezig = verkennen.isPending || proef.isPending || terughalen.isPending || bijwerken.isPending
+  const bezig =
+    verkennen.isPending ||
+    proef.isPending ||
+    terughalen.isPending ||
+    bijwerken.isPending ||
+    rondkijken.isPending
 
   const fout =
+    rondkijken.error?.message ??
     verkennen.error?.message ??
     proef.error?.message ??
     terughalen.error?.message ??
@@ -265,8 +274,65 @@ export function EitjeKoppeling({
         )}
 
         {bijwerken.data && <OphaalBericht stand={bijwerken.data} bezig={false} />}
+
+        {alGelopen && (
+          <Stap
+            nummer={3}
+            titel="Rondkijken in eitje"
+            uitleg="Kijkt eenmalig welke gegevens eitje al heeft die wij hier met de hand bijhouden, en hoe ver terug eitje beschikbaarheid nog geeft. Leest alleen; schrijft en verandert niets."
+          >
+            <Knop
+              soort="rustig"
+              bezig={rondkijken.isPending}
+              disabled={bezig && !rondkijken.isPending}
+              onClick={() => rondkijken.mutate()}
+            >
+              <Search className="size-4" aria-hidden />
+              Rondkijken
+            </Knop>
+          </Stap>
+        )}
+
+        {rondkijken.data && <Rondkijkuitslag uitslag={rondkijken.data} />}
       </div>
     </Kaart>
+  )
+}
+
+/* Wat eitje al heeft.
+ *
+ * Alleen aantallen. De serverfunctie stuurt ook een paar voorbeeldrijen mee en
+ * daar staan namen van medewerkers in; dit scherm staat in de zaak open, dus
+ * die blijven eraf. Voor de vraag die hier beantwoord moet worden — houden we
+ * iets dubbel bij, en hoe ver terug reikt eitje — is een aantal genoeg. */
+function Rondkijkuitslag({ uitslag }: { uitslag: Rondkijken }) {
+  const regels = Object.entries(uitslag.uitkomst)
+  return (
+    <div className="flex flex-col gap-3 rounded-[4px] bg-surface-2 p-4">
+      <p className="text-sm text-muted">Week {uitslag.week}</p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-muted">
+            <th className="pb-1 font-medium">Onderdeel</th>
+            <th className="pb-1 text-right font-medium">Gevonden</th>
+          </tr>
+        </thead>
+        <tbody>
+          {regels.map(([naam, deel]) => (
+            <tr key={naam} className="border-t border-line">
+              <td className="py-1">{naam}</td>
+              <td className="py-1 text-right tabular-nums">
+                {'fout' in deel ? (
+                  <span className="text-bad">{deel.fout}</span>
+                ) : (
+                  deel.aantal
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

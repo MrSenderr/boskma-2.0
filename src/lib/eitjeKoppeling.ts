@@ -97,6 +97,35 @@ export function useEitjeVerkennen() {
   return useMutation({ mutationFn: () => roep<Verkenning>({ modus: 'verken' }) })
 }
 
+/* Eenmalig rondkijken: wat staat er in eitje dat wij met de hand bijhouden,
+ * en hoe ver terug geeft eitje beschikbaarheid nog?
+ *
+ * Eigen serverfunctie, los van eitje-uren. Die laatste draait elke nacht en
+ * daar ga je niet in rommelen voor een eenmalige vraag.
+ *
+ * We tonen alleen aantallen op het scherm. In de voorbeeldrijen staan namen
+ * van medewerkers; die hoeven niet op een scherm dat in de zaak openstaat. */
+export type Rondkijkdeel =
+  | { aantal: number; velden: string[]; voorbeeld: unknown[] }
+  | { fout: string }
+
+export type Rondkijken = {
+  ok: true
+  week: string
+  uitkomst: Record<string, Rondkijkdeel>
+}
+
+export function useEitjeRondkijken() {
+  return useMutation({
+    mutationFn: async (): Promise<Rondkijken> => {
+      const { data, error } = await supabase.functions.invoke('eitje-kijk', { body: {} })
+      if (error) throw new Error(await foutTekst(error))
+      if (data && data.ok === false) throw new Error(data.error ?? 'Dit lukte niet.')
+      return data as Rondkijken
+    },
+  })
+}
+
 /** Stap 2: de proef op de nummering. Schrijft niets. */
 export function useEitjeProef() {
   return useMutation({ mutationFn: () => roep<Proefuitslag>({ modus: 'proef' }) })
